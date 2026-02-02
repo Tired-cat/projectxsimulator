@@ -2,8 +2,8 @@ import { useState, useCallback, useMemo } from 'react';
 import {
   GLOBAL_BUDGET,
   CHANNEL_IDS,
-  calculateChannelMetrics,
-  type ProductId,
+  INITIAL_SPEND,
+  calculateMixedRevenue,
 } from '@/lib/marketingConstants';
 
 export interface ChannelSpend {
@@ -14,12 +14,9 @@ export interface ChannelSpend {
 }
 
 export function useMarketingSimulation() {
-  const [selectedProduct, setSelectedProduct] = useState<ProductId>('chair');
+  // Start with the Excel scenario data
   const [channelSpend, setChannelSpend] = useState<ChannelSpend>({
-    tiktok: 0,
-    instagram: 0,
-    facebook: 0,
-    newspaper: 0,
+    ...INITIAL_SPEND,
   });
 
   const totalSpent = useMemo(() => {
@@ -42,34 +39,34 @@ export function useMarketingSimulation() {
     [totalSpent]
   );
 
+  // Calculate mixed revenue (all products) for each channel
   const channelMetrics = useMemo(() => {
     return CHANNEL_IDS.reduce((acc, channelId) => {
-      acc[channelId] = calculateChannelMetrics(
+      acc[channelId] = calculateMixedRevenue(
         channelId,
-        channelSpend[channelId as keyof ChannelSpend],
-        selectedProduct
+        channelSpend[channelId as keyof ChannelSpend]
       );
       return acc;
-    }, {} as Record<string, ReturnType<typeof calculateChannelMetrics>>);
-  }, [channelSpend, selectedProduct]);
+    }, {} as Record<string, ReturnType<typeof calculateMixedRevenue>>);
+  }, [channelSpend]);
 
   const totals = useMemo(() => {
     const values = Object.values(channelMetrics);
     return {
       clicks: values.reduce((sum, m) => sum + m.clicks, 0),
-      conversions: values.reduce((sum, m) => sum + m.conversions, 0),
-      revenue: values.reduce((sum, m) => sum + m.revenue, 0),
+      totalRevenue: values.reduce((sum, m) => sum + m.totalRevenue, 0),
       profit: values.reduce((sum, m) => sum + m.profit, 0),
+      bottleRevenue: values.reduce((sum, m) => sum + m.bottleRevenue, 0),
+      cushionRevenue: values.reduce((sum, m) => sum + m.cushionRevenue, 0),
+      chairRevenue: values.reduce((sum, m) => sum + m.chairRevenue, 0),
     };
   }, [channelMetrics]);
 
   const resetSimulation = useCallback(() => {
-    setChannelSpend({ tiktok: 0, instagram: 0, facebook: 0, newspaper: 0 });
+    setChannelSpend({ ...INITIAL_SPEND });
   }, []);
 
   return {
-    selectedProduct,
-    setSelectedProduct,
     channelSpend,
     updateChannelSpend,
     totalSpent,
