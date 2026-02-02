@@ -1,108 +1,148 @@
 
+# LumbarPro Marketing Simulator - Comprehensive Fix Plan
 
-To ensure clarity for your first development loop, we are stripping everything down to the **"Math & Interaction"** layer. This allows you to hand a clean, logical brief to a developer or use a tool like Lovable/Bolt to build the core engine.
+## Problem Summary
 
-Here is the refined **Phase 0 & Phase 1 Sprint Plan** focused on a "simulate and break" testing model.
+The simulation currently has several consistency issues that break the learning experience:
 
----
-
-## Phase 0: The "Market Engine" (Immediate Testing)
-
-**Goal:** Create an unbreakable dashboard where the user can manipulate budget and see mathematically accurate results in the charts. No "Path" logic yet—just raw data reaction.
-
-### 1. Interactive Control Panel
-
-* 
-**The Global Budget:** A master variable starting at **$20,000**.
-
-
-* 
-**The Spend Sliders:** Four sliders (TikTok, Instagram, Facebook, Newspaper).
-
-
-* **Logic:** As one slider goes up, the "Remaining Budget" must go down. If the budget hits $0, other sliders lock.
-
-
-* 
-**Product Toggle:** A switch to select which product is being "pushed" in the ads: **$500 Pro Chair** vs. **$10 Ergo-Bottle**.
-
-
-
-### 2. Live Data Visualization (The Bar & Pie Charts)
-
-The charts must update **instantly** as sliders move based on these variables:
-
-* 
-**TikTok:** High Traffic ($0.50 CPC), but 0.01% Chair Conversion.
-
-
-* 
-**Newspaper:** Low Traffic ($2.50 CPC), but 5.0% Chair Conversion.
-
-
-* 
-**Revenue Formula:** .
-
-
+1. **User starts above goal** - The math model generates ~$109k revenue at start, but the Excel shows only $43k
+2. **Scenario text doesn't match numbers** - Claims "70% on TikTok" but actual spend doesn't reflect this
+3. **Chart units are mixed** - Y-axis shows dollars but "Views" mode shows click counts
+4. **Channel naming inconsistent** - "Newspaper/Email" in some places, "Newspaper" in others
+5. **Missing Revenue filter** - Only Views, Profit, Show All available
+6. **Available Budget shown** - Excel totals $17,500, not $20k, but we show remaining budget
 
 ---
 
-## Phase 1: The "Analysis & Commitment" (The Logic Layer)
+## Implementation Plan
 
-**Goal:** Once the math works, we add the "Identify" and "Submit" features to see if users can find the "Trap."
+### Phase 1: Fix Conversion Rates to Match Excel Revenue
 
-### 1. The Filtering System (Identify)
+The current conversion rates produce wrong revenue. We need to calibrate them to match the Excel's actual revenue figures.
 
-The student must be able to toggle what the Bar Chart shows to find the mismatch:
+**Excel Baseline (at current spend):**
+| Channel | Spend | Clicks (at CPC) | Revenue | Implied Conv Rate |
+|---------|-------|-----------------|---------|-------------------|
+| TikTok | $9,000 | 18,000 | $1,200 | ~0.67% overall |
+| Instagram | $5,000 | 6,667 | $4,800 | ~0.72% overall |
+| Facebook | $3,000 | 3,000 | $15,000 | ~5% overall |
+| Newspaper | $500 | 200 | $22,000 | Implied high-ticket focus |
 
-* 
-**View 1 (Default):** "Total Views" — TikTok looks like the winner.
+**Changes to `marketingConstants.ts`:**
+- Recalibrate conversion rates so the Excel starting state produces approximately $43,000 total revenue
+- Adjust chair conversion rates significantly downward for TikTok/Instagram
+- Keep Newspaper as the "hidden gem" with strong chair conversions
 
+### Phase 2: Fix Starting State & Scenario Text
 
-* 
-**View 2:** "Revenue" — Newspaper suddenly shows the highest bars.
+**Update `useMarketingSimulation.ts` and `Index.tsx`:**
+- Keep Excel's exact starting allocation: TikTok $9k, Instagram $5k, Facebook $3k, Newspaper $500
+- Update scenario text to match: "Current allocation: 51% on TikTok ($9k), only 3% on Newspaper ($500)"
+- Or: Change starting state to match the "70% TikTok" claim: TikTok $14k, Instagram $3k, Facebook $2k, Newspaper $1k
 
+**Recommendation:** Match the Excel exactly and update the scenario text accordingly.
 
-* 
-**View 3:** "Product Mix" (Pie Chart) — Shows TikTok is only selling $10 bottles while Newspaper sells chairs.
+### Phase 3: Fix the Chart Filter System
 
+**Update `DraggableBarChart.tsx`:**
+- Add **Revenue** as a filter option (currently missing)
+- New filter options: `Views | Revenue | Profit | Show All`
+- Fix Y-axis to match selected metric:
+  - Views mode: Y-axis shows count (0, 10k, 20k, 30k, 40k, 50k)
+  - Revenue/Profit mode: Y-axis shows dollars ($0, $10k, $20k, $30k)
+- Bar height represents the selected metric, NOT spend
+- Spend shown only as a label below each bar
 
+### Phase 4: Consistent Channel Naming
 
-### 2. The Drag-and-Drop Analysis
+**Update across all files:**
+- Rename "Newspaper/Email" to "Newspaper" everywhere
+- Update `CHANNELS` object in `marketingConstants.ts`
+- Update filter chips in `ProductMixChart.tsx`
 
-Instead of just clicking, students drag "Insight Chips" to categorize what they see:
+### Phase 5: Remove "Available Budget" When Fully Allocated
 
-* **The Pool:** Chips like "Low Revenue," "High Traffic," "Profit Leader," "Liquidity Risk" [Phase 1 Overview].
-* **The Drop Zone:** An area where they must drag a chip to a chart to "Identify" the issue before the **Submit** button unlocks.
+**Update `DraggableBarChart.tsx`:**
+- If Excel scenario uses $17,500 of $20k, show "Available: $2,500"
+- Or: Increase total spend to use full $20k budget
+- **Recommendation:** Update INITIAL_SPEND to total exactly $20,000 to eliminate confusion
 
-### 3. The "Submit" & Visual Outcome
+### Phase 6: Improve Product Mix with Units Sold
 
-The user clicks "Run Simulation." Instead of a feedback text box, the dashboard **transforms**:
+**Update `ProductMixChart.tsx`:**
+- Show both revenue AND units sold per product
+- Add profit per product calculation
+- Add dynamic insight sentences based on selected channel:
+  - TikTok: "TikTok drives high volume (X views) but mostly low-ticket items ($Y avg)"
+  - Newspaper: "Newspaper drives fewer views but X high-ticket chair sales"
 
-* 
-**Path 1 Success:** Net Profit skyrockets (Green Arrow ↑ 400%).
+### Phase 7: Add Collapsible Assumptions Panel
 
+**Create new component or add to `Index.tsx`:**
+- Collapsible accordion with simulation assumptions
+- Product prices: $10 Bottle, $50 Cushion, $500 Pro Chair
+- Channel characteristics: CPC rates, audience tendencies
+- Short, educational format
 
-* 
-**Path 3 Failure:** Cash on Hand depletes rapidly (Red Alert ⚠).
+### Phase 8: Goal Tracker Logic Fix
 
-
+**Update `Index.tsx`:**
+- Hide congratulations message on first load
+- Only show success after user makes changes AND reaches goal
+- Track if user has made any modifications to the starting allocation
 
 ---
 
-## The "Break-Test" Sprint (User Testing)
+## Technical Details
 
-Once Phase 0 and 1 are built, give it to users with one instruction: **"Try to reach $100,000 in revenue."**
+### File Changes
 
-**What we are watching for:**
+**`src/lib/marketingConstants.ts`:**
+- Recalibrate conversion rates to produce ~$43k revenue at Excel starting spend
+- Update channel name from "Newspaper/Email" to "Newspaper"
+- Update INITIAL_SPEND to total $20,000 (or keep at $17,500 with scenario text update)
 
-* **Math Exploits:** Can they find a way to get infinite money by sliding bars rapidly?
-* 
-**Filtering Friction:** Do they realize they *can* change the graph view, or do they stay stuck on "Total Views" (The Trap)?.
+**`src/hooks/useMarketingSimulation.ts`:**
+- Add `hasUserModified` state to track if user changed anything
+- Update initial state to match constants
 
+**`src/components/simulation/DraggableBarChart.tsx`:**
+- Add "Revenue" to filter options
+- Fix Y-axis labels to match selected metric (count vs dollars)
+- Update bar height logic to show metric value, not spend
+- Conditionally show "Available Budget" only if budget is unallocated
 
-* **Logic Gaps:** Does the transition from "Submit" to "Outcome" feel like a real simulation or just a static page change?
+**`src/components/simulation/ProductMixChart.tsx`:**
+- Show units sold alongside revenue
+- Add dynamic insight text based on channel metrics
+- Fix channel filter label consistency
+
+**`src/pages/Index.tsx`:**
+- Update scenario text to match actual starting percentages
+- Add collapsible Assumptions accordion
+- Fix goal tracker to only congratulate after user action
 
 ---
 
-**Would you like the specific JavaScript logic for the "Winning Formula" (Newspaper vs. TikTok) to give to your developer for Phase 0?**
+## Expected Outcome
+
+After implementation:
+1. User starts at ~$43k-$60k revenue (below $100k goal)
+2. Scenario text matches actual allocation percentages
+3. Charts show correct units for selected metric
+4. "Newspaper" naming is consistent everywhere
+5. Product Mix shows both revenue and units sold
+6. Congratulations only appears after user achieves the goal
+7. Learning loop is preserved: user must discover the "trap" and reallocate
+
+---
+
+## Validation Checklist
+
+- [ ] Starting revenue is between $40k-$85k (below goal)
+- [ ] Starting spend totals exactly $20,000
+- [ ] Scenario text percentages match starting spend
+- [ ] Views mode shows count axis, Revenue/Profit shows dollar axis
+- [ ] Channel names consistent across all panels
+- [ ] Congratulations hidden until goal reached through user action
+- [ ] Product Mix shows units sold per product
