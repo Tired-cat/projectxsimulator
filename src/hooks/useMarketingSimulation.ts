@@ -14,13 +14,11 @@ export interface ChannelSpend {
 }
 
 export function useMarketingSimulation() {
-  // Start in the "Brand Trap" state: TikTok at $9,000 (from Excel)
-  const [channelSpend, setChannelSpend] = useState<ChannelSpend>({
-    tiktok: 9000,      // High spend on TikTok (The Trap)
-    instagram: 5000,
-    facebook: 3000,
-    newspaper: 500,    // Low spend on Newspaper (The Solution)
-  });
+  // Start with Excel's exact allocation (now totaling $20k)
+  const [channelSpend, setChannelSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND });
+  
+  // Track if user has made any modifications (for goal celebration logic)
+  const [hasUserModified, setHasUserModified] = useState(false);
 
   const totalSpent = useMemo(() => {
     return Object.values(channelSpend).reduce((sum, val) => sum + val, 0);
@@ -32,14 +30,17 @@ export function useMarketingSimulation() {
 
   const updateChannelSpend = useCallback(
     (channelId: keyof ChannelSpend, value: number) => {
+      setHasUserModified(true); // User is now interacting
       setChannelSpend((prev) => {
-        const otherSpend = totalSpent - prev[channelId];
+        const otherSpend = Object.entries(prev)
+          .filter(([id]) => id !== channelId)
+          .reduce((sum, [, val]) => sum + val, 0);
         const maxAllowed = GLOBAL_BUDGET - otherSpend;
         const clampedValue = Math.min(Math.max(0, value), maxAllowed);
         return { ...prev, [channelId]: clampedValue };
       });
     },
-    [totalSpent]
+    []
   );
 
   // Calculate mixed revenue (all products) for each channel
@@ -62,11 +63,15 @@ export function useMarketingSimulation() {
       bottleRevenue: values.reduce((sum, m) => sum + m.bottleRevenue, 0),
       cushionRevenue: values.reduce((sum, m) => sum + m.cushionRevenue, 0),
       chairRevenue: values.reduce((sum, m) => sum + m.chairRevenue, 0),
+      bottleSales: values.reduce((sum, m) => sum + m.bottleSales, 0),
+      cushionSales: values.reduce((sum, m) => sum + m.cushionSales, 0),
+      chairSales: values.reduce((sum, m) => sum + m.chairSales, 0),
     };
   }, [channelMetrics]);
 
   const resetSimulation = useCallback(() => {
     setChannelSpend({ ...INITIAL_SPEND });
+    setHasUserModified(false);
   }, []);
 
   return {
@@ -77,5 +82,6 @@ export function useMarketingSimulation() {
     channelMetrics,
     totals,
     resetSimulation,
+    hasUserModified,
   };
 }

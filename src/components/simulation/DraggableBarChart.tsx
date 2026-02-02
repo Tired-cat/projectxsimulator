@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import { Eye, DollarSign, LayoutGrid } from 'lucide-react';
+import { Eye, DollarSign, TrendingUp, LayoutGrid } from 'lucide-react';
 
 interface DraggableBarChartProps {
   channelSpend: ChannelSpend;
@@ -18,11 +18,12 @@ interface DraggableBarChartProps {
   remainingBudget: number;
 }
 
-type ViewMode = 'clicks' | 'profit' | 'all';
+type ViewMode = 'clicks' | 'revenue' | 'profit' | 'all';
 
 const filterOptions = [
   { id: 'clicks' as ViewMode, label: 'Views', icon: Eye },
-  { id: 'profit' as ViewMode, label: 'Profit', icon: DollarSign },
+  { id: 'revenue' as ViewMode, label: 'Revenue', icon: DollarSign },
+  { id: 'profit' as ViewMode, label: 'Profit', icon: TrendingUp },
   { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid },
 ];
 
@@ -37,28 +38,58 @@ export function DraggableBarChart({
   const [draggingChannel, setDraggingChannel] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Fixed max values for consistent scaling
-  const FIXED_MAX_BUDGET = GLOBAL_BUDGET; // $20,000 for budget bars
-  const maxMetricValue = viewMode === 'clicks' ? 50000 : 60000; // Fixed scales
+  // Dynamic scale based on view mode
+  // Views mode: count scale (no $), Revenue/Profit: dollar scale
+  const getMaxScale = () => {
+    switch (viewMode) {
+      case 'clicks':
+        return 50000; // Views scale
+      case 'revenue':
+        return 80000; // Revenue scale
+      case 'profit':
+        return 60000; // Profit scale (can be negative)
+      case 'all':
+        return 50000; // Default to views scale for primary
+      default:
+        return 50000;
+    }
+  };
+
+  const maxScale = getMaxScale();
+
+  // Y-axis labels based on view mode
+  const getYAxisLabels = () => {
+    const isDollar = viewMode === 'revenue' || viewMode === 'profit';
+    const prefix = isDollar ? '$' : '';
+    return [
+      `${prefix}${maxScale.toLocaleString()}`,
+      `${prefix}${(maxScale * 0.75).toLocaleString()}`,
+      `${prefix}${(maxScale * 0.5).toLocaleString()}`,
+      `${prefix}${(maxScale * 0.25).toLocaleString()}`,
+      isDollar ? '$0' : '0',
+    ];
+  };
 
   // Get bar value based on view mode
   const getBarValue = useCallback((channelId: string) => {
     const metrics = channelMetrics[channelId];
-    if (!metrics) return { primary: 0, secondary: 0 };
+    if (!metrics) return { primary: 0, secondary: null };
     
     switch (viewMode) {
       case 'clicks':
         return { primary: metrics.clicks, secondary: null };
+      case 'revenue':
+        return { primary: metrics.totalRevenue, secondary: null };
       case 'profit':
         return { primary: metrics.profit, secondary: null };
       case 'all':
-        return { primary: metrics.clicks, secondary: metrics.profit };
+        return { primary: metrics.clicks, secondary: metrics.totalRevenue };
       default:
         return { primary: 0, secondary: null };
     }
   }, [viewMode, channelMetrics]);
 
-  // Handle mouse events for dragging bars - follows cursor exactly
+  // Handle mouse events for dragging bars
   const handleMouseDown = useCallback((channelId: string, e: React.MouseEvent) => {
     e.preventDefault();
     setDraggingChannel(channelId);
@@ -68,12 +99,12 @@ export function DraggableBarChart({
     if (!draggingChannel || !chartRef.current) return;
 
     const rect = chartRef.current.getBoundingClientRect();
-    const chartHeight = rect.height - 80; // Account for labels
+    const chartHeight = rect.height - 80;
     const mouseY = e.clientY - rect.top - 40;
     
-    // Direct cursor tracking - bar follows mouse exactly
+    // Direct cursor tracking for spend (fixed $20k scale)
     const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
-    const newValue = Math.round((percentage * FIXED_MAX_BUDGET) / 100) * 100;
+    const newValue = Math.round((percentage * GLOBAL_BUDGET) / 100) * 100;
     
     // Clamp to available budget
     const currentSpend = channelSpend[draggingChannel as keyof ChannelSpend];
@@ -92,11 +123,11 @@ export function DraggableBarChart({
     setDraggingChannel(null);
   }, []);
 
-  const formatValue = (value: number, isProfit: boolean = false) => {
-    if (isProfit || viewMode === 'profit') {
-      return `$${value.toLocaleString()}`;
+  const formatValue = (value: number) => {
+    if (viewMode === 'clicks') {
+      return value.toLocaleString();
     }
-    return value.toLocaleString();
+    return `$${value.toLocaleString()}`;
   };
 
   return (
@@ -136,30 +167,30 @@ export function DraggableBarChart({
           </div>
         </div>
         
-        {/* Remaining Budget Counter - Prominent Position */}
-        <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/30 rounded-xl border border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
-              <div className={`text-3xl font-bold transition-colors ${
-                remainingBudget > 0 ? 'text-green-500' : 'text-primary'
-              }`}>
-                ${remainingBudget.toLocaleString()}
+        {/* Remaining Budget Counter - Only show if budget is not fully allocated */}
+        {remainingBudget > 0 && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/30 rounded-xl border border-primary/20">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
+                <div className="text-3xl font-bold text-green-500">
+                  ${remainingBudget.toLocaleString()}
+                </div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground">of ${GLOBAL_BUDGET.toLocaleString()}</div>
-              <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-primary to-green-500"
-                  initial={false}
-                  animate={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                />
+              <div className="text-right">
+                <div className="text-sm text-muted-foreground">of ${GLOBAL_BUDGET.toLocaleString()}</div>
+                <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-primary to-green-500"
+                    initial={false}
+                    animate={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-3 mt-4">
@@ -211,13 +242,11 @@ export function DraggableBarChart({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          {/* Y-axis labels - Fixed at $20,000 max */}
+          {/* Y-axis labels - Dynamic based on view mode */}
           <div className="absolute left-0 top-10 bottom-12 w-16 flex flex-col justify-between text-xs text-muted-foreground">
-            <span>${(FIXED_MAX_BUDGET).toLocaleString()}</span>
-            <span>${(FIXED_MAX_BUDGET * 0.75).toLocaleString()}</span>
-            <span>${(FIXED_MAX_BUDGET * 0.5).toLocaleString()}</span>
-            <span>${(FIXED_MAX_BUDGET * 0.25).toLocaleString()}</span>
-            <span>$0</span>
+            {getYAxisLabels().map((label, i) => (
+              <span key={i}>{label}</span>
+            ))}
           </div>
 
           {/* Grid lines */}
@@ -232,8 +261,13 @@ export function DraggableBarChart({
             {Object.entries(CHANNELS).map(([channelId, channel]) => {
               const barValues = getBarValue(channelId);
               const spend = channelSpend[channelId as keyof ChannelSpend];
-              const spendHeightPercent = (spend / FIXED_MAX_BUDGET) * 100;
               const isDragging = draggingChannel === channelId;
+
+              // Bar height based on selected metric value (not spend!)
+              const metricValue = barValues.primary;
+              const barHeightPercent = viewMode === 'profit' && metricValue < 0
+                ? 0 // Don't show negative bars below zero
+                : Math.max(0, (Math.abs(metricValue) / maxScale) * 100);
 
               return (
                 <div
@@ -246,11 +280,14 @@ export function DraggableBarChart({
                     layout
                     transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   >
-                    <div className="text-sm font-bold" style={{ color: channel.color }}>
-                      {formatValue(barValues.primary, viewMode === 'profit')}
+                    <div 
+                      className={`text-sm font-bold ${viewMode === 'profit' && metricValue < 0 ? 'text-destructive' : ''}`}
+                      style={{ color: viewMode === 'profit' && metricValue < 0 ? undefined : channel.color }}
+                    >
+                      {formatValue(metricValue)}
                     </div>
                     {viewMode === 'all' && barValues.secondary !== null && (
-                      <div className={`text-xs ${barValues.secondary >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                      <div className="text-xs text-green-600">
                         ${barValues.secondary.toLocaleString()}
                       </div>
                     )}
@@ -259,20 +296,22 @@ export function DraggableBarChart({
                     ${spend.toLocaleString()} spent
                   </div>
                   
-                  {/* The Budget Bar - Fixed scale, direct drag */}
+                  {/* The Metric Bar - Height = metric value, dragging adjusts spend */}
                   <motion.div
                     className={`w-full max-w-[80px] rounded-t-lg cursor-ns-resize ${
                       isDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background' : ''
                     }`}
                     style={{
-                      backgroundColor: channel.color,
+                      backgroundColor: viewMode === 'profit' && metricValue < 0 
+                        ? 'hsl(var(--destructive))' 
+                        : channel.color,
                       boxShadow: isDragging 
                         ? `0 0 30px ${channel.color}` 
                         : `0 4px 12px ${channel.color}40`,
                     }}
                     initial={false}
                     animate={{ 
-                      height: `${Math.max(spendHeightPercent, 2)}%`,
+                      height: `${Math.max(barHeightPercent, 2)}%`,
                       scale: isDragging ? 1.02 : 1,
                     }}
                     transition={{ 
