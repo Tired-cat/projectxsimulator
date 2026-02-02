@@ -1,11 +1,10 @@
 import { useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
+import { Eye, DollarSign, LayoutGrid } from 'lucide-react';
 
 interface DraggableBarChartProps {
   channelSpend: ChannelSpend;
@@ -19,7 +18,13 @@ interface DraggableBarChartProps {
   remainingBudget: number;
 }
 
-type ViewMode = 'clicks' | 'revenue';
+type ViewMode = 'clicks' | 'profit' | 'all';
+
+const filterOptions = [
+  { id: 'clicks' as ViewMode, label: 'Views', icon: Eye },
+  { id: 'profit' as ViewMode, label: 'Profit', icon: DollarSign },
+  { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid },
+];
 
 export function DraggableBarChart({
   channelSpend,
@@ -38,13 +43,18 @@ export function DraggableBarChart({
 
   // Get bar value based on view mode
   const getBarValue = useCallback((channelId: string) => {
+    const metrics = channelMetrics[channelId];
+    if (!metrics) return { primary: 0, secondary: 0 };
+    
     switch (viewMode) {
       case 'clicks':
-        return channelMetrics[channelId]?.clicks || 0;
-      case 'revenue':
-        return channelMetrics[channelId]?.totalRevenue || 0;
+        return { primary: metrics.clicks, secondary: null };
+      case 'profit':
+        return { primary: metrics.profit, secondary: null };
+      case 'all':
+        return { primary: metrics.clicks, secondary: metrics.profit };
       default:
-        return 0;
+        return { primary: 0, secondary: null };
     }
   }, [viewMode, channelMetrics]);
 
@@ -82,42 +92,47 @@ export function DraggableBarChart({
     setDraggingChannel(null);
   }, []);
 
-  const formatValue = (value: number) => {
-    if (viewMode === 'revenue') {
+  const formatValue = (value: number, isProfit: boolean = false) => {
+    if (isProfit || viewMode === 'profit') {
       return `$${value.toLocaleString()}`;
     }
     return value.toLocaleString();
   };
 
-  const handleViewModeToggle = (checked: boolean) => {
-    setViewMode(checked ? 'revenue' : 'clicks');
-  };
-
   return (
     <Card className="border-2 border-primary/20 bg-card">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <CardTitle className="text-xl font-bold">Channel Performance</CardTitle>
           
-          {/* Toggle Switch for Views/Revenue */}
-          <div className="flex items-center gap-3 bg-secondary/50 rounded-full px-4 py-2">
-            <Label 
-              htmlFor="view-mode" 
-              className={`text-sm font-medium transition-colors ${viewMode === 'clicks' ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              Total Views
-            </Label>
-            <Switch
-              id="view-mode"
-              checked={viewMode === 'revenue'}
-              onCheckedChange={handleViewModeToggle}
-            />
-            <Label 
-              htmlFor="view-mode" 
-              className={`text-sm font-medium transition-colors ${viewMode === 'revenue' ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              Revenue ($)
-            </Label>
+          {/* Filter Metrics Chips */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+              </svg>
+              Filter metrics:
+            </span>
+            <div className="flex gap-1.5">
+              {filterOptions.map((option) => {
+                const Icon = option.icon;
+                const isActive = viewMode === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => setViewMode(option.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-foreground text-background shadow-md'
+                        : 'bg-secondary hover:bg-secondary/80 text-foreground border border-border'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         
@@ -215,7 +230,7 @@ export function DraggableBarChart({
           {/* Bars Container */}
           <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
             {Object.entries(CHANNELS).map(([channelId, channel]) => {
-              const metricValue = getBarValue(channelId);
+              const barValues = getBarValue(channelId);
               const spend = channelSpend[channelId as keyof ChannelSpend];
               const spendHeightPercent = (spend / FIXED_MAX_BUDGET) * 100;
               const isDragging = draggingChannel === channelId;
@@ -225,14 +240,20 @@ export function DraggableBarChart({
                   key={channelId}
                   className="flex-1 flex flex-col items-center h-full justify-end"
                 >
-                  {/* Metric value above bar (animated) */}
+                  {/* Metric values above bar (animated) */}
                   <motion.div 
-                    className="text-sm font-bold mb-1"
-                    style={{ color: channel.color }}
+                    className="text-center mb-1"
                     layout
                     transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   >
-                    {formatValue(metricValue)}
+                    <div className="text-sm font-bold" style={{ color: channel.color }}>
+                      {formatValue(barValues.primary, viewMode === 'profit')}
+                    </div>
+                    {viewMode === 'all' && barValues.secondary !== null && (
+                      <div className={`text-xs ${barValues.secondary >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                        ${barValues.secondary.toLocaleString()}
+                      </div>
+                    )}
                   </motion.div>
                   <div className="text-xs text-muted-foreground mb-2">
                     ${spend.toLocaleString()} spent
