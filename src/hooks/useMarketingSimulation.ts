@@ -14,9 +14,12 @@ export interface ChannelSpend {
 }
 
 export function useMarketingSimulation() {
-  // Start with the Excel scenario data
+  // Start in the "Brand Trap" state: TikTok at $9,000 (from Excel)
   const [channelSpend, setChannelSpend] = useState<ChannelSpend>({
-    ...INITIAL_SPEND,
+    tiktok: 9000,      // High spend on TikTok (The Trap)
+    instagram: 5000,
+    facebook: 3000,
+    newspaper: 500,    // Low spend on Newspaper (The Solution)
   });
 
   const totalSpent = useMemo(() => {

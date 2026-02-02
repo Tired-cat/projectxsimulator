@@ -1,15 +1,11 @@
 import { useRef, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface DraggableBarChartProps {
   channelSpend: ChannelSpend;
@@ -36,17 +32,9 @@ export function DraggableBarChart({
   const [draggingChannel, setDraggingChannel] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Get max value for scaling based on view mode
-  const getMaxValue = useCallback(() => {
-    switch (viewMode) {
-      case 'clicks':
-        return Math.max(...Object.values(channelMetrics).map(m => m.clicks), 1000);
-      case 'revenue':
-        return Math.max(...Object.values(channelMetrics).map(m => m.totalRevenue), 1000);
-      default:
-        return 1000;
-    }
-  }, [viewMode, channelMetrics]);
+  // Fixed max values for consistent scaling
+  const FIXED_MAX_BUDGET = GLOBAL_BUDGET; // $20,000 for budget bars
+  const maxMetricValue = viewMode === 'clicks' ? 50000 : 60000; // Fixed scales
 
   // Get bar value based on view mode
   const getBarValue = useCallback((channelId: string) => {
@@ -60,7 +48,7 @@ export function DraggableBarChart({
     }
   }, [viewMode, channelMetrics]);
 
-  // Handle mouse events for dragging bars
+  // Handle mouse events for dragging bars - follows cursor exactly
   const handleMouseDown = useCallback((channelId: string, e: React.MouseEvent) => {
     e.preventDefault();
     setDraggingChannel(channelId);
@@ -70,17 +58,19 @@ export function DraggableBarChart({
     if (!draggingChannel || !chartRef.current) return;
 
     const rect = chartRef.current.getBoundingClientRect();
-    const chartHeight = rect.height - 60;
-    const mouseY = e.clientY - rect.top - 30;
+    const chartHeight = rect.height - 80; // Account for labels
+    const mouseY = e.clientY - rect.top - 40;
     
+    // Direct cursor tracking - bar follows mouse exactly
     const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
+    const newValue = Math.round((percentage * FIXED_MAX_BUDGET) / 100) * 100;
+    
+    // Clamp to available budget
     const currentSpend = channelSpend[draggingChannel as keyof ChannelSpend];
     const otherSpend = Object.entries(channelSpend)
       .filter(([id]) => id !== draggingChannel)
       .reduce((sum, [, val]) => sum + val, 0);
-    
     const maxAllowed = GLOBAL_BUDGET - otherSpend;
-    const newValue = Math.round((percentage * GLOBAL_BUDGET) / 100) * 100;
     const clampedValue = Math.min(Math.max(0, newValue), maxAllowed);
     
     if (clampedValue !== currentSpend) {
@@ -99,38 +89,99 @@ export function DraggableBarChart({
     return value.toLocaleString();
   };
 
-  const maxValue = getMaxValue();
+  const handleViewModeToggle = (checked: boolean) => {
+    setViewMode(checked ? 'revenue' : 'clicks');
+  };
 
   return (
     <Card className="border-2 border-primary/20 bg-card">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-xl font-bold">Channel Performance</CardTitle>
-          <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="clicks">Total Views</SelectItem>
-              <SelectItem value="revenue">Revenue</SelectItem>
-            </SelectContent>
-          </Select>
+          
+          {/* Toggle Switch for Views/Revenue */}
+          <div className="flex items-center gap-3 bg-secondary/50 rounded-full px-4 py-2">
+            <Label 
+              htmlFor="view-mode" 
+              className={`text-sm font-medium transition-colors ${viewMode === 'clicks' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              Total Views
+            </Label>
+            <Switch
+              id="view-mode"
+              checked={viewMode === 'revenue'}
+              onCheckedChange={handleViewModeToggle}
+            />
+            <Label 
+              htmlFor="view-mode" 
+              className={`text-sm font-medium transition-colors ${viewMode === 'revenue' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              Revenue ($)
+            </Label>
+          </div>
         </div>
         
+        {/* Remaining Budget Counter - Prominent Position */}
+        <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/30 rounded-xl border border-primary/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
+              <div className={`text-3xl font-bold transition-colors ${
+                remainingBudget > 0 ? 'text-green-500' : 'text-primary'
+              }`}>
+                ${remainingBudget.toLocaleString()}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-muted-foreground">of ${GLOBAL_BUDGET.toLocaleString()}</div>
+              <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-primary to-green-500"
+                  initial={false}
+                  animate={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-3 mt-4">
           <div className="p-3 bg-secondary/50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-primary">{totals.clicks.toLocaleString()}</div>
+            <motion.div 
+              className="text-2xl font-bold text-primary"
+              key={totals.clicks}
+              initial={{ scale: 1.1 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 500 }}
+            >
+              {totals.clicks.toLocaleString()}
+            </motion.div>
             <div className="text-xs text-muted-foreground">Total Views</div>
           </div>
           <div className="p-3 bg-secondary/50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-green-600">${totals.totalRevenue.toLocaleString()}</div>
+            <motion.div 
+              className="text-2xl font-bold text-green-600"
+              key={totals.totalRevenue}
+              initial={{ scale: 1.1 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 500 }}
+            >
+              ${totals.totalRevenue.toLocaleString()}
+            </motion.div>
             <div className="text-xs text-muted-foreground">Revenue</div>
           </div>
           <div className="p-3 bg-secondary/50 rounded-lg text-center">
-            <div className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+            <motion.div 
+              className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
+              key={totals.profit}
+              initial={{ scale: 1.1 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 500 }}
+            >
               ${totals.profit.toLocaleString()}
-            </div>
+            </motion.div>
             <div className="text-xs text-muted-foreground">Net Profit</div>
           </div>
         </div>
@@ -140,26 +191,33 @@ export function DraggableBarChart({
         {/* Draggable Bar Chart */}
         <div
           ref={chartRef}
-          className="relative h-[350px] bg-secondary/20 rounded-lg p-4 select-none"
+          className="relative h-[350px] bg-secondary/20 rounded-lg p-4 select-none cursor-crosshair"
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          {/* Y-axis labels */}
-          <div className="absolute left-0 top-4 bottom-10 w-16 flex flex-col justify-between text-xs text-muted-foreground">
-            <span>{formatValue(maxValue)}</span>
-            <span>{formatValue(maxValue * 0.75)}</span>
-            <span>{formatValue(maxValue * 0.5)}</span>
-            <span>{formatValue(maxValue * 0.25)}</span>
-            <span>0</span>
+          {/* Y-axis labels - Fixed at $20,000 max */}
+          <div className="absolute left-0 top-10 bottom-12 w-16 flex flex-col justify-between text-xs text-muted-foreground">
+            <span>${(FIXED_MAX_BUDGET).toLocaleString()}</span>
+            <span>${(FIXED_MAX_BUDGET * 0.75).toLocaleString()}</span>
+            <span>${(FIXED_MAX_BUDGET * 0.5).toLocaleString()}</span>
+            <span>${(FIXED_MAX_BUDGET * 0.25).toLocaleString()}</span>
+            <span>$0</span>
+          </div>
+
+          {/* Grid lines */}
+          <div className="absolute left-20 right-4 top-10 bottom-12 flex flex-col justify-between pointer-events-none">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="border-t border-border/30" />
+            ))}
           </div>
 
           {/* Bars Container */}
-          <div className="absolute left-20 right-4 top-4 bottom-10 flex items-end justify-around gap-4">
+          <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
             {Object.entries(CHANNELS).map(([channelId, channel]) => {
-              const value = getBarValue(channelId);
+              const metricValue = getBarValue(channelId);
               const spend = channelSpend[channelId as keyof ChannelSpend];
-              const heightPercent = (value / maxValue) * 100;
+              const spendHeightPercent = (spend / FIXED_MAX_BUDGET) * 100;
               const isDragging = draggingChannel === channelId;
 
               return (
@@ -167,33 +225,47 @@ export function DraggableBarChart({
                   key={channelId}
                   className="flex-1 flex flex-col items-center h-full justify-end"
                 >
-                  {/* Value label above bar */}
-                  <div className="text-sm font-bold mb-1" style={{ color: channel.color }}>
-                    {formatValue(value)}
-                  </div>
+                  {/* Metric value above bar (animated) */}
+                  <motion.div 
+                    className="text-sm font-bold mb-1"
+                    style={{ color: channel.color }}
+                    layout
+                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                  >
+                    {formatValue(metricValue)}
+                  </motion.div>
                   <div className="text-xs text-muted-foreground mb-2">
                     ${spend.toLocaleString()} spent
                   </div>
                   
-                  {/* The Bar */}
-                  <div
-                    className={`w-full max-w-[80px] rounded-t-lg transition-all duration-150 cursor-ns-resize hover:opacity-80 ${
-                      isDragging ? 'opacity-70 scale-105' : ''
+                  {/* The Budget Bar - Fixed scale, direct drag */}
+                  <motion.div
+                    className={`w-full max-w-[80px] rounded-t-lg cursor-ns-resize ${
+                      isDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background' : ''
                     }`}
                     style={{
-                      height: `${Math.max(heightPercent, 2)}%`,
                       backgroundColor: channel.color,
                       boxShadow: isDragging 
-                        ? `0 0 20px ${channel.color}` 
+                        ? `0 0 30px ${channel.color}` 
                         : `0 4px 12px ${channel.color}40`,
+                    }}
+                    initial={false}
+                    animate={{ 
+                      height: `${Math.max(spendHeightPercent, 2)}%`,
+                      scale: isDragging ? 1.02 : 1,
+                    }}
+                    transition={{ 
+                      type: 'spring', 
+                      stiffness: isDragging ? 400 : 200, 
+                      damping: isDragging ? 30 : 25 
                     }}
                     onMouseDown={(e) => handleMouseDown(channelId, e)}
                   >
                     {/* Drag handle indicator */}
-                    <div className="w-full h-3 flex items-center justify-center">
-                      <div className="w-8 h-1 bg-white/50 rounded-full" />
+                    <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
+                      <div className="w-10 h-1.5 bg-white/60 rounded-full" />
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               );
             })}
@@ -212,16 +284,8 @@ export function DraggableBarChart({
 
           {/* Drag instruction */}
           <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-            ↕ Drag bars to adjust budget
+            ↕ Drag bars to adjust spend
           </div>
-        </div>
-
-        {/* Remaining Budget Indicator */}
-        <div className="mt-4 p-3 bg-secondary/30 rounded-lg flex justify-between items-center">
-          <span className="text-sm font-medium">Remaining Budget:</span>
-          <span className={`font-bold ${remainingBudget === 0 ? 'text-destructive' : 'text-primary'}`}>
-            ${remainingBudget.toLocaleString()} / ${GLOBAL_BUDGET.toLocaleString()}
-          </span>
         </div>
       </CardContent>
     </Card>
