@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CHANNELS, PRODUCTS } from '@/lib/marketingConstants';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { useState } from 'react';
@@ -7,6 +6,14 @@ import { useState } from 'react';
 interface ProductMixChartProps {
   channelMetrics: Record<string, ReturnType<typeof calculateMixedRevenue>>;
 }
+
+const channelOptions = [
+  { id: 'all', label: 'All' },
+  { id: 'tiktok', label: 'TikTok' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'newspaper', label: 'Newspaper' },
+];
 
 export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
@@ -100,81 +107,89 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
       </CardHeader>
 
       <CardContent>
-        {/* Channel Filter */}
-        <Tabs value={selectedChannel} onValueChange={setSelectedChannel} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-4">
-            <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-            {Object.entries(CHANNELS).map(([id, channel]) => (
-              <TabsTrigger key={id} value={id} className="text-xs">
-                {channel.name.split('/')[0]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {/* Channel Filter Chips */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {channelOptions.map((option) => {
+            const isActive = selectedChannel === option.id;
+            return (
+              <button
+                key={option.id}
+                onClick={() => setSelectedChannel(option.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'bg-secondary hover:bg-secondary/80 text-foreground'
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
 
-          <TabsContent value={selectedChannel} className="mt-0">
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              {/* Pie Chart */}
-              <div className="relative w-48 h-48">
-                <svg viewBox="-120 -120 240 240" className="w-full h-full">
-                  {total > 0 ? (
-                    pieSegments.map((segment) => (
-                      <path
-                        key={segment.id}
-                        d={createArcPath(segment.startAngle, segment.angle)}
-                        fill={segment.color}
-                        stroke="hsl(var(--background))"
-                        strokeWidth="2"
-                        className="transition-all duration-300 hover:opacity-80"
-                      />
-                    ))
-                  ) : (
-                    <circle
-                      r="100"
-                      fill="hsl(var(--secondary))"
-                      stroke="hsl(var(--border))"
-                      strokeWidth="2"
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          {/* Pie Chart */}
+          <div className="relative w-48 h-48">
+            <svg viewBox="-120 -120 240 240" className="w-full h-full">
+              {total > 0 ? (
+                pieSegments.map((segment) => (
+                  <path
+                    key={segment.id}
+                    d={createArcPath(segment.startAngle, segment.angle)}
+                    fill={segment.color}
+                    stroke="hsl(var(--background))"
+                    strokeWidth="2"
+                    className="transition-all duration-300 hover:opacity-80"
+                  />
+                ))
+              ) : (
+                <circle
+                  r="100"
+                  fill="hsl(var(--secondary))"
+                  stroke="hsl(var(--border))"
+                  strokeWidth="2"
+                />
+              )}
+              {/* Center hole for donut effect */}
+              <circle r="50" fill="hsl(var(--card))" />
+              {/* Center text */}
+              <text
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="fill-foreground font-bold text-lg"
+                fontSize="16"
+              >
+                ${total.toLocaleString()}
+              </text>
+            </svg>
+          </div>
+
+          {/* Legend */}
+          <div className="flex-1 space-y-3">
+            {segments.map((segment) => {
+              const percentage = total > 0 ? ((segment.value / total) * 100).toFixed(1) : 0;
+              return (
+                <div key={segment.id} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-4 h-4 rounded"
+                      style={{ backgroundColor: segment.color }}
                     />
-                  )}
-                  {/* Center hole for donut effect */}
-                  <circle r="50" fill="hsl(var(--card))" />
-                  {/* Center text */}
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground font-bold text-lg"
-                    fontSize="16"
-                  >
-                    ${total.toLocaleString()}
-                  </text>
-                </svg>
-              </div>
-
-              {/* Legend */}
-              <div className="flex-1 space-y-3">
-                {segments.map((segment) => {
-                  const percentage = total > 0 ? ((segment.value / total) * 100).toFixed(1) : 0;
-                  return (
-                    <div key={segment.id} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded"
-                          style={{ backgroundColor: segment.color }}
-                        />
-                        <span className="text-sm font-medium">{segment.label}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold" style={{ color: segment.color }}>
-                          ${segment.value.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {percentage}%
-                        </div>
-                      </div>
+                    <span className="text-sm font-medium">{segment.label}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold" style={{ color: segment.color }}>
+                      ${segment.value.toLocaleString()}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                    <div className="text-xs text-muted-foreground">
+                      {percentage}%
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
             {/* Insight for TikTok */}
             {selectedChannel === 'tiktok' && total > 0 && productData.bottle > productData.chair && (
@@ -196,13 +211,11 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
               </div>
             )}
 
-            {total === 0 && (
-              <div className="mt-4 p-4 text-center text-muted-foreground">
-                <p>No revenue data for this selection. Adjust your ad spend to see results.</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+        {total === 0 && (
+          <div className="mt-4 p-4 text-center text-muted-foreground">
+            <p>No revenue data for this selection. Adjust your ad spend to see results.</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
