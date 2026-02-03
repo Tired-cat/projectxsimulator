@@ -170,16 +170,14 @@ export function DraggableBarChart({
   };
 
   return (
-    // Outer isolation wrapper - contains all layout recalculations during drag
+    // Outer isolation wrapper - contains layout recalculations during drag
     <div 
       className="relative"
       style={{
-        // CSS containment: isolate this subtree from layout propagation
-        contain: draggingChannel ? 'strict' : 'layout',
-        // Fixed height during drag to prevent sibling reflow
-        height: draggingChannel ? 'auto' : undefined,
-        // Will-change hint for GPU layer isolation
-        willChange: draggingChannel ? 'contents' : 'auto',
+        // CSS containment: isolate layout only (not paint/size which hides content)
+        contain: 'layout style',
+        // Isolation creates a new stacking context
+        isolation: 'isolate',
       }}
     >
     <Card className="border-2 border-primary/20 bg-card">
