@@ -1,5 +1,8 @@
 import { ReactNode, DragEvent, useState } from 'react';
+import { ExternalLink, PanelRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DragHandle } from './DragHandle';
 import type { PanelId } from '@/types/workspaceTypes';
 import { cn } from '@/lib/utils';
@@ -12,6 +15,8 @@ interface DraggableCardProps {
   className?: string;
   onDragStart: (panelId: PanelId) => void;
   onDragEnd: () => void;
+  onOpenAsTab: (panelId: PanelId, title: string) => void;
+  onOpenInSplit: (panelId: PanelId, title: string) => void;
   headerClassName?: string;
   contentClassName?: string;
 }
@@ -24,6 +29,8 @@ export function DraggableCard({
   className,
   onDragStart,
   onDragEnd,
+  onOpenAsTab,
+  onOpenInSplit,
   headerClassName,
   contentClassName,
 }: DraggableCardProps) {
@@ -44,7 +51,7 @@ export function DraggableCard({
   return (
     <Card className={cn(
       className,
-      isDragging && 'opacity-50 ring-2 ring-blue-500'
+      isDragging && 'opacity-50 ring-2 ring-primary'
     )}>
       <CardHeader className={cn('pb-2', headerClassName)}>
         <CardTitle className="flex items-center gap-2 text-base">
@@ -53,11 +60,43 @@ export function DraggableCard({
             draggable
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            className="cursor-grab active:cursor-grabbing"
           >
             <DragHandle />
           </div>
           <span className="text-primary">{icon}</span>
-          {title}
+          <span className="flex-1 truncate">{title}</span>
+          
+          {/* Action buttons */}
+          <div className="flex items-center gap-1 ml-auto">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onOpenAsTab(panelId, title)}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Open as Tab</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onOpenInSplit(panelId, title)}
+                >
+                  <PanelRight className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Open in Split (Right)</TooltipContent>
+            </Tooltip>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className={contentClassName}>
