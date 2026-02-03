@@ -14,6 +14,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { DraggableCard } from '@/components/workspace';
 import { useTabs } from '@/contexts/TabContext';
 import type { PanelId } from '@/types/workspaceTypes';
@@ -86,91 +87,100 @@ export function SimulationDecisions({
   };
 
   return (
-    <div className="relative min-h-[400px]">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Fixed header with budget bar and split toggle */}
-      <BudgetHeader 
-        totalSpent={totalSpent} 
-        onReset={onReset}
-        isSplit={split.enabled}
-        onToggleSplit={split.enabled ? disableSplit : enableSplit}
-      />
-
-      {/* Split workspace - renders if split is enabled (real 50/50 layout) */}
-      <div className="mt-4">
-        <SplitWorkspace renderPanelContent={renderPanelContent} />
+      <div className="flex-shrink-0 p-4 pb-0">
+        <BudgetHeader 
+          totalSpent={totalSpent} 
+          onReset={onReset}
+          isSplit={split.enabled}
+          onToggleSplit={split.enabled ? disableSplit : enableSplit}
+        />
       </div>
 
-      {/* Main grid - cards always remain here */}
-      <div className="grid gap-4 lg:grid-cols-2 mt-4">
-        {/* Channel Performance - full width */}
-        <DraggableCard
-          panelId="channel-performance"
-          title="Channel Performance"
-          icon={<BarChart3 className="h-4 w-4" />}
-          className="lg:col-span-2"
-          onDragStart={setDraggingPanelId}
-          onDragEnd={() => setDraggingPanelId(null)}
-          onAddAsTab={handleAddAsTab}
-          onOpenInSplit={handleOpenInSplit}
-        >
-          {renderPanelContent('channel-performance')}
-        </DraggableCard>
+      {/* Main content area - split or scrollable grid */}
+      {split.enabled ? (
+        /* SPLIT VIEW: Real 50/50 layout taking full remaining height */
+        <div className="flex-1 overflow-hidden p-4">
+          <SplitWorkspace renderPanelContent={renderPanelContent} />
+        </div>
+      ) : (
+        /* NORMAL VIEW: Scrollable grid of cards */
+        <ScrollArea className="flex-1">
+          <div className="p-4 pt-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              {/* Channel Performance - full width */}
+              <DraggableCard
+                panelId="channel-performance"
+                title="Channel Performance"
+                icon={<BarChart3 className="h-4 w-4" />}
+                className="lg:col-span-2"
+                onDragStart={setDraggingPanelId}
+                onDragEnd={() => setDraggingPanelId(null)}
+                onAddAsTab={handleAddAsTab}
+                onOpenInSplit={handleOpenInSplit}
+              >
+                {renderPanelContent('channel-performance')}
+              </DraggableCard>
 
-        {/* Product Mix */}
-        <DraggableCard
-          panelId="product-mix"
-          title="Product Mix"
-          icon={<PieChart className="h-4 w-4" />}
-          onDragStart={setDraggingPanelId}
-          onDragEnd={() => setDraggingPanelId(null)}
-          onAddAsTab={handleAddAsTab}
-          onOpenInSplit={handleOpenInSplit}
-        >
-          {renderPanelContent('product-mix')}
-        </DraggableCard>
+              {/* Product Mix */}
+              <DraggableCard
+                panelId="product-mix"
+                title="Product Mix"
+                icon={<PieChart className="h-4 w-4" />}
+                onDragStart={setDraggingPanelId}
+                onDragEnd={() => setDraggingPanelId(null)}
+                onAddAsTab={handleAddAsTab}
+                onOpenInSplit={handleOpenInSplit}
+              >
+                {renderPanelContent('product-mix')}
+              </DraggableCard>
 
-        {/* Goal Tracker */}
-        <DraggableCard
-          panelId="goal-tracker"
-          title="Goal Tracker"
-          icon={<DollarSign className="h-4 w-4" />}
-          onDragStart={setDraggingPanelId}
-          onDragEnd={() => setDraggingPanelId(null)}
-          onAddAsTab={handleAddAsTab}
-          onOpenInSplit={handleOpenInSplit}
-        >
-          {renderPanelContent('goal-tracker')}
-        </DraggableCard>
+              {/* Goal Tracker */}
+              <DraggableCard
+                panelId="goal-tracker"
+                title="Goal Tracker"
+                icon={<DollarSign className="h-4 w-4" />}
+                onDragStart={setDraggingPanelId}
+                onDragEnd={() => setDraggingPanelId(null)}
+                onAddAsTab={handleAddAsTab}
+                onOpenInSplit={handleOpenInSplit}
+              >
+                {renderPanelContent('goal-tracker')}
+              </DraggableCard>
 
-        {/* Hints - full width */}
-        <DraggableCard
-          panelId="hints"
-          title="Hints & Tips"
-          icon={<AlertCircle className="h-4 w-4" />}
-          className="lg:col-span-2"
-          onDragStart={setDraggingPanelId}
-          onDragEnd={() => setDraggingPanelId(null)}
-          onAddAsTab={handleAddAsTab}
-          onOpenInSplit={handleOpenInSplit}
-        >
-          {renderPanelContent('hints')}
-        </DraggableCard>
+              {/* Hints - full width */}
+              <DraggableCard
+                panelId="hints"
+                title="Hints & Tips"
+                icon={<AlertCircle className="h-4 w-4" />}
+                className="lg:col-span-2"
+                onDragStart={setDraggingPanelId}
+                onDragEnd={() => setDraggingPanelId(null)}
+                onAddAsTab={handleAddAsTab}
+                onOpenInSplit={handleOpenInSplit}
+              >
+                {renderPanelContent('hints')}
+              </DraggableCard>
 
-        {/* Assumptions - full width */}
-        <DraggableCard
-          panelId="assumptions"
-          title="Assumptions"
-          icon={<Settings className="h-4 w-4" />}
-          className="lg:col-span-2"
-          contentClassName="pt-0"
-          onDragStart={setDraggingPanelId}
-          onDragEnd={() => setDraggingPanelId(null)}
-          onAddAsTab={handleAddAsTab}
-          onOpenInSplit={handleOpenInSplit}
-        >
-          {renderPanelContent('assumptions')}
-        </DraggableCard>
-      </div>
+              {/* Assumptions - full width */}
+              <DraggableCard
+                panelId="assumptions"
+                title="Assumptions"
+                icon={<Settings className="h-4 w-4" />}
+                className="lg:col-span-2"
+                contentClassName="pt-0"
+                onDragStart={setDraggingPanelId}
+                onDragEnd={() => setDraggingPanelId(null)}
+                onAddAsTab={handleAddAsTab}
+                onOpenInSplit={handleOpenInSplit}
+              >
+                {renderPanelContent('assumptions')}
+              </DraggableCard>
+            </div>
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 }
