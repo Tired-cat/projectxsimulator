@@ -94,13 +94,20 @@ export function GhostDeltaBar({
   }, []);
 
   // Colors for delta
-  const deltaIncreaseColor = 'hsl(142, 76%, 36%)'; // Green
   const deltaDecreaseColor = 'hsl(0, 84%, 60%)'; // Red
   const ghostColor = 'hsl(var(--muted-foreground) / 0.25)';
 
+  // For stacked bar: calculate the height of the baseline portion (capped at baseline)
+  const baselinePortionHeight = hasBaseline && isIncrease 
+    ? baselineHeightPercent 
+    : currentHeightPercent;
+
+  // Delta height is the absolute difference
+  const deltaHeight = Math.abs(currentHeightPercent - baselineHeightPercent);
+
   return (
     <div className="relative w-full max-w-[80px] h-full flex items-end">
-      {/* Ghost Baseline Bar - always visible when baseline exists */}
+      {/* Ghost Baseline Bar - faint shadow showing the original state */}
       {hasBaseline && (
         <motion.div
           className={`absolute bottom-0 left-0 right-0 rounded-t-lg ${
@@ -135,85 +142,176 @@ export function GhostDeltaBar({
         </motion.div>
       )}
 
-      {/* Main Current Bar */}
-      <motion.div
-        className={`relative w-full rounded-t-lg ${
-          isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
-        } ${
-          isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
-        }`}
-        style={{
-          backgroundColor: isNegative 
-            ? 'hsl(var(--destructive))' 
-            : channel.color,
-          boxShadow: isThisBarDragging 
-            ? `0 0 30px ${channel.color}` 
-            : `0 4px 12px ${channel.color}40`,
-          willChange: isDraggingSpend ? 'height, transform' : 'auto',
-          opacity: isSnapshot ? 0.85 : 1,
-          filter: isSnapshot ? 'saturate(0.8)' : 'none',
-        }}
-        initial={false}
-        animate={{ 
-          height: `${Math.max(currentHeightPercent, 2)}%`,
-          scale: isThisBarDragging ? 1.02 : 1,
-        }}
-        transition={{ 
-          type: 'spring', 
-          stiffness: isDraggingSpend ? 500 : 200, 
-          damping: isDraggingSpend ? 35 : 25,
-          duration: isDraggingSpend ? 0.1 : undefined,
-        }}
-        onMouseDown={onMouseDown}
-      >
-        {/* Spend drag handle */}
-        <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
-          <div className="w-10 h-1.5 bg-white/60 rounded-full" />
-        </div>
-      </motion.div>
+      {/* STACKED BAR COMPOSITION */}
+      {/* When increasing: Baseline portion (bottom) + Delta portion (top) */}
+      {/* When decreasing or no delta: Full current bar */}
+      
+      {hasBaseline && isIncrease ? (
+        // STACKED: Baseline portion + Delta increase segment
+        <>
+          {/* Baseline Portion - renders up to baseline height only */}
+          <motion.div
+            className={`relative w-full ${
+              isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
+            } ${
+              isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
+            }`}
+            style={{
+              backgroundColor: channel.color,
+              borderRadius: '0 0 0 0', // No top radius - delta sits on top
+              boxShadow: isThisBarDragging 
+                ? `0 0 30px ${channel.color}` 
+                : `0 4px 12px ${channel.color}40`,
+              willChange: isDraggingSpend ? 'height, transform' : 'auto',
+              opacity: isSnapshot ? 0.85 : 1,
+              filter: isSnapshot ? 'saturate(0.8)' : 'none',
+            }}
+            initial={false}
+            animate={{ 
+              height: `${Math.max(baselinePortionHeight, 2)}%`,
+              scale: isThisBarDragging ? 1.02 : 1,
+            }}
+            transition={{ 
+              type: 'spring', 
+              stiffness: isDraggingSpend ? 500 : 200, 
+              damping: isDraggingSpend ? 35 : 25,
+              duration: isDraggingSpend ? 0.1 : undefined,
+            }}
+            onMouseDown={onMouseDown}
+          />
 
-      {/* Delta Overlay Segment - only the difference portion */}
-      {hasDelta && hasBaseline && (
-        <motion.div
-          className={`absolute left-0 right-0 ${
-            isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
-          }`}
-          style={{
-            bottom: isIncrease ? `${baselineHeightPercent}%` : `${currentHeightPercent}%`,
-            backgroundColor: isIncrease ? deltaIncreaseColor : deltaDecreaseColor,
-            borderRadius: isIncrease ? '0.5rem 0.5rem 0 0' : '0 0 0.5rem 0.5rem',
-            boxShadow: isDraggingDelta 
-              ? `0 0 20px ${isIncrease ? deltaIncreaseColor : deltaDecreaseColor}` 
-              : 'none',
-          }}
-          initial={false}
-          animate={{ 
-            height: `${Math.abs(currentHeightPercent - baselineHeightPercent)}%`,
-            scale: isDraggingDelta ? 1.08 : 1,
-          }}
-          transition={{ 
-            type: 'spring', 
-            stiffness: 200, 
-            damping: 25,
-          }}
-          onMouseDown={handleDeltaDragStart}
-          onMouseUp={handleDeltaDragEnd}
-          onMouseLeave={handleDeltaDragEnd}
-          title={`Delta: ${isIncrease ? '+' : ''}${delta.toLocaleString()}`}
-        >
-          {/* Delta indicator */}
-          <div className={`absolute ${isIncrease ? 'top-1' : 'bottom-1'} left-1/2 -translate-x-1/2 flex flex-col items-center`}>
-            <div className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap">
-              {isIncrease ? '▲' : '▼'} {Math.abs(delta).toLocaleString()}
+          {/* Delta Increase Segment - sits ABOVE baseline portion, VISIBLE */}
+          <motion.div
+            className={`absolute left-0 right-0 ${
+              isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
+            }`}
+            style={{
+              bottom: `${baselineHeightPercent}%`,
+              // Slightly brighter/saturated version of the channel color with a glow
+              background: `linear-gradient(to top, ${channel.color}, ${channel.color}ee)`,
+              filter: 'saturate(1.3) brightness(1.15)',
+              borderRadius: '0.5rem 0.5rem 0 0',
+              boxShadow: isDraggingDelta 
+                ? `0 0 20px ${channel.color}, inset 0 0 10px rgba(255,255,255,0.3)` 
+                : `inset 0 2px 8px rgba(255,255,255,0.25), 0 -1px 0 rgba(255,255,255,0.3)`,
+              borderTop: '2px solid rgba(255,255,255,0.4)',
+            }}
+            initial={false}
+            animate={{ 
+              height: `${Math.max(deltaHeight, 1)}%`,
+              scale: isDraggingDelta ? 1.08 : 1,
+            }}
+            transition={{ 
+              type: 'spring', 
+              stiffness: 200, 
+              damping: 25,
+            }}
+            onMouseDown={handleDeltaDragStart}
+            onMouseUp={handleDeltaDragEnd}
+            onMouseLeave={handleDeltaDragEnd}
+            title={`Increase: +${delta.toLocaleString()}`}
+          >
+            {/* Drag handle for delta increase */}
+            <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/30">
+              <div className="w-10 h-1.5 bg-white/70 rounded-full" />
             </div>
-          </div>
-          {isDraggingDelta && (
-            <div 
-              className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background"
-              style={{ borderRadius: isIncrease ? '0.5rem 0.5rem 0 0' : '0 0 0.5rem 0.5rem' }}
-            />
+            {/* Delta indicator */}
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
+              <div className="text-[10px] font-bold text-white drop-shadow-lg whitespace-nowrap">
+                ▲ +{Math.abs(delta).toLocaleString()}
+              </div>
+            </div>
+            {isDraggingDelta && (
+              <div 
+                className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background"
+                style={{ borderRadius: '0.5rem 0.5rem 0 0' }}
+              />
+            )}
+          </motion.div>
+        </>
+      ) : (
+        // SINGLE BAR: No increase delta, render full current bar
+        <>
+          <motion.div
+            className={`relative w-full rounded-t-lg ${
+              isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
+            } ${
+              isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
+            }`}
+            style={{
+              backgroundColor: isNegative 
+                ? 'hsl(var(--destructive))' 
+                : channel.color,
+              boxShadow: isThisBarDragging 
+                ? `0 0 30px ${channel.color}` 
+                : `0 4px 12px ${channel.color}40`,
+              willChange: isDraggingSpend ? 'height, transform' : 'auto',
+              opacity: isSnapshot ? 0.85 : 1,
+              filter: isSnapshot ? 'saturate(0.8)' : 'none',
+            }}
+            initial={false}
+            animate={{ 
+              height: `${Math.max(currentHeightPercent, 2)}%`,
+              scale: isThisBarDragging ? 1.02 : 1,
+            }}
+            transition={{ 
+              type: 'spring', 
+              stiffness: isDraggingSpend ? 500 : 200, 
+              damping: isDraggingSpend ? 35 : 25,
+              duration: isDraggingSpend ? 0.1 : undefined,
+            }}
+            onMouseDown={onMouseDown}
+          >
+            {/* Spend drag handle */}
+            <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
+              <div className="w-10 h-1.5 bg-white/60 rounded-full" />
+            </div>
+          </motion.div>
+
+          {/* Delta Decrease Segment - visible gap between ghost and current */}
+          {hasDelta && hasBaseline && !isIncrease && (
+            <motion.div
+              className={`absolute left-0 right-0 ${
+                isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
+              }`}
+              style={{
+                bottom: `${currentHeightPercent}%`,
+                backgroundColor: deltaDecreaseColor,
+                borderRadius: '0 0 0.5rem 0.5rem',
+                boxShadow: isDraggingDelta 
+                  ? `0 0 20px ${deltaDecreaseColor}` 
+                  : 'none',
+              }}
+              initial={false}
+              animate={{ 
+                height: `${deltaHeight}%`,
+                scale: isDraggingDelta ? 1.08 : 1,
+              }}
+              transition={{ 
+                type: 'spring', 
+                stiffness: 200, 
+                damping: 25,
+              }}
+              onMouseDown={handleDeltaDragStart}
+              onMouseUp={handleDeltaDragEnd}
+              onMouseLeave={handleDeltaDragEnd}
+              title={`Decrease: ${delta.toLocaleString()}`}
+            >
+              {/* Delta indicator */}
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
+                <div className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap">
+                  ▼ {Math.abs(delta).toLocaleString()}
+                </div>
+              </div>
+              {isDraggingDelta && (
+                <div 
+                  className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background"
+                  style={{ borderRadius: '0 0 0.5rem 0.5rem' }}
+                />
+              )}
+            </motion.div>
           )}
-        </motion.div>
+        </>
       )}
     </div>
   );
