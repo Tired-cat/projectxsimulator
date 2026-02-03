@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
@@ -89,14 +89,43 @@ export function DraggableBarChart({
     }
   }, [viewMode, channelMetrics]);
 
-  // Handle mouse events for dragging bars
+  // Lock body scroll during drag to prevent scroll jank
+  useEffect(() => {
+    if (draggingChannel) {
+      // Store original styles
+      const originalOverflow = document.body.style.overflow;
+      const originalTouchAction = document.body.style.touchAction;
+      
+      // Lock scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      
+      return () => {
+        // Restore scroll on cleanup
+        document.body.style.overflow = originalOverflow;
+        document.body.style.touchAction = originalTouchAction;
+      };
+    }
+  }, [draggingChannel]);
+
+  // Handle mouse events for dragging bars with pointer capture
   const handleMouseDown = useCallback((channelId: string, e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Use pointer capture for stable drag tracking
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture((e as unknown as PointerEvent).pointerId || 1);
+    
     setDraggingChannel(channelId);
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!draggingChannel || !chartRef.current) return;
+    
+    // Prevent any default scroll behavior
+    e.preventDefault();
+    e.stopPropagation();
 
     const rect = chartRef.current.getBoundingClientRect();
     const chartHeight = rect.height - 80;
@@ -119,7 +148,14 @@ export function DraggableBarChart({
     }
   }, [draggingChannel, channelSpend, onSpendChange]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    // Release pointer capture
+    const target = e.currentTarget as HTMLElement;
+    try {
+      target.releasePointerCapture((e as unknown as PointerEvent).pointerId || 1);
+    } catch {
+      // Ignore if pointer capture wasn't set
+    }
     setDraggingChannel(null);
   }, []);
 
@@ -234,10 +270,17 @@ export function DraggableBarChart({
       </CardHeader>
 
       <CardContent className="pt-4">
-        {/* Draggable Bar Chart */}
+        {/* Draggable Bar Chart - Fixed height to prevent layout reflow during drag */}
         <div
           ref={chartRef}
-          className="relative h-[350px] bg-secondary/20 rounded-lg p-4 select-none cursor-crosshair"
+          className="relative bg-secondary/20 rounded-lg p-4 select-none cursor-crosshair"
+          style={{ 
+            height: '350px', 
+            minHeight: '350px', 
+            maxHeight: '350px',
+            // Prevent touch scrolling during drag
+            touchAction: draggingChannel ? 'none' : 'auto',
+          }}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
