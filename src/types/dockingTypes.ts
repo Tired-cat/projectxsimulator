@@ -26,19 +26,17 @@ export interface Pane {
   tabGroup: TabGroup;
 }
 
+/**
+ * View-clone based workspace layout.
+ * Panels are CLONED into dock views - originals always remain in grid.
+ */
 export interface WorkspaceLayout {
   /** Whether split view is active */
   splitMode: boolean;
-  /** Left pane (always exists) */
+  /** Left pane (primary dock area) */
   paneA: Pane;
-  /** Right pane (only used when splitMode is true) */
+  /** Right pane (only visible when splitMode is true) */
   paneB: Pane;
-  /** Panels that have been "torn out" to the top workspace tabs */
-  workspaceTabs: TabItem[];
-  /** Active workspace tab (if any) */
-  activeWorkspaceTab: string | null;
-  /** IDs of panels that are currently docked (removed from grid) */
-  dockedPanelIds: string[];
 }
 
 // ======== DRAG TYPES ========
@@ -46,15 +44,14 @@ export interface WorkspaceLayout {
 export type DropZoneType = 
   | 'tab-bar-a'      // Drop into pane A's tab bar
   | 'tab-bar-b'      // Drop into pane B's tab bar
-  | 'split-left'     // Create/use left split
-  | 'split-right'    // Create/use right split
-  | 'workspace-tabs' // Tear out to workspace tabs
+  | 'split-left'     // Create/use left split (clone)
+  | 'split-right'    // Create/use right split (clone)
   | 'pane-content-a' // Drop into pane A content area
   | 'pane-content-b'; // Drop into pane B content area
 
 export interface DragItem {
   panelId: string;
-  sourceLocation: 'pane-a' | 'pane-b' | 'workspace-tabs' | 'grid';
+  sourceLocation: 'pane-a' | 'pane-b' | 'grid';
 }
 
 // ======== CONTEXT TYPES ========
@@ -66,29 +63,26 @@ export interface WorkspaceContextValue {
   /** All registered panel definitions */
   panels: Map<string, PanelDefinition>;
   
-  /** Register a panel definition (does NOT auto-dock) */
+  /** Register a panel definition */
   registerPanel: (panel: PanelDefinition) => void;
   
   /** Unregister a panel */
   unregisterPanel: (panelId: string) => void;
   
-  /** Dock a panel to a specific location (moves from grid to dock) */
-  dockPanel: (panelId: string, target: DropZoneType, insertIndex?: number) => void;
+  /** Clone a panel into a dock view (never removes from grid) */
+  clonePanelToView: (panelId: string, target: DropZoneType, insertIndex?: number) => void;
   
-  /** Undock a panel (return to grid) */
-  undockPanel: (panelId: string) => void;
+  /** Close a cloned view tab */
+  closeViewTab: (paneId: 'pane-a' | 'pane-b', panelId: string) => void;
   
-  /** Move a panel between dock locations */
-  movePanel: (panelId: string, target: DropZoneType, insertIndex?: number) => void;
+  /** Check if a panel has a clone in any dock view */
+  isPanelInDock: (panelId: string) => boolean;
   
-  /** Check if a panel is currently docked */
-  isPanelDocked: (panelId: string) => boolean;
-  
-  /** Whether any panels are docked */
+  /** Whether any panels are in dock views */
   hasDockedPanels: boolean;
   
   /** Set active tab in a pane */
-  setActiveTab: (paneId: 'pane-a' | 'pane-b' | 'workspace', tabId: string) => void;
+  setActiveTab: (paneId: 'pane-a' | 'pane-b', tabId: string) => void;
   
   /** Toggle split mode */
   toggleSplitMode: () => void;
@@ -96,7 +90,7 @@ export interface WorkspaceContextValue {
   /** Close split mode and merge panels */
   closeSplitMode: () => void;
   
-  /** Reset to default layout (undock all) */
+  /** Reset to default layout (close all dock tabs) */
   resetLayout: () => void;
   
   /** Get panel by ID */
@@ -115,7 +109,4 @@ export interface PersistedLayout {
   splitMode: boolean;
   paneA: { tabs: string[]; activeTabId: string };
   paneB: { tabs: string[]; activeTabId: string };
-  workspaceTabs: string[];
-  activeWorkspaceTab: string | null;
-  dockedPanelIds: string[];
 }

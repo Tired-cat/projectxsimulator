@@ -13,7 +13,7 @@ interface TabBarProps {
 }
 
 export function TabBar({ paneId, tabs, activeTabId, className }: TabBarProps) {
-  const { getPanel, setActiveTab, undockPanel } = useWorkspace();
+  const { getPanel, setActiveTab, closeViewTab } = useWorkspace();
   
   const dropZoneId = paneId === 'pane-a' ? 'tab-bar-a' : 'tab-bar-b';
   
@@ -51,7 +51,7 @@ export function TabBar({ paneId, tabs, activeTabId, className }: TabBarProps) {
             icon={panel.icon}
             isActive={tab.panelId === activeTabId}
             onClick={() => setActiveTab(paneId, tab.panelId)}
-            onClose={() => undockPanel(tab.panelId)}
+            onClose={() => closeViewTab(paneId, tab.panelId)}
             paneId={paneId}
           />
         );
@@ -126,7 +126,7 @@ function DraggableTab({ panelId, title, icon: Icon, isActive, onClick, onClose, 
       )}
       <span className="truncate">{title}</span>
       
-      {/* Close button (undock) */}
+      {/* Close button */}
       <div
         className={cn(
           'ml-auto w-5 h-5 flex items-center justify-center rounded',
@@ -138,7 +138,7 @@ function DraggableTab({ panelId, title, icon: Icon, isActive, onClick, onClose, 
           onClose();
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        title="Return to page"
+        title="Close tab"
       >
         <X className="w-3 h-3" />
       </div>
@@ -149,9 +149,4 @@ function DraggableTab({ panelId, title, icon: Icon, isActive, onClick, onClose, 
       )}
     </button>
   );
-}
-
-// WorkspaceTabBar is no longer needed - removed
-export function WorkspaceTabBar() {
-  return null;
 }
