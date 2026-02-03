@@ -104,13 +104,16 @@ export function GhostDeltaBar({
   const deltaHeight = Math.abs(currentHeightPercent - baselineHeightPercent);
 
   return (
-    // Bar container - pointer events pass through to column for drag
-    <div className="relative w-full max-w-[80px] h-full flex items-end pointer-events-none">
+    // Bar container - uses flexbox for proper stacking, pointer events pass through to column for drag
+    <div 
+      className="relative w-full max-w-[80px] h-full flex flex-col items-stretch justify-end pointer-events-none"
+      style={{ overflow: 'visible' }}
+    >
       {/* Ghost Baseline Bar - faint shadow showing the original state */}
       {hasBaseline && (
         <motion.div
-          className={`absolute bottom-0 left-0 right-0 rounded-t-lg ${
-            isDraggingGhost ? 'cursor-grabbing z-20' : 'cursor-grab z-5'
+          className={`absolute bottom-0 left-0 right-0 rounded-t-lg pointer-events-auto ${
+            isDraggingGhost ? 'cursor-grabbing z-5' : 'cursor-grab z-5'
           }`}
           style={{
             backgroundColor: ghostColor,
@@ -141,61 +144,72 @@ export function GhostDeltaBar({
         </motion.div>
       )}
 
-      {/* STACKED BAR COMPOSITION */}
-      {/* When increasing: Baseline portion (bottom) + Delta portion (top) */}
+      {/* STACKED BAR using flexbox - grows from bottom */}
+      {/* When increasing: Delta segment (top, rendered first in column-reverse) + Baseline portion (bottom) */}
       {/* When decreasing or no delta: Full current bar */}
       
       {hasBaseline && isIncrease ? (
-        // STACKED: Baseline portion + Delta increase segment
-        <>
-          {/* Baseline Portion - pointer events pass through */}
+        // STACKED using flex-col-reverse: items render bottom-up
+        <div 
+          className="flex flex-col-reverse items-stretch z-10"
+          style={{ 
+            height: `${currentHeightPercent}%`,
+            minHeight: '4px',
+          }}
+        >
+          {/* Baseline Portion - bottom of stack */}
           <motion.div
-            className={`relative w-full ${
-              isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
+            className={`w-full shrink-0 ${
+              isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : ''
             }`}
             style={{
               backgroundColor: channel.color,
-              borderRadius: '0 0 0 0', // No top radius - delta sits on top
+              // Explicit height based on proportion of baseline within total current
+              height: baselineHeightPercent > 0 
+                ? `${(baselineHeightPercent / currentHeightPercent) * 100}%` 
+                : '0%',
+              minHeight: baselineHeightPercent > 0 ? '2px' : '0px',
               boxShadow: isThisBarDragging 
                 ? `0 0 30px ${channel.color}` 
                 : `0 4px 12px ${channel.color}40`,
-              willChange: isDraggingSpend ? 'height, transform' : 'auto',
+              willChange: isDraggingSpend ? 'height' : 'auto',
               opacity: isSnapshot ? 0.85 : 1,
               filter: isSnapshot ? 'saturate(0.8)' : 'none',
             }}
             initial={false}
             animate={{ 
-              height: `${Math.max(baselinePortionHeight, 2)}%`,
               scale: isThisBarDragging ? 1.02 : 1,
             }}
             transition={{ 
               type: 'spring', 
               stiffness: isDraggingSpend ? 500 : 200, 
               damping: isDraggingSpend ? 35 : 25,
-              duration: isDraggingSpend ? 0.1 : undefined,
             }}
           />
 
-          {/* Delta Increase Segment - VISIBLE and draggable for reasoning */}
+          {/* Delta Increase Segment - top of stack, SOLID color with hard edge */}
           <motion.div
-            className={`absolute left-0 right-0 pointer-events-auto ${
+            className={`w-full shrink-0 pointer-events-auto rounded-t-lg ${
               isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
             }`}
             style={{
-              bottom: `${baselineHeightPercent}%`,
-              // Slightly brighter/saturated version of the channel color with a glow
-              background: `linear-gradient(to top, ${channel.color}, ${channel.color}ee)`,
-              filter: 'saturate(1.3) brightness(1.15)',
-              borderRadius: '0.5rem 0.5rem 0 0',
+              // Solid distinct color - lighter/brighter variant
+              backgroundColor: `color-mix(in srgb, ${channel.color} 85%, white 15%)`,
+              // Explicit height based on proportion of delta within total current
+              height: deltaHeight > 0 
+                ? `${(deltaHeight / currentHeightPercent) * 100}%` 
+                : '0%',
+              minHeight: deltaHeight > 0 ? '16px' : '0px', // Minimum height for visibility
+              // Hard edge separator - no glow, just a clean border
+              borderBottom: `2px solid ${channel.color}`,
+              borderTop: isDraggingDelta ? '2px solid white' : 'none',
               boxShadow: isDraggingDelta 
-                ? `0 0 20px ${channel.color}, inset 0 0 10px rgba(255,255,255,0.3)` 
-                : `inset 0 2px 8px rgba(255,255,255,0.25), 0 -1px 0 rgba(255,255,255,0.3)`,
-              borderTop: '2px solid rgba(255,255,255,0.4)',
+                ? `0 0 12px ${channel.color}` 
+                : 'none',
             }}
             initial={false}
             animate={{ 
-              height: `${Math.max(deltaHeight, 1)}%`,
-              scale: isDraggingDelta ? 1.08 : 1,
+              scale: isDraggingDelta ? 1.04 : 1,
             }}
             transition={{ 
               type: 'spring', 
@@ -208,23 +222,24 @@ export function GhostDeltaBar({
             title={`Increase: +${delta.toLocaleString()}`}
           >
             {/* Drag handle for delta increase */}
-            <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/30">
-              <div className="w-10 h-1.5 bg-white/70 rounded-full" />
+            <div className="w-full h-4 flex items-center justify-center bg-white/20 rounded-t-lg">
+              <div className="w-8 h-1 bg-white/60 rounded-full" />
             </div>
-            {/* Delta indicator */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-              <div className="text-[10px] font-bold text-white drop-shadow-lg whitespace-nowrap">
-                ▲ +{Math.abs(delta).toLocaleString()}
+            {/* Delta indicator - only show if segment tall enough */}
+            {deltaHeight > 3 && (
+              <div className="flex items-center justify-center py-0.5">
+                <div className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap">
+                  ▲ +{Math.abs(delta).toLocaleString()}
+                </div>
               </div>
-            </div>
+            )}
             {isDraggingDelta && (
               <div 
-                className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background"
-                style={{ borderRadius: '0.5rem 0.5rem 0 0' }}
+                className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background rounded-t-lg"
               />
             )}
           </motion.div>
-        </>
+        </div>
       ) : (
         // SINGLE BAR: No increase delta, render full current bar
         <>
