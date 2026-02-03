@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import { Home, BarChart3 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DockableWorkspace } from '@/components/docking/DockableWorkspace';
 import { BudgetHeader, ScenarioContext } from './SimulationDecisions';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import { cn } from '@/lib/utils';
@@ -109,7 +108,7 @@ export function SimulationShell({
               </ScrollArea>
             </div>
             
-            {/* Decisions tab content - uses docking system */}
+            {/* Decisions tab content - simple scrollable layout */}
             <div className={cn(
               'h-full flex flex-col',
               activeTab === 'decisions' ? 'flex' : 'hidden'
@@ -120,12 +119,12 @@ export function SimulationShell({
                 {channelSpend && <ScenarioContext channelSpend={channelSpend} />}
               </div>
               
-              {/* Dockable workspace - panels render in grid by default */}
-              <div className="flex-1 overflow-hidden">
-                <DockableWorkspace className="h-full">
+              {/* Scrollable content area */}
+              <ScrollArea className="flex-1">
+                <div className="p-4">
                   {decisionsContent}
-                </DockableWorkspace>
-              </div>
+                </div>
+              </ScrollArea>
             </div>
           </div>
           
@@ -135,7 +134,7 @@ export function SimulationShell({
               <span>LumbarPro Marketing Simulator</span>
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full" />
-                Drag panels to dock
+                Ready
               </span>
             </div>
           </div>
