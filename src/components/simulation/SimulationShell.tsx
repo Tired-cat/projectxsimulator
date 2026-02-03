@@ -1,8 +1,6 @@
 import { ReactNode } from 'react';
 import { Home, BarChart3 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BudgetHeader, ScenarioContext } from './SimulationDecisions';
-import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import { cn } from '@/lib/utils';
 
 export type SimulationTab = 'home' | 'decisions';
@@ -23,20 +21,17 @@ interface SimulationShellProps {
   onTabChange: (tab: SimulationTab) => void;
   homeContent: ReactNode;
   decisionsContent: ReactNode;
-  // Props for the fixed header in decisions tab
-  totalSpent?: number;
-  channelSpend?: ChannelSpend;
-  onReset?: () => void;
 }
 
+/**
+ * Main shell with single top-level navigation.
+ * Only Home and My Decisions tabs - no secondary tab systems.
+ */
 export function SimulationShell({
   activeTab,
   onTabChange,
   homeContent,
   decisionsContent,
-  totalSpent = 0,
-  channelSpend,
-  onReset = () => {},
 }: SimulationShellProps) {
   return (
     <div className="min-h-screen bg-slate-200 dark:bg-slate-950 p-4 md:p-6 lg:p-8">
@@ -51,7 +46,7 @@ export function SimulationShell({
             maxHeight: '1200px',
           }}
         >
-          {/* ========== TAB STRIP (Real Navigation) ========== */}
+          {/* ========== SINGLE TOP TAB BAR (Real Navigation) ========== */}
           <div className="flex-shrink-0 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             {/* Tabs row */}
             <div className="flex items-end px-2 pt-2 gap-0.5">
@@ -113,12 +108,6 @@ export function SimulationShell({
               'h-full flex flex-col',
               activeTab === 'decisions' ? 'flex' : 'hidden'
             )}>
-              {/* Fixed header with budget bar and scenario context */}
-              <div className="flex-shrink-0 p-4 space-y-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
-                <BudgetHeader totalSpent={totalSpent} onReset={onReset} />
-                {channelSpend && <ScenarioContext channelSpend={channelSpend} />}
-              </div>
-              
               {/* Scrollable content area */}
               <ScrollArea className="flex-1">
                 <div className="p-4">
