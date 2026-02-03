@@ -7,9 +7,9 @@ import type {
   Pane
 } from '@/types/dockingTypes';
 
-const STORAGE_KEY = 'workspace-layout';
+const STORAGE_KEY = 'workspace-layout-v2';
 
-// Default layout factory - starts EMPTY (no auto-docked panels)
+// Default layout factory - starts EMPTY (no cloned views)
 function createDefaultLayout(): WorkspaceLayout {
   return {
     splitMode: false,
@@ -20,11 +20,7 @@ function createDefaultLayout(): WorkspaceLayout {
     paneB: {
       id: 'pane-b',
       tabGroup: { tabs: [], activeTabId: '' }
-    },
-    workspaceTabs: [],
-    activeWorkspaceTab: null,
-    // Track which panels are docked (removed from their normal grid position)
-    dockedPanelIds: []
+    }
   };
 }
 
@@ -39,10 +35,7 @@ function persistLayout(layout: WorkspaceLayout): void {
     paneB: {
       tabs: layout.paneB.tabGroup.tabs.map(t => t.panelId),
       activeTabId: layout.paneB.tabGroup.activeTabId
-    },
-    workspaceTabs: layout.workspaceTabs.map(t => t.panelId),
-    activeWorkspaceTab: layout.activeWorkspaceTab,
-    dockedPanelIds: layout.dockedPanelIds
+    }
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
@@ -77,10 +70,7 @@ function restoreLayout(persisted: PersistedLayout): WorkspaceLayout {
         tabs: persisted.paneB.tabs.map(id => ({ panelId: id })),
         activeTabId: persisted.paneB.activeTabId
       }
-    },
-    workspaceTabs: persisted.workspaceTabs.map(id => ({ panelId: id })),
-    activeWorkspaceTab: persisted.activeWorkspaceTab,
-    dockedPanelIds: persisted.dockedPanelIds || []
+    }
   };
 }
 
@@ -91,7 +81,6 @@ export function useWorkspaceLayout() {
     if (persisted) {
       return restoreLayout(persisted);
     }
-    // Start with empty layout - no auto-docked panels
     return createDefaultLayout();
   });
   
@@ -102,10 +91,9 @@ export function useWorkspaceLayout() {
     persistLayout(layout);
   }, [layout]);
 
-  // Register a panel - DOES NOT auto-dock, just stores the definition
+  // Register a panel definition
   const registerPanel = useCallback((panel: PanelDefinition) => {
     setPanels(prev => {
-      // Only update if panel doesn't exist or has changed title/icon
       const existing = prev.get(panel.id);
       if (existing && existing.title === panel.title && existing.icon === panel.icon) {
         // Just update content without creating new Map reference
@@ -116,7 +104,6 @@ export function useWorkspaceLayout() {
       next.set(panel.id, panel);
       return next;
     });
-    // NO auto-adding to tabs - panels live in grid by default
   }, []);
 
   // Unregister a panel
@@ -128,136 +115,110 @@ export function useWorkspaceLayout() {
     });
   }, []);
 
-  // Check if a panel is currently docked (in any dock location)
-  const isPanelDocked = useCallback((panelId: string): boolean => {
-    return layout.dockedPanelIds.includes(panelId);
-  }, [layout.dockedPanelIds]);
+  // Check if a panel is currently in any dock view
+  const isPanelInDock = useCallback((panelId: string): boolean => {
+    const inPaneA = layout.paneA.tabGroup.tabs.some(t => t.panelId === panelId);
+    const inPaneB = layout.paneB.tabGroup.tabs.some(t => t.panelId === panelId);
+    return inPaneA || inPaneB;
+  }, [layout.paneA.tabGroup.tabs, layout.paneB.tabGroup.tabs]);
 
-  // Helper to remove panel from all dock locations
-  const removePanelFromAllDocks = (layout: WorkspaceLayout, panelId: string): WorkspaceLayout => {
-    const filterTabs = (tabs: { panelId: string }[]) => tabs.filter(t => t.panelId !== panelId);
-    
-    const newPaneA: Pane = {
-      ...layout.paneA,
-      tabGroup: {
-        tabs: filterTabs(layout.paneA.tabGroup.tabs),
-        activeTabId: layout.paneA.tabGroup.activeTabId === panelId
-          ? filterTabs(layout.paneA.tabGroup.tabs)[0]?.panelId || ''
-          : layout.paneA.tabGroup.activeTabId
-      }
-    };
-    
-    const newPaneB: Pane = {
-      ...layout.paneB,
-      tabGroup: {
-        tabs: filterTabs(layout.paneB.tabGroup.tabs),
-        activeTabId: layout.paneB.tabGroup.activeTabId === panelId
-          ? filterTabs(layout.paneB.tabGroup.tabs)[0]?.panelId || ''
-          : layout.paneB.tabGroup.activeTabId
-      }
-    };
-    
-    const newWorkspaceTabs = filterTabs(layout.workspaceTabs);
-    
-    return {
-      ...layout,
-      paneA: newPaneA,
-      paneB: newPaneB,
-      workspaceTabs: newWorkspaceTabs,
-      activeWorkspaceTab: layout.activeWorkspaceTab === panelId
-        ? newWorkspaceTabs[0]?.panelId || null
-        : layout.activeWorkspaceTab,
-      dockedPanelIds: layout.dockedPanelIds.filter(id => id !== panelId)
-    };
-  };
-
-  // Dock a panel to a target location (moves it from grid to dock)
-  const dockPanel = useCallback((panelId: string, target: DropZoneType, insertIndex?: number) => {
+  // Clone a panel into a dock view (original stays in grid)
+  const clonePanelToView = useCallback((panelId: string, target: DropZoneType, insertIndex?: number) => {
     setLayout(prev => {
-      // First remove from any current dock location
-      let next = removePanelFromAllDocks(prev, panelId);
-      
       const tab = { panelId };
-      
-      // Add to dockedPanelIds if not already there
-      const newDockedIds = next.dockedPanelIds.includes(panelId)
-        ? next.dockedPanelIds
-        : [...next.dockedPanelIds, panelId];
-      
-      next = { ...next, dockedPanelIds: newDockedIds };
       
       switch (target) {
         case 'tab-bar-a':
         case 'pane-content-a':
         case 'split-left': {
-          const tabs = [...next.paneA.tabGroup.tabs];
+          // Check if already exists in pane A
+          if (prev.paneA.tabGroup.tabs.some(t => t.panelId === panelId)) {
+            // Just activate it
+            return {
+              ...prev,
+              paneA: {
+                ...prev.paneA,
+                tabGroup: { ...prev.paneA.tabGroup, activeTabId: panelId }
+              }
+            };
+          }
+          
+          const tabs = [...prev.paneA.tabGroup.tabs];
           if (insertIndex !== undefined) {
             tabs.splice(insertIndex, 0, tab);
           } else {
             tabs.push(tab);
           }
-          next = {
-            ...next,
+          return {
+            ...prev,
             paneA: {
-              ...next.paneA,
+              ...prev.paneA,
               tabGroup: { tabs, activeTabId: panelId }
             }
           };
-          break;
         }
         
         case 'tab-bar-b':
         case 'pane-content-b':
         case 'split-right': {
-          const tabs = [...next.paneB.tabGroup.tabs];
+          // Check if already exists in pane B
+          if (prev.paneB.tabGroup.tabs.some(t => t.panelId === panelId)) {
+            // Just activate it and ensure split mode
+            return {
+              ...prev,
+              splitMode: true,
+              paneB: {
+                ...prev.paneB,
+                tabGroup: { ...prev.paneB.tabGroup, activeTabId: panelId }
+              }
+            };
+          }
+          
+          const tabs = [...prev.paneB.tabGroup.tabs];
           if (insertIndex !== undefined) {
             tabs.splice(insertIndex, 0, tab);
           } else {
             tabs.push(tab);
           }
-          next = {
-            ...next,
-            splitMode: true, // Auto-enable split mode when docking to right
+          return {
+            ...prev,
+            splitMode: true, // Auto-enable split mode
             paneB: {
-              ...next.paneB,
+              ...prev.paneB,
               tabGroup: { tabs, activeTabId: panelId }
             }
           };
-          break;
-        }
-        
-        case 'workspace-tabs': {
-          next = {
-            ...next,
-            workspaceTabs: [...next.workspaceTabs, tab],
-            activeWorkspaceTab: panelId
-          };
-          break;
         }
       }
       
-      return next;
+      return prev;
     });
   }, []);
 
-  // Undock a panel (return it to the grid)
-  const undockPanel = useCallback((panelId: string) => {
-    setLayout(prev => removePanelFromAllDocks(prev, panelId));
+  // Close a cloned view tab (does NOT affect original in grid)
+  const closeViewTab = useCallback((paneId: 'pane-a' | 'pane-b', panelId: string) => {
+    setLayout(prev => {
+      const paneKey = paneId === 'pane-a' ? 'paneA' : 'paneB';
+      const pane = prev[paneKey];
+      
+      const newTabs = pane.tabGroup.tabs.filter(t => t.panelId !== panelId);
+      const newActiveId = pane.tabGroup.activeTabId === panelId
+        ? newTabs[0]?.panelId || ''
+        : pane.tabGroup.activeTabId;
+      
+      return {
+        ...prev,
+        [paneKey]: {
+          ...pane,
+          tabGroup: { tabs: newTabs, activeTabId: newActiveId }
+        }
+      };
+    });
   }, []);
 
-  // Move panel between dock locations (panel must already be docked)
-  const movePanel = useCallback((panelId: string, target: DropZoneType, insertIndex?: number) => {
-    // If not docked, dock it; otherwise just move within docks
-    dockPanel(panelId, target, insertIndex);
-  }, [dockPanel]);
-
   // Set active tab
-  const setActiveTab = useCallback((paneId: 'pane-a' | 'pane-b' | 'workspace', tabId: string) => {
+  const setActiveTab = useCallback((paneId: 'pane-a' | 'pane-b', tabId: string) => {
     setLayout(prev => {
-      if (paneId === 'workspace') {
-        return { ...prev, activeWorkspaceTab: tabId };
-      }
-      
       const paneKey = paneId === 'pane-a' ? 'paneA' : 'paneB';
       return {
         ...prev,
@@ -277,34 +238,19 @@ export function useWorkspaceLayout() {
     setLayout(prev => ({ ...prev, splitMode: !prev.splitMode }));
   }, []);
 
-  // Close split mode and merge panels
+  // Close split mode and clear pane B
   const closeSplitMode = useCallback(() => {
-    setLayout(prev => {
-      // Move all pane B tabs to pane A
-      const mergedTabs = [
-        ...prev.paneA.tabGroup.tabs,
-        ...prev.paneB.tabGroup.tabs
-      ];
-      
-      return {
-        ...prev,
-        splitMode: false,
-        paneA: {
-          ...prev.paneA,
-          tabGroup: {
-            tabs: mergedTabs,
-            activeTabId: prev.paneA.tabGroup.activeTabId || mergedTabs[0]?.panelId || ''
-          }
-        },
-        paneB: {
-          ...prev.paneB,
-          tabGroup: { tabs: [], activeTabId: '' }
-        }
-      };
-    });
+    setLayout(prev => ({
+      ...prev,
+      splitMode: false,
+      paneB: {
+        ...prev.paneB,
+        tabGroup: { tabs: [], activeTabId: '' }
+      }
+    }));
   }, []);
 
-  // Reset to default layout (undock all panels)
+  // Reset to default layout (close all dock views)
   const resetLayout = useCallback(() => {
     setLayout(createDefaultLayout());
     localStorage.removeItem(STORAGE_KEY);
@@ -315,18 +261,17 @@ export function useWorkspaceLayout() {
     return panels.get(panelId);
   }, [panels]);
 
-  // Check if any panels are docked
-  const hasDockedPanels = layout.dockedPanelIds.length > 0;
+  // Check if any panels are in dock views
+  const hasDockedPanels = layout.paneA.tabGroup.tabs.length > 0 || layout.paneB.tabGroup.tabs.length > 0;
 
   return {
     layout,
     panels,
     registerPanel,
     unregisterPanel,
-    movePanel,
-    dockPanel,
-    undockPanel,
-    isPanelDocked,
+    clonePanelToView,
+    closeViewTab,
+    isPanelInDock,
     hasDockedPanels,
     setActiveTab,
     toggleSplitMode,
