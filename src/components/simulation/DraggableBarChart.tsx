@@ -39,8 +39,14 @@ export function DraggableBarChart({
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
   const [draggingChannel, setDraggingChannel] = useState<string | null>(null);
+  // COMMIT-ON-RELEASE: Track draft spend locally during drag
+  const [draftSpend, setDraftSpend] = useState<ChannelSpend | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+
+  // Use draft spend during drag, otherwise use real spend
+  const displaySpend = draftSpend ?? channelSpend;
 
   // Dynamic scale based on view mode
   const getMaxScale = () => {
@@ -92,25 +98,29 @@ export function DraggableBarChart({
     }
   }, [viewMode, channelMetrics]);
 
-  // Lock body scroll and freeze document height during drag
+  // Get bar height for display (uses draft during drag)
+  const getBarHeightPercent = useCallback((channelId: string) => {
+    const spend = displaySpend[channelId as keyof ChannelSpend];
+    // Simple linear relationship: bar height = spend / global budget
+    return (spend / GLOBAL_BUDGET) * 100;
+  }, [displaySpend]);
+
+  // Lock body scroll during drag
   useEffect(() => {
     if (draggingChannel) {
       const originalOverflow = document.body.style.overflow;
       const originalTouchAction = document.body.style.touchAction;
-      const originalHeight = document.body.style.height;
-      const originalMinHeight = document.body.style.minHeight;
       
-      // Lock scroll and freeze document height
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
-      document.body.style.height = `${document.body.scrollHeight}px`;
-      document.body.style.minHeight = `${document.body.scrollHeight}px`;
       
       return () => {
         document.body.style.overflow = originalOverflow;
         document.body.style.touchAction = originalTouchAction;
-        document.body.style.height = originalHeight;
-        document.body.style.minHeight = originalMinHeight;
+        // Cleanup RAF on unmount
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+        }
       };
     }
   }, [draggingChannel]);
@@ -126,33 +136,45 @@ export function DraggableBarChart({
       // Ignore if pointer capture fails
     }
     
+    // Initialize draft with current spend values
+    setDraftSpend({ ...channelSpend });
     setDraggingChannel(channelId);
-  }, []);
+  }, [channelSpend]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!draggingChannel || !chartRef.current) return;
+    if (!draggingChannel || !chartRef.current || !draftSpend) return;
     
     e.preventDefault();
     e.stopPropagation();
 
-    const rect = chartRef.current.getBoundingClientRect();
-    const chartHeight = rect.height - 80;
-    const mouseY = e.clientY - rect.top - 40;
-    
-    const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
-    const newValue = Math.round((percentage * GLOBAL_BUDGET) / 100) * 100;
-    
-    const currentSpend = channelSpend[draggingChannel as keyof ChannelSpend];
-    const otherSpend = Object.entries(channelSpend)
-      .filter(([id]) => id !== draggingChannel)
-      .reduce((sum, [, val]) => sum + val, 0);
-    const maxAllowed = GLOBAL_BUDGET - otherSpend;
-    const clampedValue = Math.min(Math.max(0, newValue), maxAllowed);
-    
-    if (clampedValue !== currentSpend) {
-      onSpendChange(draggingChannel as keyof ChannelSpend, clampedValue);
+    // Use RAF to throttle updates
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
     }
-  }, [draggingChannel, channelSpend, onSpendChange]);
+
+    rafRef.current = requestAnimationFrame(() => {
+      if (!chartRef.current || !draggingChannel) return;
+      
+      const rect = chartRef.current.getBoundingClientRect();
+      const chartHeight = rect.height - 80;
+      const mouseY = e.clientY - rect.top - 40;
+      
+      const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
+      const newValue = Math.round((percentage * GLOBAL_BUDGET) / 100) * 100;
+      
+      const otherSpend = Object.entries(draftSpend)
+        .filter(([id]) => id !== draggingChannel)
+        .reduce((sum, [, val]) => sum + val, 0);
+      const maxAllowed = GLOBAL_BUDGET - otherSpend;
+      const clampedValue = Math.min(Math.max(0, newValue), maxAllowed);
+      
+      // Only update draft (local state) - NO parent state update
+      setDraftSpend(prev => prev ? {
+        ...prev,
+        [draggingChannel]: clampedValue
+      } : null);
+    });
+  }, [draggingChannel, draftSpend]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     const target = e.currentTarget as HTMLElement;
@@ -161,8 +183,22 @@ export function DraggableBarChart({
     } catch {
       // Ignore
     }
+    
+    // COMMIT: Apply final draft value to parent state on release
+    if (draggingChannel && draftSpend) {
+      const finalValue = draftSpend[draggingChannel as keyof ChannelSpend];
+      onSpendChange(draggingChannel as keyof ChannelSpend, finalValue);
+    }
+    
+    // Clear draft and dragging state
+    setDraftSpend(null);
     setDraggingChannel(null);
-  }, []);
+    
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, [draggingChannel, draftSpend, onSpendChange]);
 
   const formatValue = (value: number) => {
     if (viewMode === 'clicks') {
@@ -316,13 +352,17 @@ export function DraggableBarChart({
             <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
               {Object.entries(CHANNELS).map(([channelId, channel]) => {
                 const barValues = getBarValue(channelId);
-                const spend = channelSpend[channelId as keyof ChannelSpend];
+                const spend = displaySpend[channelId as keyof ChannelSpend];
                 const isThisBarDragging = draggingChannel === channelId;
-
                 const metricValue = barValues.primary;
-                const barHeightPercent = viewMode === 'profit' && metricValue < 0
-                  ? 0
-                  : Math.max(0, (Math.abs(metricValue) / maxScale) * 100);
+
+                // During drag: use simple spend-based height for instant feedback
+                // After release: use metric-based height
+                const barHeightPercent = isDragging 
+                  ? getBarHeightPercent(channelId)
+                  : viewMode === 'profit' && metricValue < 0
+                    ? 0
+                    : Math.max(0, (Math.abs(metricValue) / maxScale) * 100);
 
                 return (
                   <div
