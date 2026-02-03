@@ -19,6 +19,8 @@ interface DraggableBarChartProps {
   };
   remainingBudget: number;
   mode?: ChartMode;
+  /** When true, the chart fits within its parent container (no minHeight) */
+  fillContainer?: boolean;
 }
 
 type ViewMode = 'clicks' | 'revenue' | 'profit' | 'all';
@@ -30,9 +32,8 @@ const filterOptions = [
   { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid },
 ];
 
-// Fixed height for the entire component to prevent layout shift
+// Fixed height for the entire component to prevent layout shift (used in single view)
 const COMPONENT_MIN_HEIGHT = 580;
-const COMPONENT_MIN_HEIGHT_SPLIT = 520; // Slightly smaller for split view
 
 export function DraggableBarChart({
   channelSpend,
@@ -41,13 +42,13 @@ export function DraggableBarChart({
   totals,
   remainingBudget,
   mode = 'live',
+  fillContainer = false,
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
   
   // Snapshot mode: draggable for reasoning but NOT adjustable
   // Live mode: adjustable but NOT draggable (for now)
   const isSnapshot = mode === 'snapshot';
-  const isLive = mode === 'live';
   const [draggingChannel, setDraggingChannel] = useState<string | null>(null);
   // COMMIT-ON-RELEASE: Track draft spend locally during drag
   const [draftSpend, setDraftSpend] = useState<ChannelSpend | null>(null);
@@ -221,27 +222,28 @@ export function DraggableBarChart({
   };
 
   const isDragging = draggingChannel !== null;
-  
-  // Use smaller height in split view mode
-  const minHeight = isSnapshot ? COMPONENT_MIN_HEIGHT_SPLIT : COMPONENT_MIN_HEIGHT;
 
   return (
     // Fixed-height sandbox container - prevents ALL layout propagation during drag
+    // In fillContainer mode, the parent controls the height
     <div 
       ref={containerRef}
-      style={{
-        // Fixed minimum height prevents document reflow
-        minHeight: `${minHeight}px`,
-        // CSS containment isolates this subtree from layout recalculations
+      className={fillContainer ? 'h-full' : ''}
+      style={fillContainer ? {
+        // Let parent control height, just isolate layout
         contain: 'layout style',
-        // Create stacking context
         isolation: 'isolate',
-        // Prevent any size changes from propagating upward
+        overflow: 'hidden',
+      } : {
+        // Fixed minimum height prevents document reflow
+        minHeight: `${COMPONENT_MIN_HEIGHT}px`,
+        contain: 'layout style',
+        isolation: 'isolate',
         overflow: 'visible',
       }}
     >
-      <Card className={`border-2 bg-card ${isSnapshot ? 'border-slate-300 dark:border-slate-700' : 'border-primary/20'}`}>
-        <CardHeader className="pb-2">
+      <Card className={`border-2 bg-card ${fillContainer ? 'h-full flex flex-col' : ''} ${isSnapshot ? 'border-slate-300 dark:border-slate-700' : 'border-primary/20'}`}>
+        <CardHeader className={`pb-2 ${fillContainer ? 'flex-shrink-0' : ''}`}>
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <CardTitle className={`font-bold ${isSnapshot ? 'text-lg text-muted-foreground' : 'text-xl'}`}>
               Channel Performance
@@ -278,30 +280,32 @@ export function DraggableBarChart({
             </div>
           </div>
           
-          {/* Remaining Budget Counter - Fixed height slot to prevent layout shift */}
-          <div style={{ minHeight: remainingBudget > 0 ? '88px' : '0px' }}>
-            {remainingBudget > 0 && (
-              <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/30 rounded-xl border border-primary/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
-                    <div className="text-3xl font-bold text-green-500">
-                      ${remainingBudget.toLocaleString()}
+          {/* Remaining Budget Counter - Hidden in fillContainer (split) mode for space */}
+          {!fillContainer && (
+            <div style={{ minHeight: remainingBudget > 0 ? '88px' : '0px' }}>
+              {remainingBudget > 0 && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/30 rounded-xl border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
+                      <div className="text-3xl font-bold text-green-500">
+                        ${remainingBudget.toLocaleString()}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">of ${GLOBAL_BUDGET.toLocaleString()}</div>
-                    <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-green-500 transition-all duration-150"
-                        style={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
-                      />
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">of ${GLOBAL_BUDGET.toLocaleString()}</div>
+                      <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary to-green-500 transition-all duration-150"
+                          style={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Summary Stats - No motion animations during drag */}
           <div className="grid grid-cols-3 gap-3 mt-4">
@@ -335,15 +339,15 @@ export function DraggableBarChart({
           </div>
         </CardHeader>
 
-        <CardContent className="pt-4">
+        <CardContent className={`pt-4 ${fillContainer ? 'flex-1 min-h-0 overflow-hidden' : ''}`}>
           {/* Draggable Bar Chart - Fixed dimensions, no layout changes */}
           <div
             ref={chartRef}
             className="relative bg-secondary/20 rounded-lg p-4 select-none cursor-crosshair"
             style={{ 
-              height: '350px', 
-              minHeight: '350px', 
-              maxHeight: '350px',
+              height: fillContainer ? '100%' : '350px', 
+              minHeight: fillContainer ? undefined : '350px', 
+              maxHeight: fillContainer ? undefined : '350px',
               touchAction: isDragging ? 'none' : 'auto',
               // Contain this specific area during drag
               contain: isDragging ? 'strict' : 'layout',
