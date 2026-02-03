@@ -27,6 +27,9 @@ const filterOptions = [
   { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid },
 ];
 
+// Fixed height for the entire component to prevent layout shift
+const COMPONENT_MIN_HEIGHT = 620;
+
 export function DraggableBarChart({
   channelSpend,
   onSpendChange,
@@ -37,19 +40,19 @@ export function DraggableBarChart({
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
   const [draggingChannel, setDraggingChannel] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Dynamic scale based on view mode
-  // Views mode: count scale (no $), Revenue/Profit: dollar scale
   const getMaxScale = () => {
     switch (viewMode) {
       case 'clicks':
-        return 50000; // Views scale
+        return 50000;
       case 'revenue':
-        return 80000; // Revenue scale
+        return 80000;
       case 'profit':
-        return 60000; // Profit scale (can be negative)
+        return 60000;
       case 'all':
-        return 50000; // Default to views scale for primary
+        return 50000;
       default:
         return 50000;
     }
@@ -89,36 +92,39 @@ export function DraggableBarChart({
     }
   }, [viewMode, channelMetrics]);
 
-  // Lock body scroll and isolate layout during drag to prevent jitter
+  // Lock body scroll and freeze document height during drag
   useEffect(() => {
     if (draggingChannel) {
-      // Store original styles
       const originalOverflow = document.body.style.overflow;
       const originalTouchAction = document.body.style.touchAction;
-      const originalOverscroll = document.body.style.overscrollBehavior;
+      const originalHeight = document.body.style.height;
+      const originalMinHeight = document.body.style.minHeight;
       
-      // Lock scroll completely
+      // Lock scroll and freeze document height
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
-      document.body.style.overscrollBehavior = 'none';
+      document.body.style.height = `${document.body.scrollHeight}px`;
+      document.body.style.minHeight = `${document.body.scrollHeight}px`;
       
       return () => {
-        // Restore scroll on cleanup (commit-on-release)
         document.body.style.overflow = originalOverflow;
         document.body.style.touchAction = originalTouchAction;
-        document.body.style.overscrollBehavior = originalOverscroll;
+        document.body.style.height = originalHeight;
+        document.body.style.minHeight = originalMinHeight;
       };
     }
   }, [draggingChannel]);
 
-  // Handle mouse events for dragging bars with pointer capture
   const handleMouseDown = useCallback((channelId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Use pointer capture for stable drag tracking
     const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture((e as unknown as PointerEvent).pointerId || 1);
+    try {
+      target.setPointerCapture((e as unknown as PointerEvent).pointerId || 1);
+    } catch {
+      // Ignore if pointer capture fails
+    }
     
     setDraggingChannel(channelId);
   }, []);
@@ -126,7 +132,6 @@ export function DraggableBarChart({
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!draggingChannel || !chartRef.current) return;
     
-    // Prevent any default scroll behavior
     e.preventDefault();
     e.stopPropagation();
 
@@ -134,11 +139,9 @@ export function DraggableBarChart({
     const chartHeight = rect.height - 80;
     const mouseY = e.clientY - rect.top - 40;
     
-    // Direct cursor tracking for spend (fixed $20k scale)
     const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
     const newValue = Math.round((percentage * GLOBAL_BUDGET) / 100) * 100;
     
-    // Clamp to available budget
     const currentSpend = channelSpend[draggingChannel as keyof ChannelSpend];
     const otherSpend = Object.entries(channelSpend)
       .filter(([id]) => id !== draggingChannel)
@@ -152,12 +155,11 @@ export function DraggableBarChart({
   }, [draggingChannel, channelSpend, onSpendChange]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    // Release pointer capture
     const target = e.currentTarget as HTMLElement;
     try {
       target.releasePointerCapture((e as unknown as PointerEvent).pointerId || 1);
     } catch {
-      // Ignore if pointer capture wasn't set
+      // Ignore
     }
     setDraggingChannel(null);
   }, []);
@@ -169,242 +171,238 @@ export function DraggableBarChart({
     return `$${value.toLocaleString()}`;
   };
 
+  const isDragging = draggingChannel !== null;
+
   return (
-    // Outer isolation wrapper - contains layout recalculations during drag
+    // Fixed-height sandbox container - prevents ALL layout propagation during drag
     <div 
-      className="relative"
+      ref={containerRef}
       style={{
-        // CSS containment: isolate layout only (not paint/size which hides content)
+        // Fixed minimum height prevents document reflow
+        minHeight: `${COMPONENT_MIN_HEIGHT}px`,
+        // CSS containment isolates this subtree from layout recalculations
         contain: 'layout style',
-        // Isolation creates a new stacking context
+        // Create stacking context
         isolation: 'isolate',
+        // Prevent any size changes from propagating upward
+        overflow: 'visible',
       }}
     >
-    <Card className="border-2 border-primary/20 bg-card">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <CardTitle className="text-xl font-bold">Channel Performance</CardTitle>
+      <Card className="border-2 border-primary/20 bg-card">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <CardTitle className="text-xl font-bold">Channel Performance</CardTitle>
+            
+            {/* Filter Metrics Chips */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+                </svg>
+                Filter metrics:
+              </span>
+              <div className="flex gap-1.5">
+                {filterOptions.map((option) => {
+                  const Icon = option.icon;
+                  const isActive = viewMode === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => setViewMode(option.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-foreground text-background shadow-md'
+                          : 'bg-secondary hover:bg-secondary/80 text-foreground border border-border'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
           
-          {/* Filter Metrics Chips */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
-              </svg>
-              Filter metrics:
-            </span>
-            <div className="flex gap-1.5">
-              {filterOptions.map((option) => {
-                const Icon = option.icon;
-                const isActive = viewMode === option.id;
+          {/* Remaining Budget Counter - Fixed height slot to prevent layout shift */}
+          <div style={{ minHeight: remainingBudget > 0 ? '88px' : '0px' }}>
+            {remainingBudget > 0 && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/30 rounded-xl border border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
+                    <div className="text-3xl font-bold text-green-500">
+                      ${remainingBudget.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">of ${GLOBAL_BUDGET.toLocaleString()}</div>
+                    <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-green-500 transition-all duration-150"
+                        style={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Summary Stats - No motion animations during drag */}
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className="p-3 bg-secondary/50 rounded-lg text-center">
+              <div 
+                className="text-2xl font-bold text-primary transition-transform duration-150"
+                style={{ transform: isDragging ? 'none' : undefined }}
+              >
+                {totals.clicks.toLocaleString()}
+              </div>
+              <div className="text-xs text-muted-foreground">Total Views</div>
+            </div>
+            <div className="p-3 bg-secondary/50 rounded-lg text-center">
+              <div 
+                className="text-2xl font-bold text-green-600 transition-transform duration-150"
+                style={{ transform: isDragging ? 'none' : undefined }}
+              >
+                ${totals.totalRevenue.toLocaleString()}
+              </div>
+              <div className="text-xs text-muted-foreground">Revenue</div>
+            </div>
+            <div className="p-3 bg-secondary/50 rounded-lg text-center">
+              <div 
+                className={`text-2xl font-bold transition-transform duration-150 ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
+                style={{ transform: isDragging ? 'none' : undefined }}
+              >
+                ${totals.profit.toLocaleString()}
+              </div>
+              <div className="text-xs text-muted-foreground">Net Profit</div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-4">
+          {/* Draggable Bar Chart - Fixed dimensions, no layout changes */}
+          <div
+            ref={chartRef}
+            className="relative bg-secondary/20 rounded-lg p-4 select-none cursor-crosshair"
+            style={{ 
+              height: '350px', 
+              minHeight: '350px', 
+              maxHeight: '350px',
+              touchAction: isDragging ? 'none' : 'auto',
+              // Contain this specific area during drag
+              contain: isDragging ? 'strict' : 'layout',
+            }}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* Y-axis labels */}
+            <div className="absolute left-0 top-10 bottom-12 w-16 flex flex-col justify-between text-xs text-muted-foreground">
+              {getYAxisLabels().map((label, i) => (
+                <span key={i}>{label}</span>
+              ))}
+            </div>
+
+            {/* Grid lines */}
+            <div className="absolute left-20 right-4 top-10 bottom-12 flex flex-col justify-between pointer-events-none">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="border-t border-border/30" />
+              ))}
+            </div>
+
+            {/* Bars Container */}
+            <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
+              {Object.entries(CHANNELS).map(([channelId, channel]) => {
+                const barValues = getBarValue(channelId);
+                const spend = channelSpend[channelId as keyof ChannelSpend];
+                const isThisBarDragging = draggingChannel === channelId;
+
+                const metricValue = barValues.primary;
+                const barHeightPercent = viewMode === 'profit' && metricValue < 0
+                  ? 0
+                  : Math.max(0, (Math.abs(metricValue) / maxScale) * 100);
+
                 return (
-                  <button
-                    key={option.id}
-                    onClick={() => setViewMode(option.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-foreground text-background shadow-md'
-                        : 'bg-secondary hover:bg-secondary/80 text-foreground border border-border'
-                    }`}
+                  <div
+                    key={channelId}
+                    className="flex-1 flex flex-col items-center h-full justify-end"
                   >
-                    <Icon className="w-3.5 h-3.5" />
-                    {option.label}
-                  </button>
+                    {/* Metric values - no layout animation during drag */}
+                    <div className="text-center mb-1">
+                      <div 
+                        className={`text-sm font-bold ${viewMode === 'profit' && metricValue < 0 ? 'text-destructive' : ''}`}
+                        style={{ color: viewMode === 'profit' && metricValue < 0 ? undefined : channel.color }}
+                      >
+                        {formatValue(metricValue)}
+                      </div>
+                      {viewMode === 'all' && barValues.secondary !== null && (
+                        <div className="text-xs text-green-600">
+                          ${barValues.secondary.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mb-2">
+                      ${spend.toLocaleString()} spent
+                    </div>
+                    
+                    {/* Bar - uses transform for height during drag to avoid layout */}
+                    <motion.div
+                      className={`w-full max-w-[80px] rounded-t-lg cursor-ns-resize ${
+                        isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background' : ''
+                      }`}
+                      style={{
+                        backgroundColor: viewMode === 'profit' && metricValue < 0 
+                          ? 'hsl(var(--destructive))' 
+                          : channel.color,
+                        boxShadow: isThisBarDragging 
+                          ? `0 0 30px ${channel.color}` 
+                          : `0 4px 12px ${channel.color}40`,
+                        // Use will-change during drag for GPU acceleration
+                        willChange: isDragging ? 'height, transform' : 'auto',
+                      }}
+                      initial={false}
+                      animate={{ 
+                        height: `${Math.max(barHeightPercent, 2)}%`,
+                        scale: isThisBarDragging ? 1.02 : 1,
+                      }}
+                      transition={{ 
+                        type: 'spring', 
+                        stiffness: isDragging ? 500 : 200, 
+                        damping: isDragging ? 35 : 25,
+                        // Faster transitions during drag
+                        duration: isDragging ? 0.1 : undefined,
+                      }}
+                      onMouseDown={(e) => handleMouseDown(channelId, e)}
+                    >
+                      <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
+                        <div className="w-10 h-1.5 bg-white/60 rounded-full" />
+                      </div>
+                    </motion.div>
+                  </div>
                 );
               })}
             </div>
-          </div>
-        </div>
-        
-        {/* Remaining Budget Counter - Only show if budget is not fully allocated */}
-        {remainingBudget > 0 && (
-          <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-secondary/30 rounded-xl border border-primary/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
-                <div className="text-3xl font-bold text-green-500">
-                  ${remainingBudget.toLocaleString()}
+
+            {/* X-axis labels */}
+            <div className="absolute left-20 right-4 bottom-0 flex justify-around">
+              {Object.entries(CHANNELS).map(([channelId, channel]) => (
+                <div key={channelId} className="flex-1 text-center">
+                  <span className="text-xs font-medium" style={{ color: channel.color }}>
+                    {channel.name}
+                  </span>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">of ${GLOBAL_BUDGET.toLocaleString()}</div>
-                <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-primary to-green-500"
-                    initial={false}
-                    animate={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  />
-                </div>
-              </div>
+              ))}
+            </div>
+
+            {/* Drag instruction */}
+            <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+              ↕ Drag bars to adjust spend
             </div>
           </div>
-        )}
-
-        {/* Summary Stats */}
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          <div className="p-3 bg-secondary/50 rounded-lg text-center">
-            <motion.div 
-              className="text-2xl font-bold text-primary"
-              key={totals.clicks}
-              initial={{ scale: 1.1 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 500 }}
-            >
-              {totals.clicks.toLocaleString()}
-            </motion.div>
-            <div className="text-xs text-muted-foreground">Total Views</div>
-          </div>
-          <div className="p-3 bg-secondary/50 rounded-lg text-center">
-            <motion.div 
-              className="text-2xl font-bold text-green-600"
-              key={totals.totalRevenue}
-              initial={{ scale: 1.1 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 500 }}
-            >
-              ${totals.totalRevenue.toLocaleString()}
-            </motion.div>
-            <div className="text-xs text-muted-foreground">Revenue</div>
-          </div>
-          <div className="p-3 bg-secondary/50 rounded-lg text-center">
-            <motion.div 
-              className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
-              key={totals.profit}
-              initial={{ scale: 1.1 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 500 }}
-            >
-              ${totals.profit.toLocaleString()}
-            </motion.div>
-            <div className="text-xs text-muted-foreground">Net Profit</div>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-4">
-        {/* Draggable Bar Chart - Fixed height to prevent layout reflow during drag */}
-        <div
-          ref={chartRef}
-          className="relative bg-secondary/20 rounded-lg p-4 select-none cursor-crosshair"
-          style={{ 
-            height: '350px', 
-            minHeight: '350px', 
-            maxHeight: '350px',
-            // Prevent touch scrolling during drag
-            touchAction: draggingChannel ? 'none' : 'auto',
-          }}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          {/* Y-axis labels - Dynamic based on view mode */}
-          <div className="absolute left-0 top-10 bottom-12 w-16 flex flex-col justify-between text-xs text-muted-foreground">
-            {getYAxisLabels().map((label, i) => (
-              <span key={i}>{label}</span>
-            ))}
-          </div>
-
-          {/* Grid lines */}
-          <div className="absolute left-20 right-4 top-10 bottom-12 flex flex-col justify-between pointer-events-none">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="border-t border-border/30" />
-            ))}
-          </div>
-
-          {/* Bars Container */}
-          <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
-            {Object.entries(CHANNELS).map(([channelId, channel]) => {
-              const barValues = getBarValue(channelId);
-              const spend = channelSpend[channelId as keyof ChannelSpend];
-              const isDragging = draggingChannel === channelId;
-
-              // Bar height based on selected metric value (not spend!)
-              const metricValue = barValues.primary;
-              const barHeightPercent = viewMode === 'profit' && metricValue < 0
-                ? 0 // Don't show negative bars below zero
-                : Math.max(0, (Math.abs(metricValue) / maxScale) * 100);
-
-              return (
-                <div
-                  key={channelId}
-                  className="flex-1 flex flex-col items-center h-full justify-end"
-                >
-                  {/* Metric values above bar (animated) */}
-                  <motion.div 
-                    className="text-center mb-1"
-                    layout
-                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                  >
-                    <div 
-                      className={`text-sm font-bold ${viewMode === 'profit' && metricValue < 0 ? 'text-destructive' : ''}`}
-                      style={{ color: viewMode === 'profit' && metricValue < 0 ? undefined : channel.color }}
-                    >
-                      {formatValue(metricValue)}
-                    </div>
-                    {viewMode === 'all' && barValues.secondary !== null && (
-                      <div className="text-xs text-green-600">
-                        ${barValues.secondary.toLocaleString()}
-                      </div>
-                    )}
-                  </motion.div>
-                  <div className="text-xs text-muted-foreground mb-2">
-                    ${spend.toLocaleString()} spent
-                  </div>
-                  
-                  {/* The Metric Bar - Height = metric value, dragging adjusts spend */}
-                  <motion.div
-                    className={`w-full max-w-[80px] rounded-t-lg cursor-ns-resize ${
-                      isDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background' : ''
-                    }`}
-                    style={{
-                      backgroundColor: viewMode === 'profit' && metricValue < 0 
-                        ? 'hsl(var(--destructive))' 
-                        : channel.color,
-                      boxShadow: isDragging 
-                        ? `0 0 30px ${channel.color}` 
-                        : `0 4px 12px ${channel.color}40`,
-                    }}
-                    initial={false}
-                    animate={{ 
-                      height: `${Math.max(barHeightPercent, 2)}%`,
-                      scale: isDragging ? 1.02 : 1,
-                    }}
-                    transition={{ 
-                      type: 'spring', 
-                      stiffness: isDragging ? 400 : 200, 
-                      damping: isDragging ? 30 : 25 
-                    }}
-                    onMouseDown={(e) => handleMouseDown(channelId, e)}
-                  >
-                    {/* Drag handle indicator */}
-                    <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
-                      <div className="w-10 h-1.5 bg-white/60 rounded-full" />
-                    </div>
-                  </motion.div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* X-axis labels */}
-          <div className="absolute left-20 right-4 bottom-0 flex justify-around">
-            {Object.entries(CHANNELS).map(([channelId, channel]) => (
-              <div key={channelId} className="flex-1 text-center">
-                <span className="text-xs font-medium" style={{ color: channel.color }}>
-                  {channel.name}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Drag instruction */}
-          <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-            ↕ Drag bars to adjust spend
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
     </div>
   );
 }
