@@ -89,21 +89,24 @@ export function DraggableBarChart({
     }
   }, [viewMode, channelMetrics]);
 
-  // Lock body scroll during drag to prevent scroll jank
+  // Lock body scroll and isolate layout during drag to prevent jitter
   useEffect(() => {
     if (draggingChannel) {
       // Store original styles
       const originalOverflow = document.body.style.overflow;
       const originalTouchAction = document.body.style.touchAction;
+      const originalOverscroll = document.body.style.overscrollBehavior;
       
-      // Lock scroll
+      // Lock scroll completely
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
+      document.body.style.overscrollBehavior = 'none';
       
       return () => {
-        // Restore scroll on cleanup
+        // Restore scroll on cleanup (commit-on-release)
         document.body.style.overflow = originalOverflow;
         document.body.style.touchAction = originalTouchAction;
+        document.body.style.overscrollBehavior = originalOverscroll;
       };
     }
   }, [draggingChannel]);
@@ -167,6 +170,18 @@ export function DraggableBarChart({
   };
 
   return (
+    // Outer isolation wrapper - contains all layout recalculations during drag
+    <div 
+      className="relative"
+      style={{
+        // CSS containment: isolate this subtree from layout propagation
+        contain: draggingChannel ? 'strict' : 'layout',
+        // Fixed height during drag to prevent sibling reflow
+        height: draggingChannel ? 'auto' : undefined,
+        // Will-change hint for GPU layer isolation
+        willChange: draggingChannel ? 'contents' : 'auto',
+      }}
+    >
     <Card className="border-2 border-primary/20 bg-card">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -392,5 +407,6 @@ export function DraggableBarChart({
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }
