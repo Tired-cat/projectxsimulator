@@ -138,16 +138,21 @@ export function SplitViewBarCharts({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="grid grid-cols-2 gap-4"
+            // Shared fixed height for both panels - ensures structural equality
+            style={{ height: '600px' }}
           >
-            {/* Before Snapshot Panel */}
-            <div className="relative">
+            {/* Before Snapshot Panel - fixed height container */}
+            <div 
+              className="relative h-full overflow-hidden"
+              style={{ contain: 'strict' }}
+            >
               {/* Snapshot Badge */}
-              <div className="absolute -top-2 left-4 z-10 flex items-center gap-1.5 px-2 py-1 bg-slate-600 text-white text-xs font-medium rounded-md shadow-md">
+              <div className="absolute -top-0 left-4 z-10 flex items-center gap-1.5 px-2 py-1 bg-slate-600 text-white text-xs font-medium rounded-md shadow-md">
                 <Lock className="h-3 w-3" />
                 Before Adjustment
               </div>
               {snapshotSpend && snapshotMetrics && snapshotTotals && (
-                <div className="pt-4 opacity-90">
+                <div className="h-full pt-6 opacity-90">
                   <DraggableBarChart
                     channelSpend={snapshotSpend}
                     onSpendChange={() => {}} // No-op - snapshot is immutable
@@ -155,6 +160,7 @@ export function SplitViewBarCharts({
                     totals={snapshotTotals}
                     remainingBudget={snapshotRemainingBudget}
                     mode="snapshot"
+                    fillContainer
                   />
                 </div>
               )}
@@ -162,14 +168,17 @@ export function SplitViewBarCharts({
               <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-slate-500/5 to-transparent rounded-lg" />
             </div>
 
-            {/* Live Current Panel */}
-            <div className="relative">
+            {/* Live Current Panel - fixed height container */}
+            <div 
+              className="relative h-full overflow-hidden"
+              style={{ contain: 'strict' }}
+            >
               {/* Live Badge */}
-              <div className="absolute -top-2 left-4 z-10 flex items-center gap-1.5 px-2 py-1 bg-primary text-primary-foreground text-xs font-medium rounded-md shadow-md">
+              <div className="absolute -top-0 left-4 z-10 flex items-center gap-1.5 px-2 py-1 bg-primary text-primary-foreground text-xs font-medium rounded-md shadow-md">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                 Current / Live
               </div>
-              <div className="pt-4">
+              <div className="h-full pt-6">
                 <DraggableBarChart
                   channelSpend={channelSpend}
                   onSpendChange={onSpendChange}
@@ -177,6 +186,7 @@ export function SplitViewBarCharts({
                   totals={totals}
                   remainingBudget={remainingBudget}
                   mode="live"
+                  fillContainer
                 />
               </div>
             </div>
