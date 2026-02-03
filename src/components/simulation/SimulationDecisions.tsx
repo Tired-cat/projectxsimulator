@@ -1,7 +1,9 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
+import { SplitWorkspace } from './SplitWorkspace';
+import { SplitDropZones } from './SplitDropZones';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
@@ -13,10 +15,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DraggableCard, InlineDropZones, WorkspaceViewArea } from '@/components/workspace';
-import { useWorkspace } from '@/hooks/useWorkspace';
-import type { PanelId, DropTarget } from '@/types/workspaceTypes';
+import { DraggableCard } from '@/components/workspace';
+import { useTabs } from '@/contexts/TabContext';
+import type { PanelId } from '@/types/workspaceTypes';
 
 const REVENUE_GOAL = 100000;
 
@@ -49,19 +50,18 @@ export function SimulationDecisions({
   totalSpent,
   onReset,
 }: SimulationDecisionsProps) {
-  const workspace = useWorkspace();
-  const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
+  const { setDraggingPanelId, openPanelAsTab, openPanelInSplit, draggingPanelId } = useTabs();
 
-  // Handle drop on inline zones
-  const handleDrop = (target: DropTarget) => {
-    if (workspace.draggingPanel) {
-      workspace.addViewTab(workspace.draggingPanel, target);
-    }
-    workspace.setDraggingPanel(null);
+  const handleOpenAsTab = (panelId: PanelId, title: string) => {
+    openPanelAsTab(panelId, title);
+  };
+
+  const handleOpenInSplit = (panelId: PanelId, title: string) => {
+    openPanelInSplit(panelId, title, 'right');
   };
 
   // Render panel content by ID (used for both grid cards and cloned views)
-  const renderPanelContent = (panelId: PanelId): ReactNode => {
+  const renderPanelContent = (panelId: PanelId | string): ReactNode => {
     switch (panelId) {
       case 'channel-performance':
         return (
@@ -88,28 +88,15 @@ export function SimulationDecisions({
 
   return (
     <div className="relative min-h-[400px]">
-      {/* Inline drop zones - subtle edge highlights during drag */}
-      <InlineDropZones
-        visible={!!workspace.draggingPanel}
-        onDrop={handleDrop}
-        activeTarget={activeDropTarget}
-        setActiveTarget={setActiveDropTarget}
-      />
+      {/* Split drop zones - appear only during drag */}
+      {draggingPanelId && <SplitDropZones />}
 
       {/* Fixed header with budget bar */}
       <BudgetHeader totalSpent={totalSpent} onReset={onReset} />
 
-      {/* Workspace view area - only visible when views exist */}
+      {/* Split workspace - renders if split is enabled */}
       <div className="mt-4">
-        <WorkspaceViewArea
-          leftPane={workspace.state.leftPane}
-          rightPane={workspace.state.rightPane}
-          splitEnabled={workspace.state.splitEnabled}
-          onTabClick={workspace.setActiveTab}
-          onTabClose={workspace.closeTab}
-          renderPanel={renderPanelContent}
-          onResetWorkspace={workspace.resetWorkspace}
-        />
+        <SplitWorkspace renderPanelContent={renderPanelContent} />
       </div>
 
       {/* Main grid - cards always remain here */}
@@ -120,8 +107,10 @@ export function SimulationDecisions({
           title="Channel Performance"
           icon={<BarChart3 className="h-4 w-4" />}
           className="lg:col-span-2"
-          onDragStart={workspace.setDraggingPanel}
-          onDragEnd={() => workspace.setDraggingPanel(null)}
+          onDragStart={setDraggingPanelId}
+          onDragEnd={() => setDraggingPanelId(null)}
+          onOpenAsTab={handleOpenAsTab}
+          onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('channel-performance')}
         </DraggableCard>
@@ -131,8 +120,10 @@ export function SimulationDecisions({
           panelId="product-mix"
           title="Product Mix"
           icon={<PieChart className="h-4 w-4" />}
-          onDragStart={workspace.setDraggingPanel}
-          onDragEnd={() => workspace.setDraggingPanel(null)}
+          onDragStart={setDraggingPanelId}
+          onDragEnd={() => setDraggingPanelId(null)}
+          onOpenAsTab={handleOpenAsTab}
+          onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('product-mix')}
         </DraggableCard>
@@ -142,8 +133,10 @@ export function SimulationDecisions({
           panelId="goal-tracker"
           title="Goal Tracker"
           icon={<DollarSign className="h-4 w-4" />}
-          onDragStart={workspace.setDraggingPanel}
-          onDragEnd={() => workspace.setDraggingPanel(null)}
+          onDragStart={setDraggingPanelId}
+          onDragEnd={() => setDraggingPanelId(null)}
+          onOpenAsTab={handleOpenAsTab}
+          onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('goal-tracker')}
         </DraggableCard>
@@ -154,8 +147,10 @@ export function SimulationDecisions({
           title="Hints & Tips"
           icon={<AlertCircle className="h-4 w-4" />}
           className="lg:col-span-2"
-          onDragStart={workspace.setDraggingPanel}
-          onDragEnd={() => workspace.setDraggingPanel(null)}
+          onDragStart={setDraggingPanelId}
+          onDragEnd={() => setDraggingPanelId(null)}
+          onOpenAsTab={handleOpenAsTab}
+          onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('hints')}
         </DraggableCard>
@@ -167,8 +162,10 @@ export function SimulationDecisions({
           icon={<Settings className="h-4 w-4" />}
           className="lg:col-span-2"
           contentClassName="pt-0"
-          onDragStart={workspace.setDraggingPanel}
-          onDragEnd={() => workspace.setDraggingPanel(null)}
+          onDragStart={setDraggingPanelId}
+          onDragEnd={() => setDraggingPanelId(null)}
+          onOpenAsTab={handleOpenAsTab}
+          onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('assumptions')}
         </DraggableCard>
@@ -188,12 +185,12 @@ export function BudgetHeader({ totalSpent, onReset }: BudgetHeaderProps) {
     <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
       <div className="flex items-center gap-4">
         <div>
-          <div className="text-xs text-slate-500 uppercase tracking-wide">Budget Used</div>
-          <div className="text-xl font-bold text-slate-900 dark:text-white">
-            ${totalSpent.toLocaleString()} <span className="text-slate-400 font-normal">/ ${GLOBAL_BUDGET.toLocaleString()}</span>
+          <div className="text-xs text-muted-foreground uppercase tracking-wide">Budget Used</div>
+          <div className="text-xl font-bold text-foreground">
+            ${totalSpent.toLocaleString()} <span className="text-muted-foreground font-normal">/ ${GLOBAL_BUDGET.toLocaleString()}</span>
           </div>
         </div>
-        <div className="w-32 h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div className="w-32 h-2.5 bg-secondary rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
             style={{ width: `${(totalSpent / GLOBAL_BUDGET) * 100}%` }}

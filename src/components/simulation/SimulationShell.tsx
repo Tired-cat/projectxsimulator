@@ -1,12 +1,16 @@
 import { ReactNode } from 'react';
+import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useTabs } from '@/contexts/TabContext';
 import { BrowserTabStrip } from './BrowserTabStrip';
+import type { PanelId } from '@/types/workspaceTypes';
 
 interface SimulationShellProps {
   homeContent: ReactNode;
   decisionsContent: ReactNode;
+  // Panel renderer for panel tabs
+  renderPanelContent: (panelId: PanelId) => ReactNode;
 }
 
 /**
@@ -17,8 +21,12 @@ interface SimulationShellProps {
 export function SimulationShell({
   homeContent,
   decisionsContent,
+  renderPanelContent,
 }: SimulationShellProps) {
-  const { activeTabId } = useTabs();
+  const { tabs, activeTabId } = useTabs();
+  
+  // Find the active tab
+  const activeTab = tabs.find(t => t.id === activeTabId);
 
   return (
     <div className="min-h-screen bg-slate-200 dark:bg-slate-950 p-4 md:p-6 lg:p-8">
@@ -43,7 +51,7 @@ export function SimulationShell({
             {/* Home tab content */}
             <div className={cn(
               'h-full',
-              activeTabId === 'home' ? 'block' : 'hidden'
+              activeTab?.kind === 'home' ? 'block' : 'hidden'
             )}>
               <ScrollArea className="h-full">
                 <div className="p-6 md:p-8">
@@ -55,7 +63,7 @@ export function SimulationShell({
             {/* Decisions tab content */}
             <div className={cn(
               'h-full flex flex-col',
-              activeTabId === 'decisions' ? 'flex' : 'hidden'
+              activeTab?.kind === 'decisions' ? 'flex' : 'hidden'
             )}>
               <ScrollArea className="flex-1">
                 <div className="p-4">
@@ -63,6 +71,17 @@ export function SimulationShell({
                 </div>
               </ScrollArea>
             </div>
+            
+            {/* Panel tab content - for tabs opened from containers */}
+            {activeTab?.kind === 'panel' && activeTab.panelType && (
+              <ScrollArea className="h-full">
+                <div className="p-6">
+                  <div className="max-w-4xl mx-auto">
+                    {renderPanelContent(activeTab.panelType)}
+                  </div>
+                </div>
+              </ScrollArea>
+            )}
           </div>
           
           {/* ========== STATUS BAR ========== */}
