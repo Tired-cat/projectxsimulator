@@ -1,3 +1,4 @@
+import { ReactNode, useState } from 'react';
 import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
@@ -13,6 +14,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DraggableCard, DropTargets, WorkspaceViewArea } from '@/components/workspace';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import type { PanelId, DropTarget } from '@/types/workspaceTypes';
 
 const REVENUE_GOAL = 100000;
 
@@ -32,8 +36,8 @@ interface SimulationDecisionsProps {
 }
 
 /**
- * Renders the simulation decision panels.
- * Clean grid layout - no docking/tab system.
+ * Renders the simulation decision panels with drag-to-tab/split support.
+ * Original cards always remain in grid; dragging creates view clones.
  */
 export function SimulationDecisions({
   channelSpend,
@@ -42,18 +46,25 @@ export function SimulationDecisions({
   totals,
   remainingBudget,
   hasUserModified,
+  totalSpent,
+  onReset,
 }: SimulationDecisionsProps) {
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {/* Main chart panel */}
-      <Card className="lg:col-span-2">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BarChart3 className="h-4 w-4 text-primary" />
-            Channel Performance
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+  const workspace = useWorkspace();
+  const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
+
+  // Handle drop on targets
+  const handleDrop = (target: DropTarget) => {
+    if (workspace.draggingPanel) {
+      workspace.addViewTab(workspace.draggingPanel, target);
+    }
+    workspace.setDraggingPanel(null);
+  };
+
+  // Render panel content by ID (used for both grid cards and cloned views)
+  const renderPanelContent = (panelId: PanelId): ReactNode => {
+    switch (panelId) {
+      case 'channel-performance':
+        return (
           <SplitViewBarCharts
             channelSpend={channelSpend}
             onSpendChange={updateChannelSpend}
@@ -61,64 +72,112 @@ export function SimulationDecisions({
             totals={totals}
             remainingBudget={remainingBudget}
           />
-        </CardContent>
-      </Card>
-      
-      {/* Secondary panels */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <PieChart className="h-4 w-4 text-primary" />
-            Product Mix
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProductMixChart channelMetrics={channelMetrics} />
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <DollarSign className="h-4 w-4 text-primary" />
-            Goal Tracker
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GoalTrackerContent totals={totals} hasUserModified={hasUserModified} />
-        </CardContent>
-      </Card>
-      
-      {/* Full width panels */}
-      <Card className="lg:col-span-2">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <AlertCircle className="h-4 w-4 text-primary" />
-            Hints & Tips
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <HintsContent />
-        </CardContent>
-      </Card>
-      
-      <Card className="lg:col-span-2">
-        <CardHeader className="pb-0">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Settings className="h-4 w-4 text-primary" />
-            Assumptions
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <AssumptionsContent />
-        </CardContent>
-      </Card>
+        );
+      case 'product-mix':
+        return <ProductMixChart channelMetrics={channelMetrics} />;
+      case 'goal-tracker':
+        return <GoalTrackerContent totals={totals} hasUserModified={hasUserModified} />;
+      case 'hints':
+        return <HintsContent />;
+      case 'assumptions':
+        return <AssumptionsContent />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="relative">
+      {/* Drop targets overlay - only visible during drag */}
+      <DropTargets
+        visible={!!workspace.draggingPanel}
+        onDrop={handleDrop}
+        activeTarget={activeDropTarget}
+        setActiveTarget={setActiveDropTarget}
+      />
+
+      {/* Fixed header with budget bar */}
+      <BudgetHeader totalSpent={totalSpent} onReset={onReset} />
+
+      {/* Workspace view area - only visible when views exist */}
+      <div className="mt-4">
+        <WorkspaceViewArea
+          leftPane={workspace.state.leftPane}
+          rightPane={workspace.state.rightPane}
+          splitEnabled={workspace.state.splitEnabled}
+          onTabClick={workspace.setActiveTab}
+          onTabClose={workspace.closeTab}
+          renderPanel={renderPanelContent}
+          onResetWorkspace={workspace.resetWorkspace}
+        />
+      </div>
+
+      {/* Main grid - cards always remain here */}
+      <div className="grid gap-4 lg:grid-cols-2 mt-4">
+        {/* Channel Performance - full width */}
+        <DraggableCard
+          panelId="channel-performance"
+          title="Channel Performance"
+          icon={<BarChart3 className="h-4 w-4" />}
+          className="lg:col-span-2"
+          onDragStart={workspace.setDraggingPanel}
+          onDragEnd={() => workspace.setDraggingPanel(null)}
+        >
+          {renderPanelContent('channel-performance')}
+        </DraggableCard>
+
+        {/* Product Mix */}
+        <DraggableCard
+          panelId="product-mix"
+          title="Product Mix"
+          icon={<PieChart className="h-4 w-4" />}
+          onDragStart={workspace.setDraggingPanel}
+          onDragEnd={() => workspace.setDraggingPanel(null)}
+        >
+          {renderPanelContent('product-mix')}
+        </DraggableCard>
+
+        {/* Goal Tracker */}
+        <DraggableCard
+          panelId="goal-tracker"
+          title="Goal Tracker"
+          icon={<DollarSign className="h-4 w-4" />}
+          onDragStart={workspace.setDraggingPanel}
+          onDragEnd={() => workspace.setDraggingPanel(null)}
+        >
+          {renderPanelContent('goal-tracker')}
+        </DraggableCard>
+
+        {/* Hints - full width */}
+        <DraggableCard
+          panelId="hints"
+          title="Hints & Tips"
+          icon={<AlertCircle className="h-4 w-4" />}
+          className="lg:col-span-2"
+          onDragStart={workspace.setDraggingPanel}
+          onDragEnd={() => workspace.setDraggingPanel(null)}
+        >
+          {renderPanelContent('hints')}
+        </DraggableCard>
+
+        {/* Assumptions - full width */}
+        <DraggableCard
+          panelId="assumptions"
+          title="Assumptions"
+          icon={<Settings className="h-4 w-4" />}
+          className="lg:col-span-2"
+          contentClassName="pt-0"
+          onDragStart={workspace.setDraggingPanel}
+          onDragEnd={() => workspace.setDraggingPanel(null)}
+        >
+          {renderPanelContent('assumptions')}
+        </DraggableCard>
+      </div>
     </div>
   );
 }
 
-// Export these as separate components for the fixed header
-
+// Budget header component (kept for fixed header)
 interface BudgetHeaderProps {
   totalSpent: number;
   onReset: () => void;
@@ -145,32 +204,6 @@ export function BudgetHeader({ totalSpent, onReset }: BudgetHeaderProps) {
         <RotateCcw className="h-4 w-4 mr-1" />
         Reset
       </Button>
-    </div>
-  );
-}
-
-interface ScenarioContextProps {
-  channelSpend: ChannelSpend;
-}
-
-export function ScenarioContext({ channelSpend }: ScenarioContextProps) {
-  const tiktokPercent = Math.round((channelSpend.tiktok / GLOBAL_BUDGET) * 100);
-  const newspaperPercent = Math.round((channelSpend.newspaper / GLOBAL_BUDGET) * 100);
-
-  return (
-    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-      <p className="text-sm text-center text-amber-800 dark:text-amber-200">
-        <strong>Current allocation:</strong>{' '}
-        <span className="text-pink-600 font-semibold">
-          {tiktokPercent}% on TikTok (${channelSpend.tiktok.toLocaleString()})
-        </span>
-        ,{' '}
-        <span className="text-yellow-700 dark:text-yellow-500 font-semibold">
-          only {newspaperPercent}% on Newspaper (${channelSpend.newspaper.toLocaleString()})
-        </span>
-        . Can you reach{' '}
-        <span className="text-green-600 font-bold">${REVENUE_GOAL.toLocaleString()} in revenue</span>?
-      </p>
     </div>
   );
 }
