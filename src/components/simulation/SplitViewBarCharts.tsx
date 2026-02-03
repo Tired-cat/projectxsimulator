@@ -1,11 +1,12 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DraggableBarChart } from './DraggableBarChart';
 import { Button } from '@/components/ui/button';
 import { SplitSquareHorizontal, X, Camera, Lock } from 'lucide-react';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import { calculateMixedRevenue as calcRevenue, CHANNELS, CHANNEL_IDS } from '@/lib/marketingConstants';
+import { calculateMixedRevenue as calcRevenue, CHANNELS, CHANNEL_IDS, INITIAL_SPEND, GLOBAL_BUDGET } from '@/lib/marketingConstants';
+import type { ReasoningToken } from '@/types/reasoningToken';
 
 interface SplitViewBarChartsProps {
   channelSpend: ChannelSpend;
@@ -17,6 +18,7 @@ interface SplitViewBarChartsProps {
     profit: number;
   };
   remainingBudget: number;
+  onTokenDrag?: (token: ReasoningToken) => void;
 }
 
 export function SplitViewBarCharts({
@@ -25,9 +27,13 @@ export function SplitViewBarCharts({
   channelMetrics,
   totals,
   remainingBudget,
+  onTokenDrag,
 }: SplitViewBarChartsProps) {
   const [isSplitView, setIsSplitView] = useState(false);
   const [snapshotSpend, setSnapshotSpend] = useState<ChannelSpend | null>(null);
+  
+  // Always track baseline for ghost bars (starts with initial state)
+  const [baselineSpend, setBaselineSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND } as ChannelSpend);
 
   // Calculate metrics for the snapshot
   const snapshotMetrics = useMemo(() => {
@@ -48,9 +54,19 @@ export function SplitViewBarCharts({
     };
   }, [snapshotMetrics]);
 
+  // Calculate baseline metrics for ghost bars
+  const baselineMetrics = useMemo(() => {
+    return CHANNEL_IDS.reduce((acc, channelId) => {
+      acc[channelId] = calcRevenue(channelId, baselineSpend[channelId as keyof ChannelSpend]);
+      return acc;
+    }, {} as Record<string, ReturnType<typeof calcRevenue>>);
+  }, [baselineSpend]);
+
   const handleActivateSplitView = useCallback(() => {
     // Capture the current state as an immutable snapshot
     setSnapshotSpend({ ...channelSpend });
+    // Update baseline to current spend when entering split view
+    setBaselineSpend({ ...channelSpend });
     setIsSplitView(true);
   }, [channelSpend]);
 
@@ -63,7 +79,7 @@ export function SplitViewBarCharts({
   const snapshotRemainingBudget = useMemo(() => {
     if (!snapshotSpend) return 0;
     const total = Object.values(snapshotSpend).reduce((sum, val) => sum + val, 0);
-    return 20000 - total;
+    return GLOBAL_BUDGET - total;
   }, [snapshotSpend]);
 
   return (
@@ -128,6 +144,9 @@ export function SplitViewBarCharts({
               totals={totals}
               remainingBudget={remainingBudget}
               mode="live"
+              baselineSpend={baselineSpend}
+              baselineMetrics={baselineMetrics}
+              onTokenDrag={onTokenDrag}
             />
           </motion.div>
         ) : (
@@ -187,6 +206,9 @@ export function SplitViewBarCharts({
                   remainingBudget={remainingBudget}
                   mode="live"
                   fillContainer
+                  baselineSpend={snapshotSpend}
+                  baselineMetrics={snapshotMetrics}
+                  onTokenDrag={onTokenDrag}
                 />
               </div>
             </div>

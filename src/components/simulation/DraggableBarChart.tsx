@@ -5,6 +5,8 @@ import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { Eye, DollarSign, TrendingUp, LayoutGrid } from 'lucide-react';
+import { GhostDeltaBar } from './GhostDeltaBar';
+import type { ReasoningToken } from '@/types/reasoningToken';
 
 type ChartMode = 'live' | 'snapshot';
 
@@ -21,6 +23,12 @@ interface DraggableBarChartProps {
   mode?: ChartMode;
   /** When true, the chart fits within its parent container (no minHeight) */
   fillContainer?: boolean;
+  /** Baseline spend values for ghost bars (comparison mode) */
+  baselineSpend?: ChannelSpend | null;
+  /** Baseline metrics calculated from baseline spend */
+  baselineMetrics?: Record<string, ReturnType<typeof calculateMixedRevenue>> | null;
+  /** Callback when a reasoning token is dragged from ghost/delta */
+  onTokenDrag?: (token: ReasoningToken) => void;
 }
 
 type ViewMode = 'clicks' | 'revenue' | 'profit' | 'all';
@@ -43,6 +51,9 @@ export function DraggableBarChart({
   remainingBudget,
   mode = 'live',
   fillContainer = false,
+  baselineSpend = null,
+  baselineMetrics = null,
+  onTokenDrag,
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
   
@@ -108,6 +119,26 @@ export function DraggableBarChart({
         return { primary: 0, secondary: null };
     }
   }, [viewMode, channelMetrics]);
+
+  // Get baseline value based on view mode
+  const getBaselineValue = useCallback((channelId: string): number | null => {
+    if (!baselineMetrics) return null;
+    const metrics = baselineMetrics[channelId];
+    if (!metrics) return null;
+    
+    switch (viewMode) {
+      case 'clicks':
+        return metrics.clicks;
+      case 'revenue':
+        return metrics.totalRevenue;
+      case 'profit':
+        return metrics.profit;
+      case 'all':
+        return metrics.clicks;
+      default:
+        return null;
+    }
+  }, [viewMode, baselineMetrics]);
 
   // Get bar height for display (uses draft during drag)
   const getBarHeightPercent = useCallback((channelId: string) => {
@@ -374,17 +405,11 @@ export function DraggableBarChart({
             <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
               {Object.entries(CHANNELS).map(([channelId, channel]) => {
                 const barValues = getBarValue(channelId);
+                const baselineValue = getBaselineValue(channelId);
                 const spend = displaySpend[channelId as keyof ChannelSpend];
                 const isThisBarDragging = draggingChannel === channelId;
                 const metricValue = barValues.primary;
-
-                // During drag: use simple spend-based height for instant feedback
-                // After release: use metric-based height
-                const barHeightPercent = isDragging 
-                  ? getBarHeightPercent(channelId)
-                  : viewMode === 'profit' && metricValue < 0
-                    ? 0
-                    : Math.max(0, (Math.abs(metricValue) / maxScale) * 100);
+                const isNegative = viewMode === 'profit' && metricValue < 0;
 
                 return (
                   <div
@@ -394,8 +419,8 @@ export function DraggableBarChart({
                     {/* Metric values - no layout animation during drag */}
                     <div className="text-center mb-1">
                       <div 
-                        className={`text-sm font-bold ${viewMode === 'profit' && metricValue < 0 ? 'text-destructive' : ''}`}
-                        style={{ color: viewMode === 'profit' && metricValue < 0 ? undefined : channel.color }}
+                        className={`text-sm font-bold ${isNegative ? 'text-destructive' : ''}`}
+                        style={{ color: isNegative ? undefined : channel.color }}
                       >
                         {formatValue(metricValue)}
                       </div>
@@ -409,44 +434,21 @@ export function DraggableBarChart({
                       ${spend.toLocaleString()} spent
                     </div>
                     
-                    {/* Bar - uses transform for height during drag to avoid layout */}
-                    <motion.div
-                      className={`w-full max-w-[80px] rounded-t-lg ${
-                        isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
-                      } ${
-                        isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background' : ''
-                      }`}
-                      style={{
-                        backgroundColor: viewMode === 'profit' && metricValue < 0 
-                          ? 'hsl(var(--destructive))' 
-                          : channel.color,
-                        boxShadow: isThisBarDragging 
-                          ? `0 0 30px ${channel.color}` 
-                          : `0 4px 12px ${channel.color}40`,
-                        // Use will-change during drag for GPU acceleration
-                        willChange: isDragging ? 'height, transform' : 'auto',
-                        // Snapshot visual treatment
-                        opacity: isSnapshot ? 0.85 : 1,
-                        filter: isSnapshot ? 'saturate(0.8)' : 'none',
-                      }}
-                      initial={false}
-                      animate={{ 
-                        height: `${Math.max(barHeightPercent, 2)}%`,
-                        scale: isThisBarDragging ? 1.02 : 1,
-                      }}
-                      transition={{ 
-                        type: 'spring', 
-                        stiffness: isDragging ? 500 : 200, 
-                        damping: isDragging ? 35 : 25,
-                        // Faster transitions during drag
-                        duration: isDragging ? 0.1 : undefined,
-                      }}
+                    {/* GhostDeltaBar - handles ghost baseline and delta overlay */}
+                    <GhostDeltaBar
+                      channelId={channelId}
+                      channel={channel}
+                      currentValue={metricValue}
+                      baselineValue={baselineValue}
+                      maxScale={maxScale}
+                      viewMode={viewMode}
+                      isNegative={isNegative}
+                      isDraggingSpend={isDragging}
+                      isThisBarDragging={isThisBarDragging}
+                      isSnapshot={isSnapshot}
                       onMouseDown={(e) => handleMouseDown(channelId, e)}
-                    >
-                      <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
-                        <div className="w-10 h-1.5 bg-white/60 rounded-full" />
-                      </div>
-                    </motion.div>
+                      onTokenDrag={onTokenDrag}
+                    />
                   </div>
                 );
               })}
@@ -465,7 +467,9 @@ export function DraggableBarChart({
 
             {/* Drag instruction */}
             <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-              {isSnapshot ? '🔒 Snapshot (frozen)' : '↕ Drag bars to adjust spend'}
+              {isSnapshot ? '🔒 Snapshot (frozen)' : (
+                baselineSpend ? '↕ Adjust bars | 🎯 Drag ghost/delta for reasoning' : '↕ Drag bars to adjust spend'
+              )}
             </div>
           </div>
         </CardContent>
