@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
-import { SimulationShell, SimulationTab } from '@/components/simulation/SimulationShell';
+import { SimulationShell } from '@/components/simulation/SimulationShell';
 import { SimulationHome } from '@/components/simulation/SimulationHome';
 import { SimulationDecisions } from '@/components/simulation/SimulationDecisions';
+import { TabProvider, useTabs } from '@/contexts/TabContext';
 
-const Index = () => {
-  const [activeTab, setActiveTab] = useState<SimulationTab>('home');
+function SimulationContent() {
+  const { openTab } = useTabs();
   
   const {
     channelSpend,
@@ -19,13 +20,11 @@ const Index = () => {
   } = useMarketingSimulation();
 
   const handleStartDecisions = useCallback(() => {
-    setActiveTab('decisions');
-  }, []);
+    openTab('decisions');
+  }, [openTab]);
 
   return (
     <SimulationShell
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
       homeContent={
         <SimulationHome 
           onStartDecisions={handleStartDecisions}
@@ -45,6 +44,14 @@ const Index = () => {
         />
       }
     />
+  );
+}
+
+const Index = () => {
+  return (
+    <TabProvider>
+      <SimulationContent />
+    </TabProvider>
   );
 };
 

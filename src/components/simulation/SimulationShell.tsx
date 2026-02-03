@@ -1,38 +1,25 @@
 import { ReactNode } from 'react';
-import { Home, BarChart3 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-
-export type SimulationTab = 'home' | 'decisions';
-
-interface TabConfig {
-  id: SimulationTab;
-  label: string;
-  icon: typeof Home;
-}
-
-const tabs: TabConfig[] = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'decisions', label: 'My Decisions', icon: BarChart3 },
-];
+import { useTabs } from '@/contexts/TabContext';
+import { BrowserTabStrip } from './BrowserTabStrip';
 
 interface SimulationShellProps {
-  activeTab: SimulationTab;
-  onTabChange: (tab: SimulationTab) => void;
   homeContent: ReactNode;
   decisionsContent: ReactNode;
 }
 
 /**
- * Main shell with single top-level navigation.
- * Only Home and My Decisions tabs - no secondary tab systems.
+ * Main shell with browser-style tab navigation.
+ * Only ONE tab bar exists - the BrowserTabStrip.
+ * Content is rendered based on activeTabId from TabContext.
  */
 export function SimulationShell({
-  activeTab,
-  onTabChange,
   homeContent,
   decisionsContent,
 }: SimulationShellProps) {
+  const { activeTabId } = useTabs();
+
   return (
     <div className="min-h-screen bg-slate-200 dark:bg-slate-950 p-4 md:p-6 lg:p-8">
       {/* Workspace container */}
@@ -46,47 +33,9 @@ export function SimulationShell({
             maxHeight: '1200px',
           }}
         >
-          {/* ========== SINGLE TOP TAB BAR (Real Navigation) ========== */}
-          <div className="flex-shrink-0 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-            {/* Tabs row */}
-            <div className="flex items-end px-2 pt-2 gap-0.5">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => onTabChange(tab.id)}
-                    className={cn(
-                      'group relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors',
-                      'rounded-t-lg min-w-[140px] max-w-[220px]',
-                      isActive
-                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-t border-l border-r border-slate-200 dark:border-slate-700 -mb-px z-10'
-                        : 'bg-slate-200/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white',
-                      'cursor-pointer select-none'
-                    )}
-                    style={{
-                      boxShadow: isActive ? '0 -1px 3px rgba(0,0,0,0.05)' : undefined,
-                    }}
-                  >
-                    <Icon className={cn(
-                      'w-4 h-4 flex-shrink-0',
-                      isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500'
-                    )} />
-                    <span className="truncate">{tab.label}</span>
-                    
-                    {/* Active indicator line */}
-                    {isActive && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
-                    )}
-                  </button>
-                );
-              })}
-              
-              {/* Spacer - fills remaining tab bar */}
-              <div className="flex-1 border-b border-slate-200 dark:border-slate-700" />
-            </div>
+          {/* ========== SINGLE BROWSER TAB STRIP (Real Navigation) ========== */}
+          <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700">
+            <BrowserTabStrip />
           </div>
           
           {/* ========== CONTENT AREA ========== */}
@@ -94,7 +43,7 @@ export function SimulationShell({
             {/* Home tab content */}
             <div className={cn(
               'h-full',
-              activeTab === 'home' ? 'block' : 'hidden'
+              activeTabId === 'home' ? 'block' : 'hidden'
             )}>
               <ScrollArea className="h-full">
                 <div className="p-6 md:p-8">
@@ -103,12 +52,11 @@ export function SimulationShell({
               </ScrollArea>
             </div>
             
-            {/* Decisions tab content - simple scrollable layout */}
+            {/* Decisions tab content */}
             <div className={cn(
               'h-full flex flex-col',
-              activeTab === 'decisions' ? 'flex' : 'hidden'
+              activeTabId === 'decisions' ? 'flex' : 'hidden'
             )}>
-              {/* Scrollable content area */}
               <ScrollArea className="flex-1">
                 <div className="p-4">
                   {decisionsContent}
@@ -119,7 +67,7 @@ export function SimulationShell({
           
           {/* ========== STATUS BAR ========== */}
           <div className="flex-shrink-0 bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-1.5">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>LumbarPro Marketing Simulator</span>
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full" />
