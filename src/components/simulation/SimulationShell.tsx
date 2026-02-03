@@ -52,7 +52,7 @@ export function SimulationShell({
             maxHeight: '1200px',
           }}
         >
-          {/* ========== TAB STRIP ========== */}
+          {/* ========== TAB STRIP (Real Navigation) ========== */}
           <div className="flex-shrink-0 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             {/* Tabs row */}
             <div className="flex items-end px-2 pt-2 gap-0.5">
@@ -120,10 +120,9 @@ export function SimulationShell({
                 {channelSpend && <ScenarioContext channelSpend={channelSpend} />}
               </div>
               
-              {/* Dockable workspace */}
+              {/* Dockable workspace - panels render in grid by default */}
               <div className="flex-1 overflow-hidden">
                 <DockableWorkspace className="h-full">
-                  {/* decisionsContent registers panels via useDockablePanel hooks */}
                   {decisionsContent}
                 </DockableWorkspace>
               </div>
@@ -135,8 +134,8 @@ export function SimulationShell({
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>LumbarPro Marketing Simulator</span>
               <span className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                Dockable Panels Active
+                <span className="w-2 h-2 bg-green-500 rounded-full" />
+                Drag panels to dock
               </span>
             </div>
           </div>

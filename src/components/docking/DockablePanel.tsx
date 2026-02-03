@@ -1,7 +1,7 @@
-import { useEffect, ReactNode } from 'react';
+import { useEffect, ReactNode, useRef, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, X } from 'lucide-react';
+import { GripVertical, Undo2 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,8 @@ interface DockablePanelProps {
 
 /**
  * Universal wrapper that makes any container draggable and dockable.
- * Wrap ANY component with this to make it part of the docking system.
+ * By default, the panel renders in place. When docked (dragged to dock area),
+ * it hides from the grid and appears in the dock.
  */
 export function DockablePanel({
   id,
@@ -28,24 +29,33 @@ export function DockablePanel({
   className,
   permanent = false,
 }: DockablePanelProps) {
-  const { registerPanel, unregisterPanel, draggingPanel } = useWorkspace();
+  const { registerPanel, unregisterPanel, isPanelDocked, draggingPanel } = useWorkspace();
+  
+  // Memoize the panel definition to prevent re-registration loops
+  const panelDef = useMemo(() => ({
+    id,
+    title,
+    icon: Icon,
+    content: children,
+    permanent,
+  }), [id, title, Icon, permanent]); // Note: children intentionally excluded
   
   // Register this panel on mount
   useEffect(() => {
-    registerPanel({
-      id,
-      title,
-      icon: Icon,
-      content: children,
-      permanent,
-    });
-    
-    return () => {
-      unregisterPanel(id);
-    };
-  }, [id, title, Icon, children, permanent, registerPanel, unregisterPanel]);
+    registerPanel({ ...panelDef, content: children });
+  }, [panelDef, registerPanel, children]);
+  
+  useEffect(() => {
+    return () => unregisterPanel(id);
+  }, [id, unregisterPanel]);
 
+  const isDocked = isPanelDocked(id);
   const isDragging = draggingPanel === id;
+
+  // If panel is docked, don't render in grid (it's shown in the dock area)
+  if (isDocked) {
+    return null;
+  }
 
   return (
     <div
@@ -55,7 +65,7 @@ export function DockablePanel({
         className
       )}
     >
-      <DockablePanelHeader id={id} title={title} icon={Icon} permanent={permanent} />
+      <DockablePanelHeader id={id} title={title} icon={Icon} showUndock={false} />
       <div className="flex-1 overflow-auto">
         {children}
       </div>
@@ -67,11 +77,11 @@ interface DockablePanelHeaderProps {
   id: string;
   title: string;
   icon?: LucideIcon;
-  permanent?: boolean;
+  showUndock?: boolean;
 }
 
-export function DockablePanelHeader({ id, title, icon: Icon, permanent }: DockablePanelHeaderProps) {
-  const { setDraggingPanel } = useWorkspace();
+export function DockablePanelHeader({ id, title, icon: Icon, showUndock = false }: DockablePanelHeaderProps) {
+  const { setDraggingPanel, undockPanel } = useWorkspace();
   
   const {
     attributes,
@@ -125,16 +135,19 @@ export function DockablePanelHeader({ id, title, icon: Icon, permanent }: Dockab
       {/* Title */}
       <span className="flex-1 text-sm font-medium truncate">{title}</span>
       
-      {/* Close button (only for non-permanent panels) */}
-      {!permanent && (
+      {/* Undock button (return to grid) - only shown when docked */}
+      {showUndock && (
         <button
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           onClick={(e) => {
             e.stopPropagation();
-            // Close logic would go here
+            e.preventDefault();
+            undockPanel(id);
           }}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Return to page"
         >
-          <X className="w-3 h-3" />
+          <Undo2 className="w-3.5 h-3.5" />
         </button>
       )}
     </div>
@@ -142,8 +155,8 @@ export function DockablePanelHeader({ id, title, icon: Icon, permanent }: Dockab
 }
 
 /**
- * Lightweight panel registration for cases where you don't want the default wrapper UI.
- * Use this when you want full control over the panel appearance but still want it in the docking system.
+ * Hook to register a panel without rendering wrapper UI.
+ * Use this when you want panels to be dockable but manage their own rendering.
  */
 export function useDockablePanel(
   id: string,
@@ -151,14 +164,18 @@ export function useDockablePanel(
   content: ReactNode,
   icon?: LucideIcon
 ) {
-  const { registerPanel, unregisterPanel, draggingPanel } = useWorkspace();
+  const { registerPanel, unregisterPanel, isPanelDocked, draggingPanel } = useWorkspace();
   
   useEffect(() => {
     registerPanel({ id, title, icon, content });
-    return () => unregisterPanel(id);
-  }, [id, title, icon, content, registerPanel, unregisterPanel]);
+  }, [id, title, icon, content, registerPanel]);
   
+  useEffect(() => {
+    return () => unregisterPanel(id);
+  }, [id, unregisterPanel]);
+  
+  const isDocked = isPanelDocked(id);
   const isDragging = draggingPanel === id;
   
-  return { isDragging };
+  return { isDocked, isDragging };
 }

@@ -13,7 +13,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { useDockablePanel } from '@/components/docking/DockablePanel';
+import { DockablePanel } from '@/components/docking/DockablePanel';
 
 const REVENUE_GOAL = 100000;
 
@@ -32,6 +32,10 @@ interface SimulationDecisionsProps {
   onReset: () => void;
 }
 
+/**
+ * Renders the simulation decision panels.
+ * Panels live in the normal grid by default. Users can drag them to dock areas.
+ */
 export function SimulationDecisions({
   channelSpend,
   updateChannelSpend,
@@ -39,59 +43,45 @@ export function SimulationDecisions({
   totals,
   remainingBudget,
   hasUserModified,
-  totalSpent,
-  onReset,
 }: SimulationDecisionsProps) {
-  const tiktokPercent = Math.round((channelSpend.tiktok / GLOBAL_BUDGET) * 100);
-  const newspaperPercent = Math.round((channelSpend.newspaper / GLOBAL_BUDGET) * 100);
-
-  // Register panels for the docking system
-  useDockablePanel(
-    'channel-performance',
-    'Channel Performance',
-    <SplitViewBarCharts
-      channelSpend={channelSpend}
-      onSpendChange={updateChannelSpend}
-      channelMetrics={channelMetrics}
-      totals={totals}
-      remainingBudget={remainingBudget}
-    />,
-    BarChart3
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {/* Main chart panel */}
+      <div className="lg:col-span-2">
+        <DockablePanel id="channel-performance" title="Channel Performance" icon={BarChart3}>
+          <SplitViewBarCharts
+            channelSpend={channelSpend}
+            onSpendChange={updateChannelSpend}
+            channelMetrics={channelMetrics}
+            totals={totals}
+            remainingBudget={remainingBudget}
+          />
+        </DockablePanel>
+      </div>
+      
+      {/* Secondary panels */}
+      <DockablePanel id="product-mix" title="Product Mix" icon={PieChart}>
+        <ProductMixChart channelMetrics={channelMetrics} />
+      </DockablePanel>
+      
+      <DockablePanel id="goal-tracker" title="Goal Tracker" icon={DollarSign}>
+        <GoalTrackerPanel totals={totals} hasUserModified={hasUserModified} />
+      </DockablePanel>
+      
+      {/* Full width panels */}
+      <div className="lg:col-span-2">
+        <DockablePanel id="hints" title="Hints & Tips" icon={AlertCircle}>
+          <HintsPanel />
+        </DockablePanel>
+      </div>
+      
+      <div className="lg:col-span-2">
+        <DockablePanel id="assumptions" title="Assumptions" icon={Settings}>
+          <AssumptionsPanel />
+        </DockablePanel>
+      </div>
+    </div>
   );
-
-  useDockablePanel(
-    'product-mix',
-    'Product Mix',
-    <ProductMixChart channelMetrics={channelMetrics} />,
-    PieChart
-  );
-
-  useDockablePanel(
-    'goal-tracker',
-    'Goal Tracker',
-    <GoalTrackerPanel 
-      totals={totals} 
-      hasUserModified={hasUserModified} 
-    />,
-    DollarSign
-  );
-
-  useDockablePanel(
-    'hints',
-    'Hints & Tips',
-    <HintsPanel />,
-    AlertCircle
-  );
-
-  useDockablePanel(
-    'assumptions',
-    'Assumptions',
-    <AssumptionsPanel />,
-    Settings
-  );
-
-  // This component only registers panels - the actual rendering is handled by DockableWorkspace
-  return null;
 }
 
 // Export these as separate components so they can be rendered outside the docking system

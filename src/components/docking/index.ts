@@ -1,4 +1,4 @@
 export { DockablePanel, DockablePanelHeader, useDockablePanel } from './DockablePanel';
-export { DockablePane, SplitDropZones } from './DockablePane';
+export { DockablePane, SplitDropZones, TopDockZone } from './DockablePane';
 export { DockableWorkspace } from './DockableWorkspace';
-export { TabBar, WorkspaceTabBar } from './TabBar';
+export { TabBar } from './TabBar';

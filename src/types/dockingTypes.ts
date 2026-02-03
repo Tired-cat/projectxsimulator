@@ -37,6 +37,8 @@ export interface WorkspaceLayout {
   workspaceTabs: TabItem[];
   /** Active workspace tab (if any) */
   activeWorkspaceTab: string | null;
+  /** IDs of panels that are currently docked (removed from grid) */
+  dockedPanelIds: string[];
 }
 
 // ======== DRAG TYPES ========
@@ -52,7 +54,7 @@ export type DropZoneType =
 
 export interface DragItem {
   panelId: string;
-  sourceLocation: 'pane-a' | 'pane-b' | 'workspace-tabs';
+  sourceLocation: 'pane-a' | 'pane-b' | 'workspace-tabs' | 'grid';
 }
 
 // ======== CONTEXT TYPES ========
@@ -64,14 +66,26 @@ export interface WorkspaceContextValue {
   /** All registered panel definitions */
   panels: Map<string, PanelDefinition>;
   
-  /** Register a panel definition */
+  /** Register a panel definition (does NOT auto-dock) */
   registerPanel: (panel: PanelDefinition) => void;
   
   /** Unregister a panel */
   unregisterPanel: (panelId: string) => void;
   
-  /** Move a panel to a specific location */
+  /** Dock a panel to a specific location (moves from grid to dock) */
+  dockPanel: (panelId: string, target: DropZoneType, insertIndex?: number) => void;
+  
+  /** Undock a panel (return to grid) */
+  undockPanel: (panelId: string) => void;
+  
+  /** Move a panel between dock locations */
   movePanel: (panelId: string, target: DropZoneType, insertIndex?: number) => void;
+  
+  /** Check if a panel is currently docked */
+  isPanelDocked: (panelId: string) => boolean;
+  
+  /** Whether any panels are docked */
+  hasDockedPanels: boolean;
   
   /** Set active tab in a pane */
   setActiveTab: (paneId: 'pane-a' | 'pane-b' | 'workspace', tabId: string) => void;
@@ -82,7 +96,7 @@ export interface WorkspaceContextValue {
   /** Close split mode and merge panels */
   closeSplitMode: () => void;
   
-  /** Reset to default layout */
+  /** Reset to default layout (undock all) */
   resetLayout: () => void;
   
   /** Get panel by ID */
@@ -103,4 +117,5 @@ export interface PersistedLayout {
   paneB: { tabs: string[]; activeTabId: string };
   workspaceTabs: string[];
   activeWorkspaceTab: string | null;
+  dockedPanelIds: string[];
 }
