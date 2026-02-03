@@ -14,7 +14,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DraggableCard, DropTargets, WorkspaceViewArea } from '@/components/workspace';
+import { DraggableCard, InlineDropZones, WorkspaceViewArea } from '@/components/workspace';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import type { PanelId, DropTarget } from '@/types/workspaceTypes';
 
@@ -36,7 +36,7 @@ interface SimulationDecisionsProps {
 }
 
 /**
- * Renders the simulation decision panels with drag-to-tab/split support.
+ * Renders the simulation decision panels with drag-to-view support.
  * Original cards always remain in grid; dragging creates view clones.
  */
 export function SimulationDecisions({
@@ -52,7 +52,7 @@ export function SimulationDecisions({
   const workspace = useWorkspace();
   const [activeDropTarget, setActiveDropTarget] = useState<DropTarget | null>(null);
 
-  // Handle drop on targets
+  // Handle drop on inline zones
   const handleDrop = (target: DropTarget) => {
     if (workspace.draggingPanel) {
       workspace.addViewTab(workspace.draggingPanel, target);
@@ -87,9 +87,9 @@ export function SimulationDecisions({
   };
 
   return (
-    <div className="relative">
-      {/* Drop targets overlay - only visible during drag */}
-      <DropTargets
+    <div className="relative min-h-[400px]">
+      {/* Inline drop zones - subtle edge highlights during drag */}
+      <InlineDropZones
         visible={!!workspace.draggingPanel}
         onDrop={handleDrop}
         activeTarget={activeDropTarget}
