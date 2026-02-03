@@ -1,5 +1,5 @@
 import { ReactNode, DragEvent, useState } from 'react';
-import { ExternalLink, PanelRight } from 'lucide-react';
+import { Plus, PanelRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -15,7 +15,7 @@ interface DraggableCardProps {
   className?: string;
   onDragStart: (panelId: PanelId) => void;
   onDragEnd: () => void;
-  onOpenAsTab: (panelId: PanelId, title: string) => void;
+  onAddAsTab: (panelId: PanelId, title: string) => void;
   onOpenInSplit: (panelId: PanelId, title: string) => void;
   headerClassName?: string;
   contentClassName?: string;
@@ -29,7 +29,7 @@ export function DraggableCard({
   className,
   onDragStart,
   onDragEnd,
-  onOpenAsTab,
+  onAddAsTab,
   onOpenInSplit,
   headerClassName,
   contentClassName,
@@ -75,12 +75,12 @@ export function DraggableCard({
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => onOpenAsTab(panelId, title)}
+                  onClick={() => onAddAsTab(panelId, title)}
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  <Plus className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Open as Tab</TooltipContent>
+              <TooltipContent>Add as tab (does not switch view)</TooltipContent>
             </Tooltip>
             
             <Tooltip>
