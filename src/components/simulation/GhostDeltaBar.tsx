@@ -187,24 +187,24 @@ export function GhostDeltaBar({
             }}
           />
 
-          {/* Delta Increase Segment - top of stack, SOLID color with hard edge */}
+          {/* Delta Increase Segment - top of stack, GREEN for increase */}
           <motion.div
             className={`w-full shrink-0 pointer-events-auto rounded-t-lg ${
               isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
             }`}
             style={{
-              // Solid distinct color - lighter/brighter variant
-              backgroundColor: `color-mix(in srgb, ${channel.color} 85%, white 15%)`,
+              // Green for increase - using semantic success color
+              backgroundColor: 'hsl(142, 71%, 45%)', // Vibrant green
               // Explicit height based on proportion of delta within total current
               height: deltaHeight > 0 
                 ? `${(deltaHeight / currentHeightPercent) * 100}%` 
                 : '0%',
               minHeight: deltaHeight > 0 ? '16px' : '0px', // Minimum height for visibility
-              // Hard edge separator - no glow, just a clean border
-              borderBottom: `2px solid ${channel.color}`,
+              // Hard edge separator - clean border between baseline and delta
+              borderBottom: '2px solid hsl(142, 71%, 35%)', // Darker green border
               borderTop: isDraggingDelta ? '2px solid white' : 'none',
               boxShadow: isDraggingDelta 
-                ? `0 0 12px ${channel.color}` 
+                ? '0 0 12px hsl(142, 71%, 45%)' 
                 : 'none',
             }}
             initial={false}
