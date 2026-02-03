@@ -17,8 +17,8 @@ export type SplitPane = 'left' | 'right';
 
 interface SplitState {
   enabled: boolean;
-  leftTabId: string | null;
-  rightTabId: string | null;
+  leftPanelId: PanelId | null;  // Panel shown in left pane
+  rightPanelId: PanelId | null; // Panel shown in right pane (comparison)
 }
 
 interface TabContextValue {
@@ -41,11 +41,12 @@ interface TabContextValue {
   // Split actions
   enableSplit: () => void;
   disableSplit: () => void;
-  setPaneTab: (pane: SplitPane, tabId: string) => void;
   
   // Add panel as tab (does NOT switch view)
   addPanelAsTab: (panelType: PanelId, title: string) => string;
-  // Open panel in split pane
+  // Open panel in split - enables split mode with left=current, right=dragged
+  activateSplitWithPanel: (panelId: PanelId, title: string, defaultLeftPanel?: PanelId) => void;
+  // Open panel in split pane (when already in split mode)
   openPanelInSplit: (panelType: PanelId, title: string, pane: SplitPane) => void;
 }
 
@@ -67,8 +68,8 @@ export function TabProvider({ children }: { children: ReactNode }) {
   const [activeTabId, setActiveTabIdState] = useState<string>('home');
   const [split, setSplit] = useState<SplitState>({
     enabled: false,
-    leftTabId: null,
-    rightTabId: null,
+    leftPanelId: null,
+    rightPanelId: null,
   });
   const [draggingPanelId, setDraggingPanelId] = useState<PanelId | null>(null);
 
@@ -106,18 +107,6 @@ export function TabProvider({ children }: { children: ReactNode }) {
     
     setTabs(prev => prev.filter(t => t.id !== id));
     
-    // If closing a tab in split, update split state
-    setSplit(prev => {
-      const newSplit = { ...prev };
-      if (prev.leftTabId === id) newSplit.leftTabId = null;
-      if (prev.rightTabId === id) newSplit.rightTabId = null;
-      // If both panes empty, disable split
-      if (!newSplit.leftTabId && !newSplit.rightTabId) {
-        newSplit.enabled = false;
-      }
-      return newSplit;
-    });
-    
     // If closing active tab, switch to decisions or first available
     if (activeTabId === id) {
       const remaining = tabs.filter(t => t.id !== id);
@@ -142,17 +131,35 @@ export function TabProvider({ children }: { children: ReactNode }) {
   const disableSplit = useCallback(() => {
     setSplit({
       enabled: false,
-      leftTabId: null,
-      rightTabId: null,
+      leftPanelId: null,
+      rightPanelId: null,
     });
   }, []);
 
-  const setPaneTab = useCallback((pane: SplitPane, tabId: string) => {
-    setSplit(prev => ({
-      ...prev,
-      [pane === 'left' ? 'leftTabId' : 'rightTabId']: tabId,
-    }));
-  }, []);
+  // Activate split with a panel - used when dragging from normal mode
+  const activateSplitWithPanel = useCallback((panelId: PanelId, title: string, defaultLeftPanel: PanelId = 'channel-performance') => {
+    setSplit(prev => {
+      if (prev.enabled) {
+        // Already in split mode - just replace right pane
+        return {
+          ...prev,
+          rightPanelId: panelId,
+        };
+      }
+      // Enable split: left = default active panel, right = dragged panel
+      return {
+        enabled: true,
+        leftPanelId: defaultLeftPanel,
+        rightPanelId: panelId,
+      };
+    });
+    
+    // Switch to Decisions tab to see the split
+    const decisionsTab = tabs.find(t => t.kind === 'decisions');
+    if (decisionsTab) {
+      setActiveTabIdState(decisionsTab.id);
+    }
+  }, [tabs]);
 
   // Add panel as tab WITHOUT activating it (silent creation)
   const addPanelAsTab = useCallback((panelType: PanelId, title: string): string => {
@@ -177,31 +184,11 @@ export function TabProvider({ children }: { children: ReactNode }) {
   }, [tabs]);
 
   const openPanelInSplit = useCallback((panelType: PanelId, title: string, pane: SplitPane) => {
-    // Check if a tab for this panel already exists
-    const existingTab = tabs.find(t => t.kind === 'panel' && t.panelType === panelType);
-    let tabId: string;
-    
-    if (existingTab) {
-      tabId = existingTab.id;
-    } else {
-      // Create new tab without activating it
-      tabId = generateTabId();
-      const newTab: Tab = {
-        id: tabId,
-        title,
-        kind: 'panel',
-        pinned: false,
-        closable: true,
-        panelType,
-      };
-      setTabs(prev => [...prev, newTab]);
-    }
-    
-    // Enable split and assign to the correct pane
+    // Set the panel directly in the specified pane
     setSplit(prev => ({
       enabled: true,
-      leftTabId: pane === 'left' ? tabId : prev.leftTabId,
-      rightTabId: pane === 'right' ? tabId : prev.rightTabId,
+      leftPanelId: pane === 'left' ? panelType : prev.leftPanelId,
+      rightPanelId: pane === 'right' ? panelType : prev.rightPanelId,
     }));
     
     // Switch to Decisions tab to see the split
@@ -223,8 +210,8 @@ export function TabProvider({ children }: { children: ReactNode }) {
       setActiveTab: handleSetActiveTab,
       enableSplit,
       disableSplit,
-      setPaneTab,
       addPanelAsTab,
+      activateSplitWithPanel,
       openPanelInSplit,
     }}>
       {children}
