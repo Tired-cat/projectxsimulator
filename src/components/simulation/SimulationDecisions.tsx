@@ -3,6 +3,8 @@ import { ProductMixChart } from './ProductMixChart';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
+import { Button } from '@/components/ui/button';
+import { RotateCcw } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -23,6 +25,8 @@ interface SimulationDecisionsProps {
   };
   remainingBudget: number;
   hasUserModified: boolean;
+  totalSpent: number;
+  onReset: () => void;
 }
 
 export function SimulationDecisions({
@@ -32,21 +36,45 @@ export function SimulationDecisions({
   totals,
   remainingBudget,
   hasUserModified,
+  totalSpent,
+  onReset,
 }: SimulationDecisionsProps) {
   const tiktokPercent = Math.round((channelSpend.tiktok / GLOBAL_BUDGET) * 100);
   const newspaperPercent = Math.round((channelSpend.newspaper / GLOBAL_BUDGET) * 100);
 
   return (
     <div className="space-y-6">
+      {/* Budget bar and reset */}
+      <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div>
+            <div className="text-xs text-slate-500 uppercase tracking-wide">Budget Used</div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white">
+              ${totalSpent.toLocaleString()} <span className="text-slate-400 font-normal">/ ${GLOBAL_BUDGET.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="w-32 h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+              style={{ width: `${(totalSpent / GLOBAL_BUDGET) * 100}%` }}
+            />
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={onReset}>
+          <RotateCcw className="h-4 w-4 mr-1" />
+          Reset
+        </Button>
+      </div>
+
       {/* Scenario Context - Dynamic percentages */}
-      <div className="bg-secondary/30 border border-border rounded-lg p-4">
-        <p className="text-sm text-center">
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <p className="text-sm text-center text-amber-800 dark:text-amber-200">
           <strong>Current allocation:</strong>{' '}
-          <span className="text-pink-500 font-semibold">
+          <span className="text-pink-600 font-semibold">
             {tiktokPercent}% on TikTok (${channelSpend.tiktok.toLocaleString()})
           </span>
           ,{' '}
-          <span className="text-yellow-600 font-semibold">
+          <span className="text-yellow-700 dark:text-yellow-500 font-semibold">
             only {newspaperPercent}% on Newspaper (${channelSpend.newspaper.toLocaleString()})
           </span>
           . Can you reach{' '}

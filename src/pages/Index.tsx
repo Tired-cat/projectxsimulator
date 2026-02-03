@@ -24,8 +24,6 @@ const Index = () => {
 
   return (
     <SimulationShell
-      totalSpent={totalSpent}
-      onReset={resetSimulation}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       homeContent={
@@ -42,6 +40,8 @@ const Index = () => {
           totals={totals}
           remainingBudget={remainingBudget}
           hasUserModified={hasUserModified}
+          totalSpent={totalSpent}
+          onReset={resetSimulation}
         />
       }
     />
