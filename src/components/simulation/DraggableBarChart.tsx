@@ -63,6 +63,10 @@ export function DraggableBarChart({
   const [draggingChannel, setDraggingChannel] = useState<string | null>(null);
   // COMMIT-ON-RELEASE: Track draft spend locally during drag
   const [draftSpend, setDraftSpend] = useState<ChannelSpend | null>(null);
+  // Cursor position for tooltip (relative to chart container)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  // Stable Y-axis scale that only updates on drag end (prevents jitter)
+  const [stableMaxScale, setStableMaxScale] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -70,36 +74,109 @@ export function DraggableBarChart({
   // Use draft spend during drag, otherwise use real spend
   const displaySpend = draftSpend ?? channelSpend;
 
-  // Dynamic scale based on view mode
-  const getMaxScale = () => {
-    switch (viewMode) {
-      case 'clicks':
-        return 50000;
-      case 'revenue':
-        return 80000;
-      case 'profit':
-        return 60000;
-      case 'all':
-        return 50000;
-      default:
-        return 50000;
+  // Calculate dynamic max scale based on actual data values
+  const calculateDynamicMaxScale = useCallback(() => {
+    // Get all current values based on view mode
+    const allValues: number[] = [];
+    
+    Object.keys(CHANNELS).forEach((channelId) => {
+      const metrics = channelMetrics[channelId];
+      if (metrics) {
+        switch (viewMode) {
+          case 'clicks':
+            allValues.push(Math.abs(metrics.clicks));
+            break;
+          case 'revenue':
+            allValues.push(Math.abs(metrics.totalRevenue));
+            break;
+          case 'profit':
+            allValues.push(Math.abs(metrics.profit));
+            break;
+          case 'all':
+            allValues.push(Math.abs(metrics.clicks));
+            break;
+        }
+      }
+      // Also consider baseline values for comparison mode
+      if (baselineMetrics?.[channelId]) {
+        const baseline = baselineMetrics[channelId];
+        switch (viewMode) {
+          case 'clicks':
+            allValues.push(Math.abs(baseline.clicks));
+            break;
+          case 'revenue':
+            allValues.push(Math.abs(baseline.totalRevenue));
+            break;
+          case 'profit':
+            allValues.push(Math.abs(baseline.profit));
+            break;
+          case 'all':
+            allValues.push(Math.abs(baseline.clicks));
+            break;
+        }
+      }
+    });
+    
+    const maxValue = Math.max(...allValues, 1000); // Minimum floor
+    // Add 15% headroom and round to clean number
+    const withHeadroom = maxValue * 1.15;
+    
+    // Round to clean tick values (nearest 5k, 10k, etc.)
+    const magnitude = Math.pow(10, Math.floor(Math.log10(withHeadroom)));
+    const normalized = withHeadroom / magnitude;
+    let cleanMultiplier: number;
+    if (normalized <= 1.5) cleanMultiplier = 1.5;
+    else if (normalized <= 2) cleanMultiplier = 2;
+    else if (normalized <= 2.5) cleanMultiplier = 2.5;
+    else if (normalized <= 3) cleanMultiplier = 3;
+    else if (normalized <= 4) cleanMultiplier = 4;
+    else if (normalized <= 5) cleanMultiplier = 5;
+    else if (normalized <= 7.5) cleanMultiplier = 7.5;
+    else cleanMultiplier = 10;
+    
+    return Math.ceil(cleanMultiplier * magnitude);
+  }, [viewMode, channelMetrics, baselineMetrics]);
+
+  // Use stable scale during drag, recalculate on drag end or view mode change
+  const maxScale = stableMaxScale ?? calculateDynamicMaxScale();
+
+  // Update stable scale when not dragging
+  useEffect(() => {
+    if (!draggingChannel) {
+      const newScale = calculateDynamicMaxScale();
+      // Only update if significantly different (>10% change) to reduce updates
+      if (!stableMaxScale || Math.abs(newScale - stableMaxScale) / stableMaxScale > 0.1) {
+        setStableMaxScale(newScale);
+      }
     }
-  };
+  }, [draggingChannel, calculateDynamicMaxScale, stableMaxScale]);
 
-  const maxScale = getMaxScale();
+  // Reset stable scale when view mode changes
+  useEffect(() => {
+    setStableMaxScale(null);
+  }, [viewMode]);
 
-  // Y-axis labels based on view mode
-  const getYAxisLabels = () => {
+  // Y-axis labels based on view mode - generate 5 clean ticks
+  const getYAxisLabels = useCallback(() => {
     const isDollar = viewMode === 'revenue' || viewMode === 'profit';
     const prefix = isDollar ? '$' : '';
+    
+    // Format large numbers compactly
+    const formatTick = (val: number) => {
+      if (val >= 1000) {
+        return `${prefix}${(val / 1000).toLocaleString()}k`;
+      }
+      return `${prefix}${val.toLocaleString()}`;
+    };
+    
     return [
-      `${prefix}${maxScale.toLocaleString()}`,
-      `${prefix}${(maxScale * 0.75).toLocaleString()}`,
-      `${prefix}${(maxScale * 0.5).toLocaleString()}`,
-      `${prefix}${(maxScale * 0.25).toLocaleString()}`,
+      formatTick(maxScale),
+      formatTick(maxScale * 0.75),
+      formatTick(maxScale * 0.5),
+      formatTick(maxScale * 0.25),
       isDollar ? '$0' : '0',
     ];
-  };
+  }, [viewMode, maxScale]);
 
   // Get bar value based on view mode
   const getBarValue = useCallback((channelId: string) => {
@@ -219,9 +296,19 @@ export function DraggableBarChart({
     e.stopPropagation();
 
     // Capture values we need before RAF (event properties may be nullified)
+    const clientX = e.clientX;
     const clientY = e.clientY;
     const shiftKey = e.shiftKey;
     const altKey = e.altKey;
+
+    // Update cursor position for tooltip (synchronous for responsiveness)
+    if (chartRef.current) {
+      const rect = chartRef.current.getBoundingClientRect();
+      setCursorPos({
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      });
+    }
 
     // Use RAF for smooth visual updates
     if (rafRef.current) {
@@ -272,9 +359,13 @@ export function DraggableBarChart({
       onSpendChange(draggingChannel as keyof ChannelSpend, finalValue);
     }
     
-    // Clear draft and dragging state
+    // Clear draft, cursor, and dragging state
     setDraftSpend(null);
     setDraggingChannel(null);
+    setCursorPos(null);
+    
+    // Update Y-axis scale after drag ends
+    setStableMaxScale(null);
     
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
@@ -290,6 +381,23 @@ export function DraggableBarChart({
   };
 
   const isDragging = draggingChannel !== null;
+
+  // Get tooltip data for current drag
+  const getTooltipData = useCallback(() => {
+    if (!draggingChannel || !draftSpend) return null;
+    
+    const channel = CHANNELS[draggingChannel as keyof typeof CHANNELS];
+    const currentSpend = draftSpend[draggingChannel as keyof ChannelSpend];
+    const baselineSpendValue = baselineSpend?.[draggingChannel as keyof ChannelSpend] ?? channelSpend[draggingChannel as keyof ChannelSpend];
+    const delta = currentSpend - baselineSpendValue;
+    
+    return {
+      channelName: channel.name,
+      channelColor: channel.color,
+      currentSpend,
+      delta,
+    };
+  }, [draggingChannel, draftSpend, baselineSpend, channelSpend]);
 
   return (
     // Fixed-height sandbox container - prevents ALL layout propagation during drag
@@ -511,6 +619,39 @@ export function DraggableBarChart({
                 </div>
               ))}
             </div>
+
+            {/* Cursor-follow tooltip during drag */}
+            {isDragging && cursorPos && (() => {
+              const tooltipData = getTooltipData();
+              if (!tooltipData) return null;
+              
+              return (
+                <div
+                  className="absolute z-50 pointer-events-none"
+                  style={{
+                    left: cursorPos.x + 16,
+                    top: cursorPos.y - 40,
+                    transform: cursorPos.x > 200 ? 'translateX(-120%)' : 'none',
+                  }}
+                >
+                  <div className="bg-background/95 backdrop-blur-sm border-2 rounded-lg shadow-lg px-3 py-2 min-w-[140px]"
+                    style={{ borderColor: tooltipData.channelColor }}
+                  >
+                    <div className="text-xs font-semibold mb-1" style={{ color: tooltipData.channelColor }}>
+                      {tooltipData.channelName}
+                    </div>
+                    <div className="text-lg font-bold text-foreground">
+                      ${tooltipData.currentSpend.toLocaleString()}
+                    </div>
+                    {tooltipData.delta !== 0 && (
+                      <div className={`text-sm font-medium ${tooltipData.delta > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {tooltipData.delta > 0 ? '▲' : '▼'} {tooltipData.delta > 0 ? '+' : ''}${tooltipData.delta.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Drag instruction */}
             <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
