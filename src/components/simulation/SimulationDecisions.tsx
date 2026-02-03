@@ -1,9 +1,8 @@
 import { ReactNode } from 'react';
-import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
+import { BarChart3, DollarSign, AlertCircle, PieChart, Settings, Columns, Maximize2 } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
 import { SplitWorkspace } from './SplitWorkspace';
-import { SplitDropZones } from './SplitDropZones';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
@@ -50,7 +49,7 @@ export function SimulationDecisions({
   totalSpent,
   onReset,
 }: SimulationDecisionsProps) {
-  const { setDraggingPanelId, openPanelAsTab, openPanelInSplit, draggingPanelId } = useTabs();
+  const { setDraggingPanelId, openPanelAsTab, openPanelInSplit, split, enableSplit, disableSplit } = useTabs();
 
   const handleOpenAsTab = (panelId: PanelId, title: string) => {
     openPanelAsTab(panelId, title);
@@ -88,13 +87,15 @@ export function SimulationDecisions({
 
   return (
     <div className="relative min-h-[400px]">
-      {/* Split drop zones - appear only during drag */}
-      {draggingPanelId && <SplitDropZones />}
+      {/* Fixed header with budget bar and split toggle */}
+      <BudgetHeader 
+        totalSpent={totalSpent} 
+        onReset={onReset}
+        isSplit={split.enabled}
+        onToggleSplit={split.enabled ? disableSplit : enableSplit}
+      />
 
-      {/* Fixed header with budget bar */}
-      <BudgetHeader totalSpent={totalSpent} onReset={onReset} />
-
-      {/* Split workspace - renders if split is enabled */}
+      {/* Split workspace - renders if split is enabled (real 50/50 layout) */}
       <div className="mt-4">
         <SplitWorkspace renderPanelContent={renderPanelContent} />
       </div>
@@ -174,13 +175,15 @@ export function SimulationDecisions({
   );
 }
 
-// Budget header component (kept for fixed header)
+// Budget header component with split toggle
 interface BudgetHeaderProps {
   totalSpent: number;
   onReset: () => void;
+  isSplit: boolean;
+  onToggleSplit: () => void;
 }
 
-export function BudgetHeader({ totalSpent, onReset }: BudgetHeaderProps) {
+export function BudgetHeader({ totalSpent, onReset, isSplit, onToggleSplit }: BudgetHeaderProps) {
   return (
     <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
       <div className="flex items-center gap-4">
@@ -192,15 +195,34 @@ export function BudgetHeader({ totalSpent, onReset }: BudgetHeaderProps) {
         </div>
         <div className="w-32 h-2.5 bg-secondary rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+            className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300"
             style={{ width: `${(totalSpent / GLOBAL_BUDGET) * 100}%` }}
           />
         </div>
       </div>
-      <Button variant="outline" size="sm" onClick={onReset}>
-        <RotateCcw className="h-4 w-4 mr-1" />
-        Reset
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button 
+          variant={isSplit ? "secondary" : "outline"} 
+          size="sm" 
+          onClick={onToggleSplit}
+        >
+          {isSplit ? (
+            <>
+              <Maximize2 className="h-4 w-4 mr-1" />
+              Close Split
+            </>
+          ) : (
+            <>
+              <Columns className="h-4 w-4 mr-1" />
+              Split View
+            </>
+          )}
+        </Button>
+        <Button variant="outline" size="sm" onClick={onReset}>
+          <RotateCcw className="h-4 w-4 mr-1" />
+          Reset
+        </Button>
+      </div>
     </div>
   );
 }
