@@ -1,4 +1,4 @@
-import { DraggableBarChart } from './DraggableBarChart';
+import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
@@ -82,17 +82,17 @@ export function SimulationDecisions({
         </p>
       </div>
 
-      {/* Main Charts Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <DraggableBarChart
-          channelSpend={channelSpend}
-          onSpendChange={updateChannelSpend}
-          channelMetrics={channelMetrics}
-          totals={totals}
-          remainingBudget={remainingBudget}
-        />
-        <ProductMixChart channelMetrics={channelMetrics} />
-      </div>
+      {/* Split View Bar Charts */}
+      <SplitViewBarCharts
+        channelSpend={channelSpend}
+        onSpendChange={updateChannelSpend}
+        channelMetrics={channelMetrics}
+        totals={totals}
+        remainingBudget={remainingBudget}
+      />
+
+      {/* Product Mix - moves below when split view is active, fills available space */}
+      <ProductMixChart channelMetrics={channelMetrics} />
 
       {/* Hint Section */}
       <div className="p-4 bg-gradient-to-r from-primary/5 to-secondary/30 rounded-lg border border-border">

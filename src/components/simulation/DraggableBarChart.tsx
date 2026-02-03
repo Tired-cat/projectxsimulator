@@ -6,6 +6,8 @@ import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { Eye, DollarSign, TrendingUp, LayoutGrid } from 'lucide-react';
 
+type ChartMode = 'live' | 'snapshot';
+
 interface DraggableBarChartProps {
   channelSpend: ChannelSpend;
   onSpendChange: (channelId: keyof ChannelSpend, value: number) => void;
@@ -16,6 +18,7 @@ interface DraggableBarChartProps {
     profit: number;
   };
   remainingBudget: number;
+  mode?: ChartMode;
 }
 
 type ViewMode = 'clicks' | 'revenue' | 'profit' | 'all';
@@ -28,7 +31,8 @@ const filterOptions = [
 ];
 
 // Fixed height for the entire component to prevent layout shift
-const COMPONENT_MIN_HEIGHT = 620;
+const COMPONENT_MIN_HEIGHT = 580;
+const COMPONENT_MIN_HEIGHT_SPLIT = 520; // Slightly smaller for split view
 
 export function DraggableBarChart({
   channelSpend,
@@ -36,8 +40,14 @@ export function DraggableBarChart({
   channelMetrics,
   totals,
   remainingBudget,
+  mode = 'live',
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
+  
+  // Snapshot mode: draggable for reasoning but NOT adjustable
+  // Live mode: adjustable but NOT draggable (for now)
+  const isSnapshot = mode === 'snapshot';
+  const isLive = mode === 'live';
   const [draggingChannel, setDraggingChannel] = useState<string | null>(null);
   // COMMIT-ON-RELEASE: Track draft spend locally during drag
   const [draftSpend, setDraftSpend] = useState<ChannelSpend | null>(null);
@@ -126,6 +136,9 @@ export function DraggableBarChart({
   }, [draggingChannel]);
 
   const handleMouseDown = useCallback((channelId: string, e: React.MouseEvent) => {
+    // Snapshot mode: bars are NOT adjustable
+    if (isSnapshot) return;
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -139,7 +152,7 @@ export function DraggableBarChart({
     // Initialize draft with current spend values
     setDraftSpend({ ...channelSpend });
     setDraggingChannel(channelId);
-  }, [channelSpend]);
+  }, [channelSpend, isSnapshot]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!draggingChannel || !chartRef.current || !draftSpend) return;
@@ -208,6 +221,9 @@ export function DraggableBarChart({
   };
 
   const isDragging = draggingChannel !== null;
+  
+  // Use smaller height in split view mode
+  const minHeight = isSnapshot ? COMPONENT_MIN_HEIGHT_SPLIT : COMPONENT_MIN_HEIGHT;
 
   return (
     // Fixed-height sandbox container - prevents ALL layout propagation during drag
@@ -215,7 +231,7 @@ export function DraggableBarChart({
       ref={containerRef}
       style={{
         // Fixed minimum height prevents document reflow
-        minHeight: `${COMPONENT_MIN_HEIGHT}px`,
+        minHeight: `${minHeight}px`,
         // CSS containment isolates this subtree from layout recalculations
         contain: 'layout style',
         // Create stacking context
@@ -224,10 +240,12 @@ export function DraggableBarChart({
         overflow: 'visible',
       }}
     >
-      <Card className="border-2 border-primary/20 bg-card">
+      <Card className={`border-2 bg-card ${isSnapshot ? 'border-slate-300 dark:border-slate-700' : 'border-primary/20'}`}>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <CardTitle className="text-xl font-bold">Channel Performance</CardTitle>
+            <CardTitle className={`font-bold ${isSnapshot ? 'text-lg text-muted-foreground' : 'text-xl'}`}>
+              Channel Performance
+            </CardTitle>
             
             {/* Filter Metrics Chips */}
             <div className="flex items-center gap-2">
@@ -389,7 +407,9 @@ export function DraggableBarChart({
                     
                     {/* Bar - uses transform for height during drag to avoid layout */}
                     <motion.div
-                      className={`w-full max-w-[80px] rounded-t-lg cursor-ns-resize ${
+                      className={`w-full max-w-[80px] rounded-t-lg ${
+                        isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
+                      } ${
                         isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background' : ''
                       }`}
                       style={{
@@ -401,6 +421,9 @@ export function DraggableBarChart({
                           : `0 4px 12px ${channel.color}40`,
                         // Use will-change during drag for GPU acceleration
                         willChange: isDragging ? 'height, transform' : 'auto',
+                        // Snapshot visual treatment
+                        opacity: isSnapshot ? 0.85 : 1,
+                        filter: isSnapshot ? 'saturate(0.8)' : 'none',
                       }}
                       initial={false}
                       animate={{ 
@@ -438,7 +461,7 @@ export function DraggableBarChart({
 
             {/* Drag instruction */}
             <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-              ↕ Drag bars to adjust spend
+              {isSnapshot ? '🔒 Snapshot (frozen)' : '↕ Drag bars to adjust spend'}
             </div>
           </div>
         </CardContent>
