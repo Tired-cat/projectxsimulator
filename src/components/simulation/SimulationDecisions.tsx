@@ -49,10 +49,10 @@ export function SimulationDecisions({
   totalSpent,
   onReset,
 }: SimulationDecisionsProps) {
-  const { setDraggingPanelId, openPanelAsTab, openPanelInSplit, split, enableSplit, disableSplit } = useTabs();
+  const { setDraggingPanelId, addPanelAsTab, openPanelInSplit, split, enableSplit, disableSplit } = useTabs();
 
-  const handleOpenAsTab = (panelId: PanelId, title: string) => {
-    openPanelAsTab(panelId, title);
+  const handleAddAsTab = (panelId: PanelId, title: string) => {
+    addPanelAsTab(panelId, title);
   };
 
   const handleOpenInSplit = (panelId: PanelId, title: string) => {
@@ -110,7 +110,7 @@ export function SimulationDecisions({
           className="lg:col-span-2"
           onDragStart={setDraggingPanelId}
           onDragEnd={() => setDraggingPanelId(null)}
-          onOpenAsTab={handleOpenAsTab}
+          onAddAsTab={handleAddAsTab}
           onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('channel-performance')}
@@ -123,7 +123,7 @@ export function SimulationDecisions({
           icon={<PieChart className="h-4 w-4" />}
           onDragStart={setDraggingPanelId}
           onDragEnd={() => setDraggingPanelId(null)}
-          onOpenAsTab={handleOpenAsTab}
+          onAddAsTab={handleAddAsTab}
           onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('product-mix')}
@@ -136,7 +136,7 @@ export function SimulationDecisions({
           icon={<DollarSign className="h-4 w-4" />}
           onDragStart={setDraggingPanelId}
           onDragEnd={() => setDraggingPanelId(null)}
-          onOpenAsTab={handleOpenAsTab}
+          onAddAsTab={handleAddAsTab}
           onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('goal-tracker')}
@@ -150,7 +150,7 @@ export function SimulationDecisions({
           className="lg:col-span-2"
           onDragStart={setDraggingPanelId}
           onDragEnd={() => setDraggingPanelId(null)}
-          onOpenAsTab={handleOpenAsTab}
+          onAddAsTab={handleAddAsTab}
           onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('hints')}
@@ -165,7 +165,7 @@ export function SimulationDecisions({
           contentClassName="pt-0"
           onDragStart={setDraggingPanelId}
           onDragEnd={() => setDraggingPanelId(null)}
-          onOpenAsTab={handleOpenAsTab}
+          onAddAsTab={handleAddAsTab}
           onOpenInSplit={handleOpenInSplit}
         >
           {renderPanelContent('assumptions')}

@@ -31,7 +31,7 @@ function getTabIcon(tab: Tab): LucideIcon {
  * Supports drop target for dragging panels to create new tabs.
  */
 export function BrowserTabStrip() {
-  const { tabs, activeTabId, setActiveTab, closeTab, draggingPanelId, openPanelAsTab } = useTabs();
+  const { tabs, activeTabId, setActiveTab, closeTab, draggingPanelId, addPanelAsTab } = useTabs();
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e: DragEvent) => {
@@ -59,7 +59,7 @@ export function BrowserTabStrip() {
         'hints': 'Hints & Tips',
         'assumptions': 'Assumptions',
       };
-      openPanelAsTab(panelId, titles[panelId] || panelId);
+      addPanelAsTab(panelId, titles[panelId] || panelId);
     }
   };
 

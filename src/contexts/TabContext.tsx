@@ -43,9 +43,9 @@ interface TabContextValue {
   disableSplit: () => void;
   setPaneTab: (pane: SplitPane, tabId: string) => void;
   
-  // Convenience: open panel as tab and activate
-  openPanelAsTab: (panelType: PanelId, title: string) => void;
-  // Convenience: open panel in split pane
+  // Add panel as tab (does NOT switch view)
+  addPanelAsTab: (panelType: PanelId, title: string) => string;
+  // Open panel in split pane
   openPanelInSplit: (panelType: PanelId, title: string, pane: SplitPane) => void;
 }
 
@@ -154,9 +154,27 @@ export function TabProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const openPanelAsTab = useCallback((panelType: PanelId, title: string) => {
-    openTab('panel', panelType, title);
-  }, [openTab]);
+  // Add panel as tab WITHOUT activating it (silent creation)
+  const addPanelAsTab = useCallback((panelType: PanelId, title: string): string => {
+    // Check if tab already exists
+    const existingTab = tabs.find(t => t.kind === 'panel' && t.panelType === panelType);
+    if (existingTab) {
+      return existingTab.id;
+    }
+    
+    // Create new tab without activating
+    const newId = generateTabId();
+    const newTab: Tab = {
+      id: newId,
+      title,
+      kind: 'panel',
+      pinned: false,
+      closable: true,
+      panelType,
+    };
+    setTabs(prev => [...prev, newTab]);
+    return newId;
+  }, [tabs]);
 
   const openPanelInSplit = useCallback((panelType: PanelId, title: string, pane: SplitPane) => {
     // Check if a tab for this panel already exists
@@ -206,7 +224,7 @@ export function TabProvider({ children }: { children: ReactNode }) {
       enableSplit,
       disableSplit,
       setPaneTab,
-      openPanelAsTab,
+      addPanelAsTab,
       openPanelInSplit,
     }}>
       {children}
