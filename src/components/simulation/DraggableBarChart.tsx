@@ -167,6 +167,13 @@ export function DraggableBarChart({
     }
   }, [draggingChannel]);
 
+  // Get step size based on modifier keys
+  const getStepSize = useCallback((e: React.PointerEvent | PointerEvent) => {
+    if (e.shiftKey) return 5;      // Ultra-fine: Shift
+    if (e.altKey) return 250;      // Coarse: Alt/Option
+    return 25;                      // Default: precise but not too slow
+  }, []);
+
   // Column-based drag start - captures pointer on entire column area
   const handleColumnPointerDown = useCallback((channelId: string, e: React.PointerEvent) => {
     // Snapshot mode: bars are NOT adjustable
@@ -189,8 +196,8 @@ export function DraggableBarChart({
       const mouseY = e.clientY - rect.top - 40;
       
       const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
-      // Higher sensitivity: smaller step size for smoother control
-      const newValue = Math.round((percentage * GLOBAL_BUDGET) / 50) * 50;
+      const step = getStepSize(e);
+      const newValue = Math.round((percentage * GLOBAL_BUDGET) / step) * step;
       
       const otherSpend = Object.entries(channelSpend)
         .filter(([id]) => id !== channelId)
@@ -203,7 +210,7 @@ export function DraggableBarChart({
         [channelId]: clampedValue
       } : { ...channelSpend, [channelId]: clampedValue });
     }
-  }, [channelSpend, isSnapshot]);
+  }, [channelSpend, isSnapshot, getStepSize]);
 
   const handleColumnPointerMove = useCallback((e: React.PointerEvent) => {
     if (!draggingChannel || !chartRef.current || !draftSpend) return;
@@ -211,7 +218,12 @@ export function DraggableBarChart({
     e.preventDefault();
     e.stopPropagation();
 
-    // Use RAF to throttle updates for smoothness
+    // Capture values we need before RAF (event properties may be nullified)
+    const clientY = e.clientY;
+    const shiftKey = e.shiftKey;
+    const altKey = e.altKey;
+
+    // Use RAF for smooth visual updates
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
     }
@@ -221,11 +233,16 @@ export function DraggableBarChart({
       
       const rect = chartRef.current.getBoundingClientRect();
       const chartHeight = rect.height - 80;
-      const mouseY = e.clientY - rect.top - 40;
+      const mouseY = clientY - rect.top - 40;
       
       const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
-      // Higher sensitivity with smaller steps
-      const newValue = Math.round((percentage * GLOBAL_BUDGET) / 50) * 50;
+      
+      // Determine step based on modifiers (captured before RAF)
+      let step = 25; // default
+      if (shiftKey) step = 5;      // ultra-fine
+      else if (altKey) step = 250;  // coarse
+      
+      const newValue = Math.round((percentage * GLOBAL_BUDGET) / step) * step;
       
       const otherSpend = Object.entries(draftSpend)
         .filter(([id]) => id !== draggingChannel)
@@ -233,7 +250,7 @@ export function DraggableBarChart({
       const maxAllowed = GLOBAL_BUDGET - otherSpend;
       const clampedValue = Math.min(Math.max(0, newValue), maxAllowed);
       
-      // Only update draft (local state) - NO parent state update during drag
+      // Immediate update to draft - no debouncing
       setDraftSpend(prev => prev ? {
         ...prev,
         [draggingChannel]: clampedValue
@@ -498,7 +515,9 @@ export function DraggableBarChart({
             {/* Drag instruction */}
             <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
               {isSnapshot ? '🔒 Snapshot (frozen)' : (
-                baselineSpend ? '↕ Adjust bars | 🎯 Drag ghost/delta for reasoning' : '↕ Drag bars to adjust spend'
+                isDragging 
+                  ? '⇧ Shift = fine | ⌥ Alt = coarse'
+                  : (baselineSpend ? '↕ Adjust bars | 🎯 Drag ghost/delta' : '↕ Drag bars to adjust spend')
               )}
             </div>
           </div>
