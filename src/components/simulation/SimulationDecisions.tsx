@@ -86,6 +86,80 @@ export function SimulationDecisions({
     }
   };
 
+  // The main card grid component - always visible
+  const CardGrid = () => (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {/* Channel Performance - full width */}
+      <DraggableCard
+        panelId="channel-performance"
+        title="Channel Performance"
+        icon={<BarChart3 className="h-4 w-4" />}
+        className="lg:col-span-2"
+        onDragStart={setDraggingPanelId}
+        onDragEnd={() => setDraggingPanelId(null)}
+        onAddAsTab={handleAddAsTab}
+        onOpenInSplit={handleOpenInSplit}
+      >
+        {renderPanelContent('channel-performance')}
+      </DraggableCard>
+
+      {/* Product Mix */}
+      <DraggableCard
+        panelId="product-mix"
+        title="Product Mix"
+        icon={<PieChart className="h-4 w-4" />}
+        onDragStart={setDraggingPanelId}
+        onDragEnd={() => setDraggingPanelId(null)}
+        onAddAsTab={handleAddAsTab}
+        onOpenInSplit={handleOpenInSplit}
+      >
+        {renderPanelContent('product-mix')}
+      </DraggableCard>
+
+      {/* Goal Tracker */}
+      <DraggableCard
+        panelId="goal-tracker"
+        title="Goal Tracker"
+        icon={<DollarSign className="h-4 w-4" />}
+        onDragStart={setDraggingPanelId}
+        onDragEnd={() => setDraggingPanelId(null)}
+        onAddAsTab={handleAddAsTab}
+        onOpenInSplit={handleOpenInSplit}
+      >
+        {renderPanelContent('goal-tracker')}
+      </DraggableCard>
+
+      {/* Hints - full width */}
+      <DraggableCard
+        panelId="hints"
+        title="Hints & Tips"
+        icon={<AlertCircle className="h-4 w-4" />}
+        className="lg:col-span-2"
+        onDragStart={setDraggingPanelId}
+        onDragEnd={() => setDraggingPanelId(null)}
+        onAddAsTab={handleAddAsTab}
+        onOpenInSplit={handleOpenInSplit}
+      >
+        {renderPanelContent('hints')}
+      </DraggableCard>
+
+      {/* Assumptions - full width */}
+      <DraggableCard
+        panelId="assumptions"
+        title="Assumptions"
+        icon={<Settings className="h-4 w-4" />}
+        className="lg:col-span-2"
+        contentClassName="pt-0"
+        onDragStart={setDraggingPanelId}
+        onDragEnd={() => setDraggingPanelId(null)}
+        onAddAsTab={handleAddAsTab}
+        onOpenInSplit={handleOpenInSplit}
+      >
+        {renderPanelContent('assumptions')}
+      </DraggableCard>
+    </div>
+  );
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Fixed header with budget bar and split toggle */}
@@ -98,89 +172,30 @@ export function SimulationDecisions({
         />
       </div>
 
-      {/* Main content area - split or scrollable grid */}
-      {split.enabled ? (
-        /* SPLIT VIEW: Real 50/50 layout taking full remaining height */
-        <div className="flex-1 overflow-hidden p-4">
-          <SplitWorkspace renderPanelContent={renderPanelContent} />
-        </div>
-      ) : (
-        /* NORMAL VIEW: Scrollable grid of cards */
-        <ScrollArea className="flex-1">
-          <div className="p-4 pt-4">
-            <div className="grid gap-4 lg:grid-cols-2">
-              {/* Channel Performance - full width */}
-              <DraggableCard
-                panelId="channel-performance"
-                title="Channel Performance"
-                icon={<BarChart3 className="h-4 w-4" />}
-                className="lg:col-span-2"
-                onDragStart={setDraggingPanelId}
-                onDragEnd={() => setDraggingPanelId(null)}
-                onAddAsTab={handleAddAsTab}
-                onOpenInSplit={handleOpenInSplit}
-              >
-                {renderPanelContent('channel-performance')}
-              </DraggableCard>
-
-              {/* Product Mix */}
-              <DraggableCard
-                panelId="product-mix"
-                title="Product Mix"
-                icon={<PieChart className="h-4 w-4" />}
-                onDragStart={setDraggingPanelId}
-                onDragEnd={() => setDraggingPanelId(null)}
-                onAddAsTab={handleAddAsTab}
-                onOpenInSplit={handleOpenInSplit}
-              >
-                {renderPanelContent('product-mix')}
-              </DraggableCard>
-
-              {/* Goal Tracker */}
-              <DraggableCard
-                panelId="goal-tracker"
-                title="Goal Tracker"
-                icon={<DollarSign className="h-4 w-4" />}
-                onDragStart={setDraggingPanelId}
-                onDragEnd={() => setDraggingPanelId(null)}
-                onAddAsTab={handleAddAsTab}
-                onOpenInSplit={handleOpenInSplit}
-              >
-                {renderPanelContent('goal-tracker')}
-              </DraggableCard>
-
-              {/* Hints - full width */}
-              <DraggableCard
-                panelId="hints"
-                title="Hints & Tips"
-                icon={<AlertCircle className="h-4 w-4" />}
-                className="lg:col-span-2"
-                onDragStart={setDraggingPanelId}
-                onDragEnd={() => setDraggingPanelId(null)}
-                onAddAsTab={handleAddAsTab}
-                onOpenInSplit={handleOpenInSplit}
-              >
-                {renderPanelContent('hints')}
-              </DraggableCard>
-
-              {/* Assumptions - full width */}
-              <DraggableCard
-                panelId="assumptions"
-                title="Assumptions"
-                icon={<Settings className="h-4 w-4" />}
-                className="lg:col-span-2"
-                contentClassName="pt-0"
-                onDragStart={setDraggingPanelId}
-                onDragEnd={() => setDraggingPanelId(null)}
-                onAddAsTab={handleAddAsTab}
-                onOpenInSplit={handleOpenInSplit}
-              >
-                {renderPanelContent('assumptions')}
-              </DraggableCard>
+      {/* Main content area - 3-column when split enabled */}
+      <div className="flex-1 overflow-hidden p-4">
+        {split.enabled ? (
+          /* SPLIT MODE: 3-column layout - Grid + Left Pane + Right Pane */
+          <div className="h-full grid grid-cols-3 gap-4">
+            {/* Column 1: Main card grid (always visible) */}
+            <ScrollArea className="h-full rounded-lg border border-border bg-card/50">
+              <div className="p-4">
+                <CardGrid />
+              </div>
+            </ScrollArea>
+            
+            {/* Column 2 & 3: Split panes */}
+            <div className="col-span-2 h-full">
+              <SplitWorkspace renderPanelContent={renderPanelContent} />
             </div>
           </div>
-        </ScrollArea>
-      )}
+        ) : (
+          /* NORMAL VIEW: Just the scrollable grid */
+          <ScrollArea className="h-full">
+            <CardGrid />
+          </ScrollArea>
+        )}
+      </div>
     </div>
   );
 }
