@@ -224,7 +224,26 @@ export function DraggableBarChart({
     return (spend / GLOBAL_BUDGET) * 100;
   }, [displaySpend]);
 
-  // Lock body scroll during drag
+  // Centralized cleanup function for ending drag state
+  const cleanupDragState = useCallback(() => {
+    // Commit final value if we have a draft
+    if (draggingChannel && draftSpend) {
+      const finalValue = draftSpend[draggingChannel as keyof ChannelSpend];
+      onSpendChange(draggingChannel as keyof ChannelSpend, finalValue);
+    }
+    
+    setDraftSpend(null);
+    setDraggingChannel(null);
+    setCursorPos(null);
+    setStableMaxScale(null);
+    
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, [draggingChannel, draftSpend, onSpendChange]);
+
+  // Lock body scroll during drag + global cleanup handlers
   useEffect(() => {
     if (draggingChannel) {
       const originalOverflow = document.body.style.overflow;
@@ -233,16 +252,49 @@ export function DraggableBarChart({
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
       
+      // Global event handlers for edge case cleanup
+      const handleWindowBlur = () => {
+        cleanupDragState();
+      };
+      
+      const handleVisibilityChange = () => {
+        if (document.hidden) {
+          cleanupDragState();
+        }
+      };
+      
+      const handleGlobalPointerUp = () => {
+        cleanupDragState();
+      };
+
+      const handleLostPointerCapture = () => {
+        cleanupDragState();
+      };
+      
+      // Attach global listeners
+      window.addEventListener('blur', handleWindowBlur);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('pointerup', handleGlobalPointerUp);
+      window.addEventListener('pointercancel', handleGlobalPointerUp);
+      chartRef.current?.addEventListener('lostpointercapture', handleLostPointerCapture);
+      
       return () => {
         document.body.style.overflow = originalOverflow;
         document.body.style.touchAction = originalTouchAction;
+        
+        window.removeEventListener('blur', handleWindowBlur);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('pointerup', handleGlobalPointerUp);
+        window.removeEventListener('pointercancel', handleGlobalPointerUp);
+        chartRef.current?.removeEventListener('lostpointercapture', handleLostPointerCapture);
+        
         // Cleanup RAF on unmount
         if (rafRef.current) {
           cancelAnimationFrame(rafRef.current);
         }
       };
     }
-  }, [draggingChannel]);
+  }, [draggingChannel, cleanupDragState]);
 
   // Get step size based on modifier keys
   const getStepSize = useCallback((e: React.PointerEvent | PointerEvent) => {
@@ -353,25 +405,16 @@ export function DraggableBarChart({
       // Ignore
     }
     
-    // COMMIT: Apply final draft value to parent state on release
-    if (draggingChannel && draftSpend) {
-      const finalValue = draftSpend[draggingChannel as keyof ChannelSpend];
-      onSpendChange(draggingChannel as keyof ChannelSpend, finalValue);
+    // Use centralized cleanup
+    cleanupDragState();
+  }, [cleanupDragState]);
+  
+  // Handle mouse leaving chart container
+  const handleChartMouseLeave = useCallback(() => {
+    if (draggingChannel) {
+      cleanupDragState();
     }
-    
-    // Clear draft, cursor, and dragging state
-    setDraftSpend(null);
-    setDraggingChannel(null);
-    setCursorPos(null);
-    
-    // Update Y-axis scale after drag ends
-    setStableMaxScale(null);
-    
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-  }, [draggingChannel, draftSpend, onSpendChange]);
+  }, [draggingChannel, cleanupDragState]);
 
   const formatValue = (value: number) => {
     if (viewMode === 'clicks') {
@@ -425,6 +468,39 @@ export function DraggableBarChart({
       atLimit,
     };
   }, [draggingChannel, draftSpend, baselineSpend, channelSpend]);
+
+  // Get crosshair guide data for precision indicator
+  const getCrosshairData = useCallback(() => {
+    if (!cursorPos || !chartRef.current) return null;
+    
+    const chartHeight = chartRef.current.offsetHeight - 80; // account for padding (top-10 + bottom-12 = ~80px)
+    const chartTop = 40; // top offset
+    const chartBottom = chartTop + chartHeight;
+    
+    // Calculate y position relative to chart area
+    const relativeY = cursorPos.y - chartTop;
+    
+    // Clamp to chart bounds
+    if (relativeY < 0 || relativeY > chartHeight) return null;
+    
+    // Calculate the value at this y position (inverted: top = max, bottom = 0)
+    const percentage = 1 - (relativeY / chartHeight);
+    const valueAtCursor = Math.round(percentage * GLOBAL_BUDGET);
+    
+    // Format based on view mode
+    const isDollar = viewMode === 'revenue' || viewMode === 'profit';
+    const prefix = isDollar ? '$' : '';
+    const formattedValue = valueAtCursor >= 1000 
+      ? `${prefix}${(valueAtCursor / 1000).toFixed(1)}k`
+      : `${prefix}${valueAtCursor.toLocaleString()}`;
+    
+    return {
+      yPosition: cursorPos.y,
+      valueAtCursor,
+      formattedValue,
+      isInBounds: relativeY >= 0 && relativeY <= chartHeight,
+    };
+  }, [cursorPos, viewMode]);
 
   return (
     // Fixed-height sandbox container - prevents ALL layout propagation during drag
@@ -547,6 +623,7 @@ export function DraggableBarChart({
           <div
             ref={chartRef}
             className="relative bg-secondary/20 rounded-lg p-4 select-none"
+            onMouseLeave={handleChartMouseLeave}
             style={{ 
               height: fillContainer ? '100%' : '350px', 
               minHeight: fillContainer ? undefined : '350px', 
@@ -646,6 +723,64 @@ export function DraggableBarChart({
                 </div>
               ))}
             </div>
+
+            {/* Precision Crosshair Guide - shows exact y-position and value during drag */}
+            {isDragging && cursorPos && (() => {
+              const crosshairData = getCrosshairData();
+              if (!crosshairData || !crosshairData.isInBounds) return null;
+              
+              const draggingChannelData = draggingChannel ? CHANNELS[draggingChannel] : null;
+              const guideColor = draggingChannelData?.color || 'hsl(var(--primary))';
+              
+              return (
+                <>
+                  {/* Horizontal guide line across chart area */}
+                  <div
+                    className="absolute pointer-events-none z-30"
+                    style={{
+                      left: '80px', // Start after y-axis (left-20 = 80px)
+                      right: '16px', // End before right padding
+                      top: crosshairData.yPosition,
+                      height: '1px',
+                      background: `linear-gradient(90deg, ${guideColor} 0%, ${guideColor}80 50%, ${guideColor} 100%)`,
+                      boxShadow: `0 0 6px ${guideColor}60`,
+                    }}
+                  />
+                  
+                  {/* Y-axis value marker pill */}
+                  <div
+                    className="absolute pointer-events-none z-40"
+                    style={{
+                      left: '4px',
+                      top: crosshairData.yPosition,
+                      transform: 'translateY(-50%)',
+                    }}
+                  >
+                    <div 
+                      className="px-2 py-0.5 rounded-md text-xs font-bold text-white shadow-lg"
+                      style={{ 
+                        backgroundColor: guideColor,
+                        boxShadow: `0 2px 8px ${guideColor}40`,
+                      }}
+                    >
+                      {crosshairData.formattedValue}
+                    </div>
+                  </div>
+                  
+                  {/* Small crosshair dot at cursor intersection */}
+                  <div
+                    className="absolute pointer-events-none z-35 w-3 h-3 rounded-full"
+                    style={{
+                      left: cursorPos.x - 6,
+                      top: crosshairData.yPosition - 6,
+                      backgroundColor: guideColor,
+                      boxShadow: `0 0 8px ${guideColor}80`,
+                      border: '2px solid white',
+                    }}
+                  />
+                </>
+              );
+            })()}
 
             {/* Cursor-follow tooltip during drag with budget tracking */}
             {isDragging && cursorPos && (() => {
