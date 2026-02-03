@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { BarChart3, DollarSign, AlertCircle, PieChart, Settings, Columns, Maximize2 } from 'lucide-react';
+import { BarChart3, DollarSign, AlertCircle, PieChart, Settings, Maximize2 } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
 import { SplitWorkspace } from './SplitWorkspace';
@@ -50,14 +50,15 @@ export function SimulationDecisions({
   totalSpent,
   onReset,
 }: SimulationDecisionsProps) {
-  const { setDraggingPanelId, addPanelAsTab, openPanelInSplit, split, enableSplit, disableSplit } = useTabs();
+  const { setDraggingPanelId, addPanelAsTab, activateSplitWithPanel, split, disableSplit } = useTabs();
 
   const handleAddAsTab = (panelId: PanelId, title: string) => {
     addPanelAsTab(panelId, title);
   };
 
+  // Dragging a panel activates split mode with that panel in the right pane
   const handleOpenInSplit = (panelId: PanelId, title: string) => {
-    openPanelInSplit(panelId, title, 'right');
+    activateSplitWithPanel(panelId, title, 'channel-performance');
   };
 
   // Render panel content by ID (used for both grid cards and cloned views)
@@ -162,35 +163,23 @@ export function SimulationDecisions({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Fixed header with budget bar and split toggle */}
+      {/* Fixed header with budget bar */}
       <div className="flex-shrink-0 p-4 pb-0">
         <BudgetHeader 
           totalSpent={totalSpent} 
           onReset={onReset}
           isSplit={split.enabled}
-          onToggleSplit={split.enabled ? disableSplit : enableSplit}
+          onCloseSplit={disableSplit}
         />
       </div>
 
-      {/* Main content area - 3-column when split enabled */}
+      {/* Main content area - either grid OR split (not both) */}
       <div className="flex-1 overflow-hidden p-4">
         {split.enabled ? (
-          /* SPLIT MODE: 3-column layout - Grid + Left Pane + Right Pane */
-          <div className="h-full grid grid-cols-3 gap-4">
-            {/* Column 1: Main card grid (always visible) */}
-            <ScrollArea className="h-full rounded-lg border border-border bg-card/50">
-              <div className="p-4">
-                <CardGrid />
-              </div>
-            </ScrollArea>
-            
-            {/* Column 2 & 3: Split panes */}
-            <div className="col-span-2 h-full">
-              <SplitWorkspace renderPanelContent={renderPanelContent} />
-            </div>
-          </div>
+          /* SPLIT MODE: Full 50/50 split replaces the grid */
+          <SplitWorkspace renderPanelContent={renderPanelContent} />
         ) : (
-          /* NORMAL VIEW: Just the scrollable grid */
+          /* NORMAL MODE: Scrollable card grid */
           <ScrollArea className="h-full">
             <CardGrid />
           </ScrollArea>
@@ -200,15 +189,15 @@ export function SimulationDecisions({
   );
 }
 
-// Budget header component with split toggle
+// Budget header component
 interface BudgetHeaderProps {
   totalSpent: number;
   onReset: () => void;
   isSplit: boolean;
-  onToggleSplit: () => void;
+  onCloseSplit: () => void;
 }
 
-export function BudgetHeader({ totalSpent, onReset, isSplit, onToggleSplit }: BudgetHeaderProps) {
+export function BudgetHeader({ totalSpent, onReset, isSplit, onCloseSplit }: BudgetHeaderProps) {
   return (
     <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
       <div className="flex items-center gap-4">
@@ -226,23 +215,12 @@ export function BudgetHeader({ totalSpent, onReset, isSplit, onToggleSplit }: Bu
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button 
-          variant={isSplit ? "secondary" : "outline"} 
-          size="sm" 
-          onClick={onToggleSplit}
-        >
-          {isSplit ? (
-            <>
-              <Maximize2 className="h-4 w-4 mr-1" />
-              Close Split
-            </>
-          ) : (
-            <>
-              <Columns className="h-4 w-4 mr-1" />
-              Split View
-            </>
-          )}
-        </Button>
+        {isSplit && (
+          <Button variant="secondary" size="sm" onClick={onCloseSplit}>
+            <Maximize2 className="h-4 w-4 mr-1" />
+            Close Split
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={onReset}>
           <RotateCcw className="h-4 w-4 mr-1" />
           Reset

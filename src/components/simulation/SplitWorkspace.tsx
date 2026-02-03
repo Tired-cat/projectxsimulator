@@ -1,5 +1,5 @@
 import { ReactNode, DragEvent, useState } from 'react';
-import { X, Maximize2, PanelLeft, PanelRight, Plus } from 'lucide-react';
+import { X, Maximize2, PanelLeft, PanelRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTabs } from '@/contexts/TabContext';
@@ -20,13 +20,10 @@ const PANEL_TITLES: Record<PanelId, string> = {
 
 /**
  * Real 50/50 split workspace that renders two panes side-by-side.
- * Takes full height of parent container.
+ * Replaces the grid when active - this IS the view, not an addition.
  */
 export function SplitWorkspace({ renderPanelContent }: SplitWorkspaceProps) {
-  const { tabs, split, disableSplit, draggingPanelId, openPanelInSplit, closeTab } = useTabs();
-
-  const leftTab = tabs.find(t => t.id === split.leftTabId);
-  const rightTab = tabs.find(t => t.id === split.rightTabId);
+  const { split, disableSplit, draggingPanelId, openPanelInSplit } = useTabs();
 
   return (
     <div className="h-full flex flex-col rounded-lg border border-border overflow-hidden bg-card">
@@ -34,7 +31,7 @@ export function SplitWorkspace({ renderPanelContent }: SplitWorkspaceProps) {
       <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 bg-muted border-b border-border">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <PanelLeft className="w-4 h-4" />
-          Split View
+          Comparison View
         </div>
         <Button
           variant="ghost"
@@ -47,24 +44,22 @@ export function SplitWorkspace({ renderPanelContent }: SplitWorkspaceProps) {
         </Button>
       </div>
 
-      {/* 50/50 Split panes - REAL grid layout, full height */}
+      {/* 50/50 Split panes */}
       <div className="flex-1 grid grid-cols-2 gap-px bg-border overflow-hidden">
-        {/* Left pane */}
+        {/* Left pane - primary */}
         <SplitPane
           pane="left"
-          tab={leftTab}
+          panelId={split.leftPanelId}
           renderPanelContent={renderPanelContent}
-          onCloseTab={closeTab}
           draggingPanelId={draggingPanelId}
           onDrop={openPanelInSplit}
         />
 
-        {/* Right pane */}
+        {/* Right pane - comparison */}
         <SplitPane
           pane="right"
-          tab={rightTab}
+          panelId={split.rightPanelId}
           renderPanelContent={renderPanelContent}
-          onCloseTab={closeTab}
           draggingPanelId={draggingPanelId}
           onDrop={openPanelInSplit}
         />
@@ -75,17 +70,17 @@ export function SplitWorkspace({ renderPanelContent }: SplitWorkspaceProps) {
 
 interface SplitPaneProps {
   pane: 'left' | 'right';
-  tab: ReturnType<typeof useTabs>['tabs'][0] | undefined;
+  panelId: PanelId | null;
   renderPanelContent: (panelType: string) => ReactNode;
-  onCloseTab: (id: string) => void;
   draggingPanelId: PanelId | null;
   onDrop: (panelId: PanelId, title: string, pane: 'left' | 'right') => void;
 }
 
-function SplitPane({ pane, tab, renderPanelContent, onCloseTab, draggingPanelId, onDrop }: SplitPaneProps) {
+function SplitPane({ pane, panelId, renderPanelContent, draggingPanelId, onDrop }: SplitPaneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const Icon = pane === 'left' ? PanelLeft : PanelRight;
-  const label = pane === 'left' ? 'Left' : 'Right';
+  const label = pane === 'left' ? 'Primary' : 'Comparison';
+  const title = panelId ? PANEL_TITLES[panelId] : null;
 
   const handleDragOver = (e: DragEvent) => {
     if (!draggingPanelId) return;
@@ -95,7 +90,6 @@ function SplitPane({ pane, tab, renderPanelContent, onCloseTab, draggingPanelId,
   };
 
   const handleDragLeave = (e: DragEvent) => {
-    // Only trigger leave if we're leaving the pane entirely
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     setIsDragOver(false);
   };
@@ -104,14 +98,14 @@ function SplitPane({ pane, tab, renderPanelContent, onCloseTab, draggingPanelId,
     e.preventDefault();
     setIsDragOver(false);
     
-    const panelId = e.dataTransfer.getData('panelId') as PanelId;
-    if (panelId) {
-      onDrop(panelId, PANEL_TITLES[panelId] || panelId, pane);
+    const droppedPanelId = e.dataTransfer.getData('panelId') as PanelId;
+    if (droppedPanelId) {
+      onDrop(droppedPanelId, PANEL_TITLES[droppedPanelId] || droppedPanelId, pane);
     }
   };
 
-  // If tab exists and has panel content
-  if (tab && tab.panelType) {
+  // If panel is assigned, show its content
+  if (panelId) {
     return (
       <div 
         className={cn(
@@ -127,21 +121,15 @@ function SplitPane({ pane, tab, renderPanelContent, onCloseTab, draggingPanelId,
           <div className="flex items-center gap-2">
             <Icon className="w-3 h-3 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground truncate">
-              {tab.title}
+              {label}: {title}
             </span>
           </div>
-          <button
-            onClick={() => onCloseTab(tab.id)}
-            className="p-0.5 rounded hover:bg-muted"
-          >
-            <X className="w-3 h-3 text-muted-foreground" />
-          </button>
         </div>
         
         {/* Content - scrollable */}
         <ScrollArea className="flex-1">
           <div className="p-4">
-            {renderPanelContent(tab.panelType)}
+            {renderPanelContent(panelId)}
           </div>
         </ScrollArea>
 
@@ -174,14 +162,10 @@ function SplitPane({ pane, tab, renderPanelContent, onCloseTab, draggingPanelId,
         isDragOver && "text-primary"
       )}>
         <div className={cn(
-          "w-20 h-20 rounded-full border-2 border-dashed flex items-center justify-center",
+          "w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center",
           isDragOver ? "border-primary" : "border-muted-foreground/30"
         )}>
-          {isDragOver ? (
-            <Plus className="w-8 h-8" />
-          ) : (
-            <Icon className="w-8 h-8 opacity-50" />
-          )}
+          <Icon className="w-6 h-6 opacity-50" />
         </div>
         <div className="text-center">
           <div className="text-sm font-medium">{label} Pane</div>
