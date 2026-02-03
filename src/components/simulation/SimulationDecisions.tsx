@@ -1,4 +1,3 @@
-import { ReactNode } from 'react';
 import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
@@ -13,7 +12,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { DockablePanel } from '@/components/docking/DockablePanel';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const REVENUE_GOAL = 100000;
 
@@ -34,7 +33,7 @@ interface SimulationDecisionsProps {
 
 /**
  * Renders the simulation decision panels.
- * Panels live in the normal grid by default. Users can drag them to dock areas.
+ * Clean grid layout - no docking/tab system.
  */
 export function SimulationDecisions({
   channelSpend,
@@ -47,8 +46,14 @@ export function SimulationDecisions({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {/* Main chart panel */}
-      <div className="lg:col-span-2">
-        <DockablePanel id="channel-performance" title="Channel Performance" icon={BarChart3}>
+      <Card className="lg:col-span-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            Channel Performance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <SplitViewBarCharts
             channelSpend={channelSpend}
             onSpendChange={updateChannelSpend}
@@ -56,35 +61,63 @@ export function SimulationDecisions({
             totals={totals}
             remainingBudget={remainingBudget}
           />
-        </DockablePanel>
-      </div>
+        </CardContent>
+      </Card>
       
       {/* Secondary panels */}
-      <DockablePanel id="product-mix" title="Product Mix" icon={PieChart}>
-        <ProductMixChart channelMetrics={channelMetrics} />
-      </DockablePanel>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <PieChart className="h-4 w-4 text-primary" />
+            Product Mix
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProductMixChart channelMetrics={channelMetrics} />
+        </CardContent>
+      </Card>
       
-      <DockablePanel id="goal-tracker" title="Goal Tracker" icon={DollarSign}>
-        <GoalTrackerPanel totals={totals} hasUserModified={hasUserModified} />
-      </DockablePanel>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <DollarSign className="h-4 w-4 text-primary" />
+            Goal Tracker
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GoalTrackerContent totals={totals} hasUserModified={hasUserModified} />
+        </CardContent>
+      </Card>
       
       {/* Full width panels */}
-      <div className="lg:col-span-2">
-        <DockablePanel id="hints" title="Hints & Tips" icon={AlertCircle}>
-          <HintsPanel />
-        </DockablePanel>
-      </div>
+      <Card className="lg:col-span-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <AlertCircle className="h-4 w-4 text-primary" />
+            Hints & Tips
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <HintsContent />
+        </CardContent>
+      </Card>
       
-      <div className="lg:col-span-2">
-        <DockablePanel id="assumptions" title="Assumptions" icon={Settings}>
-          <AssumptionsPanel />
-        </DockablePanel>
-      </div>
+      <Card className="lg:col-span-2">
+        <CardHeader className="pb-0">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Settings className="h-4 w-4 text-primary" />
+            Assumptions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <AssumptionsContent />
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-// Export these as separate components so they can be rendered outside the docking system
+// Export these as separate components for the fixed header
 
 interface BudgetHeaderProps {
   totalSpent: number;
@@ -142,18 +175,18 @@ export function ScenarioContext({ channelSpend }: ScenarioContextProps) {
   );
 }
 
-// Extracted panel components for the docking system
+// Internal content components
 
-interface GoalTrackerPanelProps {
+interface GoalTrackerContentProps {
   totals: {
     totalRevenue: number;
   };
   hasUserModified: boolean;
 }
 
-function GoalTrackerPanel({ totals, hasUserModified }: GoalTrackerPanelProps) {
+function GoalTrackerContent({ totals, hasUserModified }: GoalTrackerContentProps) {
   return (
-    <div className="p-4 bg-card">
+    <div>
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm text-muted-foreground">Goal Progress</div>
@@ -193,9 +226,9 @@ function GoalTrackerPanel({ totals, hasUserModified }: GoalTrackerPanelProps) {
   );
 }
 
-function HintsPanel() {
+function HintsContent() {
   return (
-    <div className="p-4 bg-gradient-to-r from-primary/5 to-secondary/30">
+    <div className="bg-gradient-to-r from-primary/5 to-secondary/30 rounded-lg p-4">
       <p className="text-sm text-muted-foreground">
         💡 <strong>The Trap:</strong> Switch between <em>"Views"</em> and <em>"Revenue"</em> filters.
         Which channel looks best in each view? Then check the <em>Product Mix</em> to see what each
@@ -205,14 +238,14 @@ function HintsPanel() {
   );
 }
 
-function AssumptionsPanel() {
+function AssumptionsContent() {
   return (
-    <Accordion type="single" collapsible className="bg-card">
+    <Accordion type="single" collapsible>
       <AccordionItem value="assumptions" className="border-none">
-        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+        <AccordionTrigger className="py-3 hover:no-underline">
           <span className="text-sm font-medium">📋 Simulation Assumptions</span>
         </AccordionTrigger>
-        <AccordionContent className="px-4 pb-4">
+        <AccordionContent className="pb-4">
           <div className="grid gap-4 md:grid-cols-2">
             {/* Products */}
             <div className="space-y-2">
