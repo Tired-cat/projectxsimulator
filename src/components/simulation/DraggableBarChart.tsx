@@ -167,7 +167,8 @@ export function DraggableBarChart({
     }
   }, [draggingChannel]);
 
-  const handleMouseDown = useCallback((channelId: string, e: React.MouseEvent) => {
+  // Column-based drag start - captures pointer on entire column area
+  const handleColumnPointerDown = useCallback((channelId: string, e: React.PointerEvent) => {
     // Snapshot mode: bars are NOT adjustable
     if (isSnapshot) return;
     
@@ -175,24 +176,42 @@ export function DraggableBarChart({
     e.stopPropagation();
     
     const target = e.currentTarget as HTMLElement;
-    try {
-      target.setPointerCapture((e as unknown as PointerEvent).pointerId || 1);
-    } catch {
-      // Ignore if pointer capture fails
-    }
+    target.setPointerCapture(e.pointerId);
     
     // Initialize draft with current spend values
     setDraftSpend({ ...channelSpend });
     setDraggingChannel(channelId);
+    
+    // Immediately compute initial value from pointer position
+    if (chartRef.current) {
+      const rect = chartRef.current.getBoundingClientRect();
+      const chartHeight = rect.height - 80; // account for padding
+      const mouseY = e.clientY - rect.top - 40;
+      
+      const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
+      // Higher sensitivity: smaller step size for smoother control
+      const newValue = Math.round((percentage * GLOBAL_BUDGET) / 50) * 50;
+      
+      const otherSpend = Object.entries(channelSpend)
+        .filter(([id]) => id !== channelId)
+        .reduce((sum, [, val]) => sum + val, 0);
+      const maxAllowed = GLOBAL_BUDGET - otherSpend;
+      const clampedValue = Math.min(Math.max(0, newValue), maxAllowed);
+      
+      setDraftSpend(prev => prev ? {
+        ...prev,
+        [channelId]: clampedValue
+      } : { ...channelSpend, [channelId]: clampedValue });
+    }
   }, [channelSpend, isSnapshot]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleColumnPointerMove = useCallback((e: React.PointerEvent) => {
     if (!draggingChannel || !chartRef.current || !draftSpend) return;
     
     e.preventDefault();
     e.stopPropagation();
 
-    // Use RAF to throttle updates
+    // Use RAF to throttle updates for smoothness
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
     }
@@ -205,7 +224,8 @@ export function DraggableBarChart({
       const mouseY = e.clientY - rect.top - 40;
       
       const percentage = 1 - Math.max(0, Math.min(1, mouseY / chartHeight));
-      const newValue = Math.round((percentage * GLOBAL_BUDGET) / 100) * 100;
+      // Higher sensitivity with smaller steps
+      const newValue = Math.round((percentage * GLOBAL_BUDGET) / 50) * 50;
       
       const otherSpend = Object.entries(draftSpend)
         .filter(([id]) => id !== draggingChannel)
@@ -213,7 +233,7 @@ export function DraggableBarChart({
       const maxAllowed = GLOBAL_BUDGET - otherSpend;
       const clampedValue = Math.min(Math.max(0, newValue), maxAllowed);
       
-      // Only update draft (local state) - NO parent state update
+      // Only update draft (local state) - NO parent state update during drag
       setDraftSpend(prev => prev ? {
         ...prev,
         [draggingChannel]: clampedValue
@@ -221,10 +241,10 @@ export function DraggableBarChart({
     });
   }, [draggingChannel, draftSpend]);
 
-  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+  const handleColumnPointerUp = useCallback((e: React.PointerEvent) => {
     const target = e.currentTarget as HTMLElement;
     try {
-      target.releasePointerCapture((e as unknown as PointerEvent).pointerId || 1);
+      target.releasePointerCapture(e.pointerId);
     } catch {
       // Ignore
     }
@@ -374,18 +394,15 @@ export function DraggableBarChart({
           {/* Draggable Bar Chart - Fixed dimensions, no layout changes */}
           <div
             ref={chartRef}
-            className="relative bg-secondary/20 rounded-lg p-4 select-none cursor-crosshair"
+            className="relative bg-secondary/20 rounded-lg p-4 select-none"
             style={{ 
               height: fillContainer ? '100%' : '350px', 
               minHeight: fillContainer ? undefined : '350px', 
               maxHeight: fillContainer ? undefined : '350px',
-              touchAction: isDragging ? 'none' : 'auto',
+              touchAction: 'none',
               // Contain this specific area during drag
               contain: isDragging ? 'strict' : 'layout',
             }}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
           >
             {/* Y-axis labels */}
             <div className="absolute left-0 top-10 bottom-12 w-16 flex flex-col justify-between text-xs text-muted-foreground">
@@ -401,7 +418,7 @@ export function DraggableBarChart({
               ))}
             </div>
 
-            {/* Bars Container */}
+            {/* Bars Container - pointer-events handled per column */}
             <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
               {Object.entries(CHANNELS).map(([channelId, channel]) => {
                 const barValues = getBarValue(channelId);
@@ -412,12 +429,26 @@ export function DraggableBarChart({
                 const isNegative = viewMode === 'profit' && metricValue < 0;
 
                 return (
+                  // ENTIRE COLUMN is the drag surface - prevents dead zones
                   <div
                     key={channelId}
-                    className="flex-1 flex flex-col items-center h-full justify-end"
+                    className={`flex-1 flex flex-col items-center h-full justify-end relative ${
+                      isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
+                    }`}
+                    onPointerDown={(e) => handleColumnPointerDown(channelId, e)}
+                    onPointerMove={handleColumnPointerMove}
+                    onPointerUp={handleColumnPointerUp}
+                    onPointerCancel={handleColumnPointerUp}
+                    style={{ touchAction: 'none' }}
                   >
-                    {/* Metric values - no layout animation during drag */}
-                    <div className="text-center mb-1">
+                    {/* Invisible full-height hit area for dragging from empty space */}
+                    <div 
+                      className="absolute inset-0 z-0" 
+                      style={{ pointerEvents: isSnapshot ? 'none' : 'auto' }}
+                    />
+                    
+                    {/* Metric values - pointer-events disabled so they don't block drag */}
+                    <div className="text-center mb-1 pointer-events-none z-10">
                       <div 
                         className={`text-sm font-bold ${isNegative ? 'text-destructive' : ''}`}
                         style={{ color: isNegative ? undefined : channel.color }}
@@ -430,7 +461,7 @@ export function DraggableBarChart({
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground mb-2">
+                    <div className="text-xs text-muted-foreground mb-2 pointer-events-none z-10">
                       ${spend.toLocaleString()} spent
                     </div>
                     
@@ -446,7 +477,6 @@ export function DraggableBarChart({
                       isDraggingSpend={isDragging}
                       isThisBarDragging={isThisBarDragging}
                       isSnapshot={isSnapshot}
-                      onMouseDown={(e) => handleMouseDown(channelId, e)}
                       onTokenDrag={onTokenDrag}
                     />
                   </div>
@@ -454,8 +484,8 @@ export function DraggableBarChart({
               })}
             </div>
 
-            {/* X-axis labels */}
-            <div className="absolute left-20 right-4 bottom-0 flex justify-around">
+            {/* X-axis labels - pointer-events disabled to prevent blocking drag */}
+            <div className="absolute left-20 right-4 bottom-0 flex justify-around pointer-events-none z-0">
               {Object.entries(CHANNELS).map(([channelId, channel]) => (
                 <div key={channelId} className="flex-1 text-center">
                   <span className="text-xs font-medium" style={{ color: channel.color }}>

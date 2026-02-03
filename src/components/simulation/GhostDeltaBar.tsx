@@ -15,7 +15,6 @@ interface GhostDeltaBarProps {
   isDraggingSpend: boolean;
   isThisBarDragging: boolean;
   isSnapshot: boolean;
-  onMouseDown: (e: React.MouseEvent) => void;
   onTokenDrag?: (token: ReasoningToken) => void;
 }
 
@@ -30,7 +29,6 @@ export function GhostDeltaBar({
   isDraggingSpend,
   isThisBarDragging,
   isSnapshot,
-  onMouseDown,
   onTokenDrag,
 }: GhostDeltaBarProps) {
   const [isDraggingGhost, setIsDraggingGhost] = useState(false);
@@ -106,7 +104,8 @@ export function GhostDeltaBar({
   const deltaHeight = Math.abs(currentHeightPercent - baselineHeightPercent);
 
   return (
-    <div className="relative w-full max-w-[80px] h-full flex items-end">
+    // Bar container - pointer events pass through to column for drag
+    <div className="relative w-full max-w-[80px] h-full flex items-end pointer-events-none">
       {/* Ghost Baseline Bar - faint shadow showing the original state */}
       {hasBaseline && (
         <motion.div
@@ -149,11 +148,9 @@ export function GhostDeltaBar({
       {hasBaseline && isIncrease ? (
         // STACKED: Baseline portion + Delta increase segment
         <>
-          {/* Baseline Portion - renders up to baseline height only */}
+          {/* Baseline Portion - pointer events pass through */}
           <motion.div
             className={`relative w-full ${
-              isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
-            } ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
             }`}
             style={{
@@ -177,12 +174,11 @@ export function GhostDeltaBar({
               damping: isDraggingSpend ? 35 : 25,
               duration: isDraggingSpend ? 0.1 : undefined,
             }}
-            onMouseDown={onMouseDown}
           />
 
-          {/* Delta Increase Segment - sits ABOVE baseline portion, VISIBLE */}
+          {/* Delta Increase Segment - VISIBLE and draggable for reasoning */}
           <motion.div
-            className={`absolute left-0 right-0 ${
+            className={`absolute left-0 right-0 pointer-events-auto ${
               isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
             }`}
             style={{
@@ -232,10 +228,9 @@ export function GhostDeltaBar({
       ) : (
         // SINGLE BAR: No increase delta, render full current bar
         <>
+          {/* Single bar - pointer events pass through to column */}
           <motion.div
             className={`relative w-full rounded-t-lg ${
-              isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
-            } ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
             }`}
             style={{
@@ -260,18 +255,17 @@ export function GhostDeltaBar({
               damping: isDraggingSpend ? 35 : 25,
               duration: isDraggingSpend ? 0.1 : undefined,
             }}
-            onMouseDown={onMouseDown}
           >
-            {/* Spend drag handle */}
+            {/* Spend drag handle - visual only, drag handled by column */}
             <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
               <div className="w-10 h-1.5 bg-white/60 rounded-full" />
             </div>
           </motion.div>
 
-          {/* Delta Decrease Segment - visible gap between ghost and current */}
+          {/* Delta Decrease Segment - visible gap between ghost and current, draggable for reasoning */}
           {hasDelta && hasBaseline && !isIncrease && (
             <motion.div
-              className={`absolute left-0 right-0 ${
+              className={`absolute left-0 right-0 pointer-events-auto ${
                 isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
               }`}
               style={{
