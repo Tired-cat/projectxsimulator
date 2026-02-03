@@ -44,6 +44,10 @@ const Index = () => {
           onReset={resetSimulation}
         />
       }
+      // Pass props for the fixed header
+      totalSpent={totalSpent}
+      channelSpend={channelSpend}
+      onReset={resetSimulation}
     />
   );
 };
