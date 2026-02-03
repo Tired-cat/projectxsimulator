@@ -1,16 +1,15 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { 
   WorkspaceLayout, 
   PanelDefinition, 
   DropZoneType, 
   PersistedLayout,
-  Pane,
-  TabGroup
+  Pane
 } from '@/types/dockingTypes';
 
 const STORAGE_KEY = 'workspace-layout';
 
-// Default layout factory
+// Default layout factory - starts EMPTY (no auto-docked panels)
 function createDefaultLayout(): WorkspaceLayout {
   return {
     splitMode: false,
@@ -23,7 +22,9 @@ function createDefaultLayout(): WorkspaceLayout {
       tabGroup: { tabs: [], activeTabId: '' }
     },
     workspaceTabs: [],
-    activeWorkspaceTab: null
+    activeWorkspaceTab: null,
+    // Track which panels are docked (removed from their normal grid position)
+    dockedPanelIds: []
   };
 }
 
@@ -40,7 +41,8 @@ function persistLayout(layout: WorkspaceLayout): void {
       activeTabId: layout.paneB.tabGroup.activeTabId
     },
     workspaceTabs: layout.workspaceTabs.map(t => t.panelId),
-    activeWorkspaceTab: layout.activeWorkspaceTab
+    activeWorkspaceTab: layout.activeWorkspaceTab,
+    dockedPanelIds: layout.dockedPanelIds
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
@@ -77,22 +79,20 @@ function restoreLayout(persisted: PersistedLayout): WorkspaceLayout {
       }
     },
     workspaceTabs: persisted.workspaceTabs.map(id => ({ panelId: id })),
-    activeWorkspaceTab: persisted.activeWorkspaceTab
+    activeWorkspaceTab: persisted.activeWorkspaceTab,
+    dockedPanelIds: persisted.dockedPanelIds || []
   };
 }
 
-export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
+export function useWorkspaceLayout() {
   const [panels, setPanels] = useState<Map<string, PanelDefinition>>(new Map());
   const [layout, setLayout] = useState<WorkspaceLayout>(() => {
     const persisted = loadPersistedLayout();
     if (persisted) {
       return restoreLayout(persisted);
     }
-    // Create default with provided panel IDs in pane A
-    const defaultLayout = createDefaultLayout();
-    defaultLayout.paneA.tabGroup.tabs = defaultPanelIds.map(id => ({ panelId: id }));
-    defaultLayout.paneA.tabGroup.activeTabId = defaultPanelIds[0] || '';
-    return defaultLayout;
+    // Start with empty layout - no auto-docked panels
+    return createDefaultLayout();
   });
   
   const [draggingPanel, setDraggingPanel] = useState<string | null>(null);
@@ -102,34 +102,21 @@ export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
     persistLayout(layout);
   }, [layout]);
 
-  // Register a panel
+  // Register a panel - DOES NOT auto-dock, just stores the definition
   const registerPanel = useCallback((panel: PanelDefinition) => {
     setPanels(prev => {
+      // Only update if panel doesn't exist or has changed title/icon
+      const existing = prev.get(panel.id);
+      if (existing && existing.title === panel.title && existing.icon === panel.icon) {
+        // Just update content without creating new Map reference
+        existing.content = panel.content;
+        return prev;
+      }
       const next = new Map(prev);
       next.set(panel.id, panel);
       return next;
     });
-    
-    // If panel not in any location, add to pane A
-    setLayout(prev => {
-      const existsInA = prev.paneA.tabGroup.tabs.some(t => t.panelId === panel.id);
-      const existsInB = prev.paneB.tabGroup.tabs.some(t => t.panelId === panel.id);
-      const existsInWorkspace = prev.workspaceTabs.some(t => t.panelId === panel.id);
-      
-      if (!existsInA && !existsInB && !existsInWorkspace) {
-        return {
-          ...prev,
-          paneA: {
-            ...prev.paneA,
-            tabGroup: {
-              tabs: [...prev.paneA.tabGroup.tabs, { panelId: panel.id }],
-              activeTabId: prev.paneA.tabGroup.activeTabId || panel.id
-            }
-          }
-        };
-      }
-      return prev;
-    });
+    // NO auto-adding to tabs - panels live in grid by default
   }, []);
 
   // Unregister a panel
@@ -141,8 +128,13 @@ export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
     });
   }, []);
 
-  // Helper to remove panel from all locations
-  const removePanelFromAll = (layout: WorkspaceLayout, panelId: string): WorkspaceLayout => {
+  // Check if a panel is currently docked (in any dock location)
+  const isPanelDocked = useCallback((panelId: string): boolean => {
+    return layout.dockedPanelIds.includes(panelId);
+  }, [layout.dockedPanelIds]);
+
+  // Helper to remove panel from all dock locations
+  const removePanelFromAllDocks = (layout: WorkspaceLayout, panelId: string): WorkspaceLayout => {
     const filterTabs = (tabs: { panelId: string }[]) => tabs.filter(t => t.panelId !== panelId);
     
     const newPaneA: Pane = {
@@ -174,17 +166,25 @@ export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
       workspaceTabs: newWorkspaceTabs,
       activeWorkspaceTab: layout.activeWorkspaceTab === panelId
         ? newWorkspaceTabs[0]?.panelId || null
-        : layout.activeWorkspaceTab
+        : layout.activeWorkspaceTab,
+      dockedPanelIds: layout.dockedPanelIds.filter(id => id !== panelId)
     };
   };
 
-  // Move panel to target location
-  const movePanel = useCallback((panelId: string, target: DropZoneType, insertIndex?: number) => {
+  // Dock a panel to a target location (moves it from grid to dock)
+  const dockPanel = useCallback((panelId: string, target: DropZoneType, insertIndex?: number) => {
     setLayout(prev => {
-      // First remove from current location
-      let next = removePanelFromAll(prev, panelId);
+      // First remove from any current dock location
+      let next = removePanelFromAllDocks(prev, panelId);
       
       const tab = { panelId };
+      
+      // Add to dockedPanelIds if not already there
+      const newDockedIds = next.dockedPanelIds.includes(panelId)
+        ? next.dockedPanelIds
+        : [...next.dockedPanelIds, panelId];
+      
+      next = { ...next, dockedPanelIds: newDockedIds };
       
       switch (target) {
         case 'tab-bar-a':
@@ -217,7 +217,7 @@ export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
           }
           next = {
             ...next,
-            splitMode: true, // Auto-enable split mode
+            splitMode: true, // Auto-enable split mode when docking to right
             paneB: {
               ...next.paneB,
               tabGroup: { tabs, activeTabId: panelId }
@@ -239,6 +239,17 @@ export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
       return next;
     });
   }, []);
+
+  // Undock a panel (return it to the grid)
+  const undockPanel = useCallback((panelId: string) => {
+    setLayout(prev => removePanelFromAllDocks(prev, panelId));
+  }, []);
+
+  // Move panel between dock locations (panel must already be docked)
+  const movePanel = useCallback((panelId: string, target: DropZoneType, insertIndex?: number) => {
+    // If not docked, dock it; otherwise just move within docks
+    dockPanel(panelId, target, insertIndex);
+  }, [dockPanel]);
 
   // Set active tab
   const setActiveTab = useCallback((paneId: 'pane-a' | 'pane-b' | 'workspace', tabId: string) => {
@@ -293,20 +304,19 @@ export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
     });
   }, []);
 
-  // Reset to default layout
+  // Reset to default layout (undock all panels)
   const resetLayout = useCallback(() => {
-    const allPanelIds = Array.from(panels.keys());
-    const defaultLayout = createDefaultLayout();
-    defaultLayout.paneA.tabGroup.tabs = allPanelIds.map(id => ({ panelId: id }));
-    defaultLayout.paneA.tabGroup.activeTabId = allPanelIds[0] || '';
-    setLayout(defaultLayout);
+    setLayout(createDefaultLayout());
     localStorage.removeItem(STORAGE_KEY);
-  }, [panels]);
+  }, []);
 
   // Get panel by ID
   const getPanel = useCallback((panelId: string) => {
     return panels.get(panelId);
   }, [panels]);
+
+  // Check if any panels are docked
+  const hasDockedPanels = layout.dockedPanelIds.length > 0;
 
   return {
     layout,
@@ -314,6 +324,10 @@ export function useWorkspaceLayout(defaultPanelIds: string[] = []) {
     registerPanel,
     unregisterPanel,
     movePanel,
+    dockPanel,
+    undockPanel,
+    isPanelDocked,
+    hasDockedPanels,
     setActiveTab,
     toggleSplitMode,
     closeSplitMode,

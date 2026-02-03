@@ -1,5 +1,6 @@
 import { useDroppable } from '@dnd-kit/core';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { DockablePanelHeader } from './DockablePanel';
 import { TabBar } from './TabBar';
 import { cn } from '@/lib/utils';
 import type { Pane as PaneType } from '@/types/dockingTypes';
@@ -44,12 +45,22 @@ export function DockablePane({ pane, className }: DockablePaneProps) {
         )}
       >
         {hasTabs && activePanel ? (
-          <div className="h-full">
-            {activePanel.content}
+          <div className="h-full flex flex-col">
+            {/* Panel header with undock button */}
+            <DockablePanelHeader 
+              id={activePanel.id} 
+              title={activePanel.title} 
+              icon={activePanel.icon}
+              showUndock={true}
+            />
+            {/* Panel content */}
+            <div className="flex-1 overflow-auto">
+              {activePanel.content}
+            </div>
           </div>
         ) : (
           <div className="text-muted-foreground text-sm">
-            {draggingPanel ? 'Drop panel here' : 'No panels'}
+            {draggingPanel ? 'Drop panel here' : 'Drag panels here to dock'}
           </div>
         )}
       </div>
@@ -118,5 +129,40 @@ export function SplitDropZones({ visible }: SplitDropZonesProps) {
         </div>
       </div>
     </>
+  );
+}
+
+interface TopDockZoneProps {
+  visible: boolean;
+}
+
+export function TopDockZone({ visible }: TopDockZoneProps) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'workspace-tabs',
+    data: { type: 'workspace-tabs' },
+  });
+
+  if (!visible) return null;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'absolute left-0 right-0 top-0 h-16 z-40',
+        'flex items-center justify-center',
+        'bg-gradient-to-b from-primary/20 to-transparent',
+        'border-b-2 border-dashed border-primary/50',
+        'transition-all duration-200',
+        isOver && 'from-primary/40 border-primary'
+      )}
+    >
+      <div className={cn(
+        'px-4 py-2 rounded-md text-xs font-medium',
+        'bg-primary/20 text-primary border border-primary/50',
+        isOver && 'bg-primary text-primary-foreground'
+      )}>
+        Add as Tab
+      </div>
+    </div>
   );
 }

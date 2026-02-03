@@ -10,8 +10,7 @@ import {
 } from '@dnd-kit/core';
 import { RotateCcw, Columns2 } from 'lucide-react';
 import { WorkspaceProvider, useWorkspace } from '@/contexts/WorkspaceContext';
-import { DockablePane, SplitDropZones } from './DockablePane';
-import { WorkspaceTabBar } from './TabBar';
+import { DockablePane, SplitDropZones, TopDockZone } from './DockablePane';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { DropZoneType } from '@/types/dockingTypes';
@@ -23,7 +22,8 @@ interface DockableWorkspaceProps {
 
 /**
  * Root container for the dockable workspace system.
- * Wrap your app content with this to enable panel docking.
+ * Wrap your page content with this to enable panel docking.
+ * Children render normally in the grid; docked panels appear in the dock area.
  */
 export function DockableWorkspace({ children, className }: DockableWorkspaceProps) {
   return (
@@ -45,6 +45,7 @@ function DockableWorkspaceInner({ children, className }: DockableWorkspaceProps)
     toggleSplitMode,
     closeSplitMode,
     resetLayout,
+    hasDockedPanels,
   } = useWorkspace();
 
   const sensors = useSensors(
@@ -78,6 +79,9 @@ function DockableWorkspaceInner({ children, className }: DockableWorkspaceProps)
   }, [movePanel, setDraggingPanel]);
 
   const draggedPanel = draggingPanel ? getPanel(draggingPanel) : null;
+  
+  // Check if dock area should be visible
+  const showDockArea = hasDockedPanels || layout.splitMode;
 
   return (
     <DndContext
@@ -86,50 +90,63 @@ function DockableWorkspaceInner({ children, className }: DockableWorkspaceProps)
       onDragEnd={handleDragEnd}
     >
       <div className={cn('flex flex-col h-full', className)}>
-        {/* Workspace tabs (torn-out panels) */}
-        <WorkspaceTabBar
-          tabs={layout.workspaceTabs}
-          activeTabId={layout.activeWorkspaceTab}
-        />
-        
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={layout.splitMode ? closeSplitMode : toggleSplitMode}
-              className="h-8"
-            >
-              <Columns2 className="h-4 w-4 mr-2" />
-              {layout.splitMode ? 'Close Split' : 'Split View'}
-            </Button>
-          </div>
-          <Button variant="ghost" size="sm" onClick={resetLayout} className="h-8">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset Layout
-          </Button>
-        </div>
-        
-        {/* Main workspace area */}
-        <div className="flex-1 relative overflow-hidden">
-          {/* Render children to allow panel registration */}
-          <div className="hidden">{children}</div>
-          
-          {/* Split drop zones (visible when dragging) */}
-          <SplitDropZones visible={!!draggingPanel && !layout.splitMode} />
-          
-          {/* Panes */}
-          <div className={cn(
-            'h-full p-4',
-            layout.splitMode ? 'grid grid-cols-2 gap-4' : 'flex'
-          )}>
-            <DockablePane pane={layout.paneA} className="flex-1" />
-            
-            {layout.splitMode && (
-              <DockablePane pane={layout.paneB} className="flex-1" />
+        {/* Toolbar - only show when there are docked panels or during drag */}
+        {(showDockArea || draggingPanel) && (
+          <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border">
+            <div className="flex items-center gap-2">
+              {hasDockedPanels && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={layout.splitMode ? closeSplitMode : toggleSplitMode}
+                  className="h-8"
+                >
+                  <Columns2 className="h-4 w-4 mr-2" />
+                  {layout.splitMode ? 'Close Split' : 'Split View'}
+                </Button>
+              )}
+            </div>
+            {hasDockedPanels && (
+              <Button variant="ghost" size="sm" onClick={resetLayout} className="h-8">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Undock All
+              </Button>
             )}
           </div>
+        )}
+        
+        {/* Main content area */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Top dock zone (visible when dragging) */}
+          <TopDockZone visible={!!draggingPanel} />
+          
+          {/* Split drop zones (visible when dragging and not in split mode) */}
+          <SplitDropZones visible={!!draggingPanel && !layout.splitMode} />
+          
+          {/* Content layout depends on dock state */}
+          {showDockArea ? (
+            // Show dock panes when panels are docked
+            <div className={cn(
+              'h-full p-4',
+              layout.splitMode ? 'grid grid-cols-2 gap-4' : 'flex'
+            )}>
+              <DockablePane pane={layout.paneA} className="flex-1" />
+              
+              {layout.splitMode && (
+                <DockablePane pane={layout.paneB} className="flex-1" />
+              )}
+            </div>
+          ) : (
+            // Normal grid layout when nothing is docked
+            <div className="h-full overflow-auto p-4">
+              {children}
+            </div>
+          )}
+          
+          {/* Also render children in dock mode so panels can register */}
+          {showDockArea && (
+            <div className="hidden">{children}</div>
+          )}
         </div>
       </div>
 
