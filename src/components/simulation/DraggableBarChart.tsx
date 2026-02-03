@@ -382,7 +382,7 @@ export function DraggableBarChart({
 
   const isDragging = draggingChannel !== null;
 
-  // Get tooltip data for current drag
+  // Get tooltip data for current drag (includes real-time budget info)
   const getTooltipData = useCallback(() => {
     if (!draggingChannel || !draftSpend) return null;
     
@@ -391,11 +391,38 @@ export function DraggableBarChart({
     const baselineSpendValue = baselineSpend?.[draggingChannel as keyof ChannelSpend] ?? channelSpend[draggingChannel as keyof ChannelSpend];
     const delta = currentSpend - baselineSpendValue;
     
+    // Calculate real-time budget left from draft values
+    const totalDraftSpend = Object.values(draftSpend).reduce((sum, val) => sum + val, 0);
+    const budgetLeft = GLOBAL_BUDGET - totalDraftSpend;
+    
+    // Determine budget status for traffic-light coloring
+    const budgetThreshold = GLOBAL_BUDGET * 0.1; // 10% threshold = $2,000
+    let budgetStatus: 'green' | 'amber' | 'red' | 'limit';
+    if (budgetLeft <= 0) {
+      budgetStatus = 'limit';
+    } else if (budgetLeft <= budgetThreshold) {
+      budgetStatus = 'red';
+    } else if (budgetLeft <= budgetThreshold * 2) { // 20% = amber zone
+      budgetStatus = 'amber';
+    } else {
+      budgetStatus = 'green';
+    }
+    
+    // Check if we're at the limit (can't increase further)
+    const otherSpend = Object.entries(draftSpend)
+      .filter(([id]) => id !== draggingChannel)
+      .reduce((sum, [, val]) => sum + val, 0);
+    const maxAllowedForChannel = GLOBAL_BUDGET - otherSpend;
+    const atLimit = currentSpend >= maxAllowedForChannel && budgetLeft <= 0;
+    
     return {
       channelName: channel.name,
       channelColor: channel.color,
       currentSpend,
       delta,
+      budgetLeft,
+      budgetStatus,
+      atLimit,
     };
   }, [draggingChannel, draftSpend, baselineSpend, channelSpend]);
 
@@ -620,34 +647,77 @@ export function DraggableBarChart({
               ))}
             </div>
 
-            {/* Cursor-follow tooltip during drag */}
+            {/* Cursor-follow tooltip during drag with budget tracking */}
             {isDragging && cursorPos && (() => {
               const tooltipData = getTooltipData();
               if (!tooltipData) return null;
+              
+              // Traffic-light colors for budget status
+              const budgetColors = {
+                green: { text: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30' },
+                amber: { text: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
+                red: { text: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+                limit: { text: 'text-red-600', bg: 'bg-red-500/20', border: 'border-red-500/50' },
+              };
+              const budgetStyle = budgetColors[tooltipData.budgetStatus];
               
               return (
                 <div
                   className="absolute z-50 pointer-events-none"
                   style={{
                     left: cursorPos.x + 16,
-                    top: cursorPos.y - 40,
+                    top: cursorPos.y - 60,
                     transform: cursorPos.x > 200 ? 'translateX(-120%)' : 'none',
                   }}
                 >
-                  <div className="bg-background/95 backdrop-blur-sm border-2 rounded-lg shadow-lg px-3 py-2 min-w-[140px]"
-                    style={{ borderColor: tooltipData.channelColor }}
+                  <div 
+                    className="bg-background/95 backdrop-blur-sm border-2 rounded-lg shadow-lg px-3 py-2 min-w-[160px]"
+                    style={{ borderColor: tooltipData.atLimit ? 'hsl(0, 72%, 51%)' : tooltipData.channelColor }}
                   >
+                    {/* Channel name */}
                     <div className="text-xs font-semibold mb-1" style={{ color: tooltipData.channelColor }}>
                       {tooltipData.channelName}
                     </div>
+                    
+                    {/* Current spend */}
                     <div className="text-lg font-bold text-foreground">
                       ${tooltipData.currentSpend.toLocaleString()}
                     </div>
+                    
+                    {/* Delta from baseline */}
                     {tooltipData.delta !== 0 && (
                       <div className={`text-sm font-medium ${tooltipData.delta > 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {tooltipData.delta > 0 ? '▲' : '▼'} {tooltipData.delta > 0 ? '+' : ''}${tooltipData.delta.toLocaleString()}
                       </div>
                     )}
+                    
+                    {/* Budget remaining with traffic-light coloring */}
+                    <div className={`mt-2 pt-2 border-t border-border/50`}>
+                      {tooltipData.atLimit ? (
+                        <div className={`text-sm font-bold ${budgetStyle.text} flex items-center gap-1`}>
+                          <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                          Limit reached
+                        </div>
+                      ) : (
+                        <div className={`flex items-center justify-between gap-2`}>
+                          <span className="text-xs text-muted-foreground">Budget left:</span>
+                          <span className={`text-sm font-bold ${budgetStyle.text}`}>
+                            ${tooltipData.budgetLeft.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Progress indicator for budget */}
+                      <div className="mt-1.5 h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-75 ${
+                            tooltipData.budgetStatus === 'green' ? 'bg-green-500' :
+                            tooltipData.budgetStatus === 'amber' ? 'bg-amber-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.max(0, (tooltipData.budgetLeft / GLOBAL_BUDGET) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
