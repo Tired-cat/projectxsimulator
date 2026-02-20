@@ -84,9 +84,12 @@ export function ReasoningBoard() {
 
         {/* Instructions hint */}
         {totalChips === 0 && (
-          <div className="mt-4 p-3 bg-muted/50 border border-dashed border-border rounded-lg text-center">
+          <div className="mt-4 p-3 bg-muted/50 border border-dashed border-border rounded-lg text-center space-y-1">
             <p className="text-xs text-muted-foreground">
-              🎯 Go to <strong>My Decisions</strong> → hover over any KPI value or channel metric → drag it here
+              🧪 Click <strong>Reason</strong> on <strong>Channel Performance</strong> or <strong>Product Mix</strong>, then drag a bar or pie segment here
+            </p>
+            <p className="text-xs text-muted-foreground">
+              — or hover over any KPI value in <strong>My Decisions</strong> and drag it here
             </p>
           </div>
         )}

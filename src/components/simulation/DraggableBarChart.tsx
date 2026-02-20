@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import { Eye, DollarSign, TrendingUp, LayoutGrid } from 'lucide-react';
+import { Eye, DollarSign, TrendingUp, LayoutGrid, FlaskConical } from 'lucide-react';
 import { GhostDeltaBar } from './GhostDeltaBar';
 import type { ReasoningToken } from '@/types/reasoningToken';
+import { createEvidenceChip } from '@/types/evidenceChip';
+import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 
 type ChartMode = 'live' | 'snapshot';
 
@@ -57,6 +59,8 @@ export function DraggableBarChart({
   onTokenDrag,
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
+  const [reasonMode, setReasonMode] = useState(false);
+  const { setDraggingChip } = useReasoningBoard();
   
   // Snapshot mode: draggable for reasoning but NOT adjustable
   // Live mode: adjustable but NOT draggable (for now)
@@ -508,7 +512,23 @@ export function DraggableBarChart({
             </CardTitle>
             
             {/* Filter Metrics Chips */}
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+              {/* Reason Mode Toggle */}
+              {!isSnapshot && (
+                <button
+                  onClick={() => setReasonMode(r => !r)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all border ${
+                    reasonMode
+                      ? 'bg-primary text-primary-foreground border-primary shadow-md'
+                      : 'bg-secondary hover:bg-primary/10 text-foreground border-border hover:border-primary/40'
+                  }`}
+                  title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode: drag bars to Reasoning Board'}
+                >
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  Reason
+                </button>
+              )}
+
               <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
@@ -657,77 +677,118 @@ export function DraggableBarChart({
                 const isThisBarDragging = draggingChannel === channelId;
                 const metricValue = barValues.primary;
                 const isNegative = viewMode === 'profit' && metricValue < 0;
+                const barHeightPct = Math.max((Math.abs(metricValue) / maxScale) * 100, 2);
+
+                // Reason-mode bar drag handlers (HTML5 drag API → evidence chip)
+                const metricLabel = viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
+                const handleBarDragStart = (e: React.DragEvent) => {
+                  const chip = createEvidenceChip(
+                    `${channel.name} ${metricLabel}`,
+                    formatValue(metricValue),
+                    `${metricLabel} • Channel Performance`,
+                    `${channelId}-bar-${viewMode}`
+                  );
+                  e.dataTransfer.effectAllowed = 'copy';
+                  e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+                  setDraggingChip(chip);
+                };
+                const handleBarDragEnd = () => setDraggingChip(null);
 
                 return (
                   // ENTIRE COLUMN is the drag surface - prevents dead zones
                   <div
                     key={channelId}
                     className={`flex-1 flex flex-col items-center h-full justify-end relative ${
-                      isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
+                      isSnapshot || reasonMode ? 'cursor-default' : 'cursor-ns-resize'
                     }`}
-                    onPointerDown={(e) => handleColumnPointerDown(channelId, e)}
-                    onPointerMove={handleColumnPointerMove}
-                    onPointerUp={handleColumnPointerUp}
-                    onPointerCancel={handleColumnPointerUp}
-                    style={{ touchAction: 'none' }}
+                    onPointerDown={reasonMode ? undefined : (e) => handleColumnPointerDown(channelId, e)}
+                    onPointerMove={reasonMode ? undefined : handleColumnPointerMove}
+                    onPointerUp={reasonMode ? undefined : handleColumnPointerUp}
+                    onPointerCancel={reasonMode ? undefined : handleColumnPointerUp}
+                    style={{ touchAction: reasonMode ? 'auto' : 'none' }}
                   >
                     {/* Invisible full-height hit area for dragging from empty space */}
                     <div 
                       className="absolute inset-0 z-0" 
-                      style={{ pointerEvents: isSnapshot ? 'none' : 'auto' }}
+                      style={{ pointerEvents: (isSnapshot || reasonMode) ? 'none' : 'auto' }}
                     />
                     
-                    {/* Metric values — wrapped with EvidenceHandle for drag-to-board */}
-                    <div className="z-10 mb-1 pointer-events-auto" style={{ touchAction: 'none' }}>
-                      <EvidenceHandle
-                        label={`${channel.name} ${viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views'}`}
-                        value={formatValue(metricValue)}
-                        context={`${viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views'} • Channel Performance`}
-                        sourceId={`${channelId}-${viewMode}`}
-                      >
-                        <div className="text-center px-1 py-0.5">
-                          <div
-                            className={`text-sm font-bold ${isNegative ? 'text-destructive' : ''}`}
-                            style={{ color: isNegative ? undefined : channel.color }}
-                          >
-                            {formatValue(metricValue)}
+                    {/* Metric values label */}
+                    <div className="z-10 mb-1 pointer-events-none">
+                      <div className="text-center px-1 py-0.5">
+                        <div
+                          className={`text-sm font-bold ${isNegative ? 'text-destructive' : ''}`}
+                          style={{ color: isNegative ? undefined : channel.color }}
+                        >
+                          {formatValue(metricValue)}
+                        </div>
+                        {viewMode === 'all' && barValues.secondary !== null && (
+                          <div className="text-xs" style={{ color: 'hsl(142 71% 45%)' }}>
+                            ${barValues.secondary.toLocaleString()}
                           </div>
-                          {viewMode === 'all' && barValues.secondary !== null && (
-                            <div className="text-xs text-green-600">
-                              ${barValues.secondary.toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-                      </EvidenceHandle>
+                        )}
+                      </div>
                     </div>
-                    {/* Spend label — also draggable as evidence */}
-                    <div className="z-10 mb-2 pointer-events-auto" style={{ touchAction: 'none' }}>
-                      <EvidenceHandle
-                        label={`${channel.name} Spend`}
-                        value={`$${spend.toLocaleString()}`}
-                        context="Spend • Channel Performance"
-                        sourceId={`${channelId}-spend`}
-                      >
-                        <div className="text-xs text-muted-foreground px-1 py-0.5 text-center">
-                          ${spend.toLocaleString()} spent
-                        </div>
-                      </EvidenceHandle>
+
+                    {/* Spend label */}
+                    <div className="z-10 mb-2 pointer-events-none">
+                      <div className="text-xs text-muted-foreground px-1 py-0.5 text-center">
+                        ${spend.toLocaleString()} spent
+                      </div>
                     </div>
                     
+                    {/* REASON MODE: Draggable bar overlay */}
+                    {reasonMode && (
+                      <div
+                        draggable
+                        onDragStart={handleBarDragStart}
+                        onDragEnd={handleBarDragEnd}
+                        className="absolute bottom-0 left-1 right-1 z-20 rounded-t-lg cursor-grab active:cursor-grabbing select-none transition-all"
+                        style={{
+                          height: `${barHeightPct}%`,
+                          backgroundColor: channel.color,
+                          boxShadow: `0 4px 16px ${channel.color}60`,
+                          border: `2px dashed ${channel.color}`,
+                          opacity: 0.9,
+                        }}
+                        title={`Drag ${channel.name} ${metricLabel} to Reasoning Board`}
+                      >
+                        {/* Grab handle */}
+                        <div className="w-full flex items-center justify-center pt-2">
+                          <div className="w-8 h-1 bg-white/60 rounded-full" />
+                        </div>
+                        {/* Floating label */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-xs font-bold text-white drop-shadow-md bg-black/20 rounded px-1">
+                            🧪 Drag
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* GhostDeltaBar - handles ghost baseline and delta overlay */}
-                    <GhostDeltaBar
-                      channelId={channelId}
-                      channel={channel}
-                      currentValue={metricValue}
-                      baselineValue={baselineValue}
-                      maxScale={maxScale}
-                      viewMode={viewMode}
-                      isNegative={isNegative}
-                      isDraggingSpend={isDragging}
-                      isThisBarDragging={isThisBarDragging}
-                      isSnapshot={isSnapshot}
-                      onTokenDrag={onTokenDrag}
-                    />
+                    {!reasonMode && (
+                      <GhostDeltaBar
+                        channelId={channelId}
+                        channel={channel}
+                        currentValue={metricValue}
+                        baselineValue={baselineValue}
+                        maxScale={maxScale}
+                        viewMode={viewMode}
+                        isNegative={isNegative}
+                        isDraggingSpend={isDragging}
+                        isThisBarDragging={isThisBarDragging}
+                        isSnapshot={isSnapshot}
+                        onTokenDrag={onTokenDrag}
+                      />
+                    )}
+
+                    {/* Normal mode: render GhostDeltaBar only; evidence chips stay on numbers */}
+                    {!reasonMode && (
+                      <>
+                        {/* Metric values draggable as evidence chips in normal mode */}
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -880,7 +941,9 @@ export function DraggableBarChart({
 
             {/* Drag instruction */}
             <div className="absolute top-2 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-              {isSnapshot ? '🔒 Snapshot (frozen)' : (
+              {isSnapshot ? '🔒 Snapshot (frozen)' : reasonMode ? (
+                '🧪 Reason mode: drag bars → Reasoning Board'
+              ) : (
                 isDragging 
                   ? '⇧ Shift = fine | ⌥ Alt = coarse'
                   : (baselineSpend ? '↕ Adjust bars | 🎯 Drag ghost/delta' : '↕ Drag bars to adjust spend')
