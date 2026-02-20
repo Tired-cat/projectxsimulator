@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { EvidenceHandle } from '@/components/reasoning/EvidenceHandle';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
@@ -586,35 +587,58 @@ export function DraggableBarChart({
             </div>
           )}
 
-          {/* Summary Stats - No motion animations during drag */}
+          {/* Summary Stats — draggable as evidence */}
           <div className="grid grid-cols-3 gap-3 mt-4">
-            <div className="p-3 bg-secondary/50 rounded-lg text-center">
-              <div 
-                className="text-2xl font-bold text-primary transition-transform duration-150"
-                style={{ transform: isDragging ? 'none' : undefined }}
-              >
-                {totals.clicks.toLocaleString()}
+            <EvidenceHandle
+              label="Total Views"
+              value={totals.clicks.toLocaleString()}
+              context="Views • Channel Performance"
+              sourceId="kpi-total-views"
+            >
+              <div className="p-3 bg-secondary/50 rounded-lg text-center">
+                <div
+                  className="text-2xl font-bold text-primary transition-transform duration-150"
+                  style={{ transform: isDragging ? 'none' : undefined }}
+                >
+                  {totals.clicks.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground">Total Views</div>
               </div>
-              <div className="text-xs text-muted-foreground">Total Views</div>
-            </div>
-            <div className="p-3 bg-secondary/50 rounded-lg text-center">
-              <div 
-                className="text-2xl font-bold text-green-600 transition-transform duration-150"
-                style={{ transform: isDragging ? 'none' : undefined }}
-              >
-                ${totals.totalRevenue.toLocaleString()}
+            </EvidenceHandle>
+
+            <EvidenceHandle
+              label="Revenue"
+              value={`$${totals.totalRevenue.toLocaleString()}`}
+              context="Revenue • Channel Performance"
+              sourceId="kpi-revenue"
+            >
+              <div className="p-3 bg-secondary/50 rounded-lg text-center">
+                <div
+                  className="text-2xl font-bold text-green-600 transition-transform duration-150"
+                  style={{ transform: isDragging ? 'none' : undefined }}
+                >
+                  ${totals.totalRevenue.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground">Revenue</div>
               </div>
-              <div className="text-xs text-muted-foreground">Revenue</div>
-            </div>
-            <div className="p-3 bg-secondary/50 rounded-lg text-center">
-              <div 
-                className={`text-2xl font-bold transition-transform duration-150 ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
-                style={{ transform: isDragging ? 'none' : undefined }}
-              >
-                ${totals.profit.toLocaleString()}
+            </EvidenceHandle>
+
+            <EvidenceHandle
+              label="Net Profit"
+              value={`$${totals.profit.toLocaleString()}`}
+              context="Net Profit • Channel Performance"
+              sourceId="kpi-net-profit"
+            >
+              <div className="p-3 bg-secondary/50 rounded-lg text-center">
+                <div
+                  className={`text-2xl font-bold transition-transform duration-150 ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
+                  style={{ transform: isDragging ? 'none' : undefined }}
+                >
+                  ${totals.profit.toLocaleString()}
+                </div>
+                <div className="text-xs text-muted-foreground">Net Profit</div>
               </div>
-              <div className="text-xs text-muted-foreground">Net Profit</div>
-            </div>
+            </EvidenceHandle>
           </div>
         </CardHeader>
 
@@ -676,22 +700,41 @@ export function DraggableBarChart({
                       style={{ pointerEvents: isSnapshot ? 'none' : 'auto' }}
                     />
                     
-                    {/* Metric values - pointer-events disabled so they don't block drag */}
-                    <div className="text-center mb-1 pointer-events-none z-10">
-                      <div 
-                        className={`text-sm font-bold ${isNegative ? 'text-destructive' : ''}`}
-                        style={{ color: isNegative ? undefined : channel.color }}
+                    {/* Metric values — wrapped with EvidenceHandle for drag-to-board */}
+                    <div className="z-10 mb-1 pointer-events-auto" style={{ touchAction: 'none' }}>
+                      <EvidenceHandle
+                        label={`${channel.name} ${viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views'}`}
+                        value={formatValue(metricValue)}
+                        context={`${viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views'} • Channel Performance`}
+                        sourceId={`${channelId}-${viewMode}`}
                       >
-                        {formatValue(metricValue)}
-                      </div>
-                      {viewMode === 'all' && barValues.secondary !== null && (
-                        <div className="text-xs text-green-600">
-                          ${barValues.secondary.toLocaleString()}
+                        <div className="text-center px-1 py-0.5">
+                          <div
+                            className={`text-sm font-bold ${isNegative ? 'text-destructive' : ''}`}
+                            style={{ color: isNegative ? undefined : channel.color }}
+                          >
+                            {formatValue(metricValue)}
+                          </div>
+                          {viewMode === 'all' && barValues.secondary !== null && (
+                            <div className="text-xs text-green-600">
+                              ${barValues.secondary.toLocaleString()}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </EvidenceHandle>
                     </div>
-                    <div className="text-xs text-muted-foreground mb-2 pointer-events-none z-10">
-                      ${spend.toLocaleString()} spent
+                    {/* Spend label — also draggable as evidence */}
+                    <div className="z-10 mb-2 pointer-events-auto" style={{ touchAction: 'none' }}>
+                      <EvidenceHandle
+                        label={`${channel.name} Spend`}
+                        value={`$${spend.toLocaleString()}`}
+                        context="Spend • Channel Performance"
+                        sourceId={`${channelId}-spend`}
+                      >
+                        <div className="text-xs text-muted-foreground px-1 py-0.5 text-center">
+                          ${spend.toLocaleString()} spent
+                        </div>
+                      </EvidenceHandle>
                     </div>
                     
                     {/* GhostDeltaBar - handles ghost baseline and delta overlay */}

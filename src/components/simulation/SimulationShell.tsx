@@ -1,9 +1,9 @@
 import { ReactNode } from 'react';
-import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useTabs } from '@/contexts/TabContext';
 import { BrowserTabStrip } from './BrowserTabStrip';
+import { ReasoningBoard } from '@/components/reasoning/ReasoningBoard';
 import type { PanelId } from '@/types/workspaceTypes';
 
 interface SimulationShellProps {
@@ -55,6 +55,14 @@ export function SimulationShell({
           activeTab?.kind === 'decisions' ? 'block' : 'hidden'
         )}>
           {decisionsContent}
+        </div>
+
+        {/* Reasoning Board tab */}
+        <div className={cn(
+          'h-full',
+          activeTab?.kind === 'reasoning' ? 'block' : 'hidden'
+        )}>
+          <ReasoningBoard />
         </div>
         
         {/* Panel tab content - for tabs opened from containers */}

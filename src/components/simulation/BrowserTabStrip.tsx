@@ -1,5 +1,5 @@
 import { DragEvent, useState } from 'react';
-import { X, Home, BarChart3, PieChart, DollarSign, AlertCircle, Settings, LucideIcon } from 'lucide-react';
+import { X, Home, BarChart3, PieChart, DollarSign, AlertCircle, Settings, FlaskConical, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTabs, type Tab, type TabKind } from '@/contexts/TabContext';
 import type { PanelId, PANEL_DEFINITIONS } from '@/types/workspaceTypes';
@@ -8,6 +8,7 @@ import type { PanelId, PANEL_DEFINITIONS } from '@/types/workspaceTypes';
 const TAB_ICONS: Record<TabKind, LucideIcon> = {
   home: Home,
   decisions: BarChart3,
+  reasoning: FlaskConical,
   panel: BarChart3, // Default, will be overridden
 };
 

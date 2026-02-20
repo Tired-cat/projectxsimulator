@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import type { PanelId } from '@/types/workspaceTypes';
 
-export type TabKind = 'home' | 'decisions' | 'panel';
+export type TabKind = 'home' | 'decisions' | 'reasoning' | 'panel';
 
 export interface Tab {
   id: string;
@@ -56,6 +56,7 @@ const TabContext = createContext<TabContextValue | null>(null);
 const DEFAULT_TABS: Tab[] = [
   { id: 'home', title: 'Home', kind: 'home', pinned: true, closable: false },
   { id: 'decisions', title: 'My Decisions', kind: 'decisions', pinned: true, closable: false },
+  { id: 'reasoning', title: 'Reasoning Board', kind: 'reasoning', pinned: true, closable: false },
 ];
 
 let tabIdCounter = 0;
@@ -74,7 +75,7 @@ export function TabProvider({ children }: { children: ReactNode }) {
   const [draggingPanelId, setDraggingPanelId] = useState<PanelId | null>(null);
 
   const openTab = useCallback((kind: TabKind, panelType?: PanelId, title?: string): string => {
-    if (kind === 'home' || kind === 'decisions') {
+    if (kind === 'home' || kind === 'decisions' || kind === 'reasoning') {
       // For built-in tabs, just activate
       const existingTab = tabs.find(t => t.kind === kind);
       if (existingTab) {

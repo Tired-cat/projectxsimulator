@@ -7,6 +7,7 @@ import { SimulationDecisions } from '@/components/simulation/SimulationDecisions
 import { SplitViewBarCharts } from '@/components/simulation/SplitViewBarCharts';
 import { ProductMixChart } from '@/components/simulation/ProductMixChart';
 import { TabProvider, useTabs } from '@/contexts/TabContext';
+import { ReasoningBoardProvider } from '@/contexts/ReasoningBoardContext';
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
 import {
@@ -163,7 +164,9 @@ function SimulationContent() {
 const Index = () => {
   return (
     <TabProvider>
-      <SimulationContent />
+      <ReasoningBoardProvider>
+        <SimulationContent />
+      </ReasoningBoardProvider>
     </TabProvider>
   );
 };
