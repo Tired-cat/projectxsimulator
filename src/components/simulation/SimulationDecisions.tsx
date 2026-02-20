@@ -1,13 +1,12 @@
 import { ReactNode, useState, useCallback } from 'react';
-import { BarChart3, DollarSign, AlertCircle, PieChart, Settings, Maximize2 } from 'lucide-react';
+import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
-import { SplitWorkspace } from './SplitWorkspace';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, CHANNEL_IDS, calculateMixedRevenue as calcRevenue } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { Button } from '@/components/ui/button';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Maximize2 } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -194,17 +193,11 @@ export function SimulationDecisions({
         />
       </div>
 
-      {/* Main content area - either grid OR split (not both) */}
+      {/* Card grid — always rendered; split is handled at shell level */}
       <div className="flex-1 overflow-hidden p-4">
-        {split.enabled ? (
-          /* SPLIT MODE: Full 50/50 split replaces the grid */
-          <SplitWorkspace renderPanelContent={renderPanelContent} />
-        ) : (
-          /* NORMAL MODE: Scrollable card grid */
-          <ScrollArea className="h-full">
-            <CardGrid />
-          </ScrollArea>
-        )}
+        <ScrollArea className="h-full">
+          <CardGrid />
+        </ScrollArea>
       </div>
     </div>
   );
