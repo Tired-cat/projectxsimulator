@@ -1,9 +1,9 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useCallback } from 'react';
 import { BarChart3, DollarSign, AlertCircle, PieChart, Settings, Maximize2 } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
 import { SplitWorkspace } from './SplitWorkspace';
-import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
+import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, CHANNEL_IDS, calculateMixedRevenue as calcRevenue } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,22 @@ export function SimulationDecisions({
 }: SimulationDecisionsProps) {
   const { setDraggingPanelId, addPanelAsTab, activateSplitWithPanel, split, disableSplit } = useTabs();
 
+  // ── Compare-mode state lifted here so bar-drag re-renders cannot reset it ──
+  const [compareActive, setCompareActive] = useState(false);
+  const [snapshotSpend, setSnapshotSpend] = useState<ChannelSpend | null>(null);
+  const [baselineSpend, setBaselineSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND } as ChannelSpend);
+
+  const handleActivateCompare = useCallback(() => {
+    setSnapshotSpend({ ...channelSpend });
+    setBaselineSpend({ ...channelSpend });
+    setCompareActive(true);
+  }, [channelSpend]);
+
+  const handleCloseCompare = useCallback(() => {
+    setCompareActive(false);
+    setSnapshotSpend(null);
+  }, []);
+
   const handleAddAsTab = (panelId: PanelId, title: string) => {
     addPanelAsTab(panelId, title);
   };
@@ -72,6 +88,11 @@ export function SimulationDecisions({
             channelMetrics={channelMetrics}
             totals={totals}
             remainingBudget={remainingBudget}
+            isSplitView={compareActive}
+            snapshotSpend={snapshotSpend}
+            baselineSpend={baselineSpend}
+            onActivateSplitView={handleActivateCompare}
+            onCloseSplitView={handleCloseCompare}
           />
         );
       case 'product-mix':
