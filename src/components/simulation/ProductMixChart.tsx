@@ -1,7 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, PRODUCTS } from '@/lib/marketingConstants';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { FlaskConical } from 'lucide-react';
+import { createEvidenceChip } from '@/types/evidenceChip';
+import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 
 interface ProductMixChartProps {
   channelMetrics: Record<string, ReturnType<typeof calculateMixedRevenue>>;
@@ -17,10 +20,11 @@ const channelOptions = [
 
 export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
+  const [reasonMode, setReasonMode] = useState(false);
+  const { setDraggingChip } = useReasoningBoard();
 
   const productData = useMemo(() => {
     if (selectedChannel === 'all') {
-      // Aggregate all channels
       const totals = {
         bottleRevenue: 0,
         cushionRevenue: 0,
@@ -111,6 +115,24 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
     return `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
   };
 
+  // Reason-mode: drag a pie segment as evidence chip
+  const handleSegmentDragStart = useCallback((e: React.DragEvent, segment: typeof segments[0], percentage: number) => {
+    const channelLabel = selectedChannel === 'all' ? 'All Channels' : CHANNELS[selectedChannel]?.name || selectedChannel;
+    const chip = createEvidenceChip(
+      `${segment.label} Revenue`,
+      `$${segment.revenue.toLocaleString()} (${percentage.toFixed(1)}%)`,
+      `Product Mix • ${channelLabel}`,
+      `product-mix-${segment.id}-${selectedChannel}`
+    );
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    setDraggingChip(chip);
+  }, [selectedChannel, setDraggingChip]);
+
+  const handleSegmentDragEnd = useCallback(() => {
+    setDraggingChip(null);
+  }, [setDraggingChip]);
+
   // Generate dynamic insight based on selected channel
   const getInsight = () => {
     if (selectedChannel === 'tiktok' && totalRevenue > 0) {
@@ -158,10 +180,27 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   return (
     <Card className="border-2 border-primary/20 bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-xl font-bold">Product Mix Analysis</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          See what products each channel is actually selling
-        </p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <CardTitle className="text-xl font-bold">Product Mix Analysis</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              See what products each channel is actually selling
+            </p>
+          </div>
+          {/* Reason toggle */}
+          <button
+            onClick={() => setReasonMode(r => !r)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all border ${
+              reasonMode
+                ? 'bg-primary text-primary-foreground border-primary shadow-md'
+                : 'bg-secondary hover:bg-primary/10 text-foreground border-border hover:border-primary/40'
+            }`}
+            title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode: drag pie segments to Reasoning Board'}
+          >
+            <FlaskConical className="w-3.5 h-3.5" />
+            Reason
+          </button>
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -185,6 +224,13 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           })}
         </div>
 
+        {reasonMode && (
+          <div className="mb-4 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-xs text-primary font-medium flex items-center gap-2">
+            <FlaskConical className="w-3.5 h-3.5 flex-shrink-0" />
+            Reason mode active — drag a pie segment or legend row to the Reasoning Board
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row items-center gap-6">
           {/* Pie Chart */}
           <div className="relative w-48 h-48">
@@ -197,7 +243,11 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                     fill={segment.color}
                     stroke="hsl(var(--background))"
                     strokeWidth="2"
-                    className="transition-all duration-300 hover:opacity-80"
+                    className={`transition-all duration-300 ${
+                      reasonMode && segment.revenue > 0
+                        ? 'cursor-grab hover:opacity-70'
+                        : 'hover:opacity-80'
+                    }`}
                   />
                 ))
               ) : (
@@ -220,14 +270,31 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                 ${totalRevenue.toLocaleString()}
               </text>
             </svg>
+            {/* Reason mode overlay label */}
+            {reasonMode && totalRevenue > 0 && (
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-primary font-semibold whitespace-nowrap">
+                🧪 drag slices
+              </div>
+            )}
           </div>
 
           {/* Legend with Units Sold */}
           <div className="flex-1 space-y-3">
             {segments.map((segment) => {
-              const percentage = totalRevenue > 0 ? ((segment.revenue / totalRevenue) * 100).toFixed(1) : 0;
+              const percentage = totalRevenue > 0 ? ((segment.revenue / totalRevenue) * 100) : 0;
               return (
-                <div key={segment.id} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg">
+                <div
+                  key={segment.id}
+                  className={`flex items-center justify-between p-2 bg-secondary/30 rounded-lg transition-all ${
+                    reasonMode && segment.revenue > 0
+                      ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'
+                      : ''
+                  }`}
+                  draggable={reasonMode && segment.revenue > 0}
+                  onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, percentage) : undefined}
+                  onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
+                  title={reasonMode && segment.revenue > 0 ? `Drag ${segment.label} to Reasoning Board` : undefined}
+                >
                   <div className="flex items-center gap-2">
                     <div
                       className="w-4 h-4 rounded"
@@ -245,7 +312,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                       ${segment.revenue.toLocaleString()}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {percentage}%
+                      {percentage.toFixed(1)}%
                     </div>
                   </div>
                 </div>
