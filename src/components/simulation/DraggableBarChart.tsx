@@ -244,57 +244,36 @@ export function DraggableBarChart({
     }
   }, [draggingChannel, draftSpend, onSpendChange]);
 
-  // Lock body scroll during drag + global cleanup handlers
+  // Global cleanup handlers — scoped to window events only, no body style mutations
   useEffect(() => {
-    if (draggingChannel) {
-      const originalOverflow = document.body.style.overflow;
-      const originalTouchAction = document.body.style.touchAction;
-      
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
-      
-      // Global event handlers for edge case cleanup
-      const handleWindowBlur = () => {
-        cleanupDragState();
-      };
-      
-      const handleVisibilityChange = () => {
-        if (document.hidden) {
-          cleanupDragState();
-        }
-      };
-      
-      const handleGlobalPointerUp = () => {
-        cleanupDragState();
-      };
+    if (!draggingChannel) return;
 
-      const handleLostPointerCapture = () => {
-        cleanupDragState();
-      };
-      
-      // Attach global listeners
-      window.addEventListener('blur', handleWindowBlur);
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      window.addEventListener('pointerup', handleGlobalPointerUp);
-      window.addEventListener('pointercancel', handleGlobalPointerUp);
-      chartRef.current?.addEventListener('lostpointercapture', handleLostPointerCapture);
-      
-      return () => {
-        document.body.style.overflow = originalOverflow;
-        document.body.style.touchAction = originalTouchAction;
-        
-        window.removeEventListener('blur', handleWindowBlur);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        window.removeEventListener('pointerup', handleGlobalPointerUp);
-        window.removeEventListener('pointercancel', handleGlobalPointerUp);
-        chartRef.current?.removeEventListener('lostpointercapture', handleLostPointerCapture);
-        
-        // Cleanup RAF on unmount
-        if (rafRef.current) {
-          cancelAnimationFrame(rafRef.current);
-        }
-      };
-    }
+    // Edge-case cleanup: window loses focus or pointer is cancelled globally
+    const handleWindowBlur = () => cleanupDragState();
+    const handleVisibilityChange = () => { if (document.hidden) cleanupDragState(); };
+    // Fallback pointerup on window in case the column's onPointerUp is missed
+    const handleGlobalPointerUp = () => cleanupDragState();
+    const handleLostPointerCapture = () => cleanupDragState();
+
+    window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+    // Scoped to chartRef so we don't intercept split-pane pointer events
+    const chart = chartRef.current;
+    chart?.addEventListener('lostpointercapture', handleLostPointerCapture);
+
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+      chart?.removeEventListener('lostpointercapture', handleLostPointerCapture);
+
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
   }, [draggingChannel, cleanupDragState]);
 
   // Get step size based on modifier keys
@@ -309,8 +288,9 @@ export function DraggableBarChart({
     // Snapshot mode: bars are NOT adjustable
     if (isSnapshot) return;
     
+    // preventDefault stops text selection; do NOT stopPropagation so
+    // split-view parent elements keep receiving pointer events normally.
     e.preventDefault();
-    e.stopPropagation();
     
     const target = e.currentTarget as HTMLElement;
     target.setPointerCapture(e.pointerId);
@@ -345,8 +325,9 @@ export function DraggableBarChart({
   const handleColumnPointerMove = useCallback((e: React.PointerEvent) => {
     if (!draggingChannel || !chartRef.current || !draftSpend) return;
     
+    // preventDefault stops unwanted text selection; do NOT stopPropagation
+    // so split-view and other parent elements keep receiving pointer events.
     e.preventDefault();
-    e.stopPropagation();
 
     // Capture values we need before RAF (event properties may be nullified)
     const clientX = e.clientX;
@@ -410,12 +391,9 @@ export function DraggableBarChart({
     cleanupDragState();
   }, [cleanupDragState]);
   
-  // Handle mouse leaving chart container
-  const handleChartMouseLeave = useCallback(() => {
-    if (draggingChannel) {
-      cleanupDragState();
-    }
-  }, [draggingChannel, cleanupDragState]);
+  // NOTE: We intentionally do NOT cleanup on chart mouseleave.
+  // setPointerCapture keeps the drag alive outside the chart bounds;
+  // cleanup is handled by pointerup / pointercancel / window blur only.
 
   const formatValue = (value: number) => {
     if (viewMode === 'clicks') {
@@ -647,7 +625,6 @@ export function DraggableBarChart({
           <div
             ref={chartRef}
             className="relative bg-secondary/20 rounded-lg p-4 select-none"
-            onMouseLeave={handleChartMouseLeave}
             style={{ 
               height: fillContainer ? '100%' : '350px', 
               minHeight: fillContainer ? undefined : '350px', 
