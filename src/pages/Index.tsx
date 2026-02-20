@@ -1,4 +1,4 @@
-import { useCallback, ReactNode } from 'react';
+import { useCallback, useState, ReactNode } from 'react';
 import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
 import { SimulationShell } from '@/components/simulation/SimulationShell';
@@ -9,7 +9,8 @@ import { ProductMixChart } from '@/components/simulation/ProductMixChart';
 import { TabProvider, useTabs } from '@/contexts/TabContext';
 import { ReasoningBoardProvider } from '@/contexts/ReasoningBoardContext';
 import type { PanelId } from '@/types/workspaceTypes';
-import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
+import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
+import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import {
   Accordion,
   AccordionContent,
@@ -33,6 +34,22 @@ function SimulationContent() {
     hasUserModified,
   } = useMarketingSimulation();
 
+  // Compare-mode state for the shell's panel renderer (used in tab/split views)
+  const [shellCompareActive, setShellCompareActive] = useState(false);
+  const [shellSnapshotSpend, setShellSnapshotSpend] = useState<ChannelSpend | null>(null);
+  const [shellBaselineSpend, setShellBaselineSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND } as ChannelSpend);
+
+  const handleShellActivateCompare = useCallback(() => {
+    setShellSnapshotSpend({ ...channelSpend });
+    setShellBaselineSpend({ ...channelSpend });
+    setShellCompareActive(true);
+  }, [channelSpend]);
+
+  const handleShellCloseCompare = useCallback(() => {
+    setShellCompareActive(false);
+    setShellSnapshotSpend(null);
+  }, []);
+
   const handleStartDecisions = useCallback(() => {
     openTab('decisions');
   }, [openTab]);
@@ -48,6 +65,11 @@ function SimulationContent() {
             channelMetrics={channelMetrics}
             totals={totals}
             remainingBudget={remainingBudget}
+            isSplitView={shellCompareActive}
+            snapshotSpend={shellSnapshotSpend}
+            baselineSpend={shellBaselineSpend}
+            onActivateSplitView={handleShellActivateCompare}
+            onCloseSplitView={handleShellCloseCompare}
           />
         );
       case 'product-mix':
@@ -134,7 +156,7 @@ function SimulationContent() {
       default:
         return null;
     }
-  }, [channelSpend, updateChannelSpend, channelMetrics, totals, remainingBudget, hasUserModified]);
+  }, [channelSpend, updateChannelSpend, channelMetrics, totals, remainingBudget, hasUserModified, shellCompareActive, shellSnapshotSpend, shellBaselineSpend, handleShellActivateCompare, handleShellCloseCompare]);
 
   return (
     <SimulationShell

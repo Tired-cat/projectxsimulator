@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DraggableBarChart } from './DraggableBarChart';
 import { Button } from '@/components/ui/button';
 import { SplitSquareHorizontal, X, Camera, Lock } from 'lucide-react';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import { calculateMixedRevenue as calcRevenue, CHANNELS, CHANNEL_IDS, INITIAL_SPEND, GLOBAL_BUDGET } from '@/lib/marketingConstants';
+import { calculateMixedRevenue as calcRevenue, CHANNEL_IDS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
 import type { ReasoningToken } from '@/types/reasoningToken';
 
 interface SplitViewBarChartsProps {
@@ -19,6 +19,12 @@ interface SplitViewBarChartsProps {
   };
   remainingBudget: number;
   onTokenDrag?: (token: ReasoningToken) => void;
+  // Lifted state — owned by parent so re-renders don't reset compare mode
+  isSplitView: boolean;
+  snapshotSpend: ChannelSpend | null;
+  baselineSpend: ChannelSpend;
+  onActivateSplitView: () => void;
+  onCloseSplitView: () => void;
 }
 
 export function SplitViewBarCharts({
@@ -28,12 +34,12 @@ export function SplitViewBarCharts({
   totals,
   remainingBudget,
   onTokenDrag,
+  isSplitView,
+  snapshotSpend,
+  baselineSpend,
+  onActivateSplitView,
+  onCloseSplitView,
 }: SplitViewBarChartsProps) {
-  const [isSplitView, setIsSplitView] = useState(false);
-  const [snapshotSpend, setSnapshotSpend] = useState<ChannelSpend | null>(null);
-  
-  // Always track baseline for ghost bars (starts with initial state)
-  const [baselineSpend, setBaselineSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND } as ChannelSpend);
 
   // Calculate metrics for the snapshot
   const snapshotMetrics = useMemo(() => {
@@ -62,19 +68,6 @@ export function SplitViewBarCharts({
     }, {} as Record<string, ReturnType<typeof calcRevenue>>);
   }, [baselineSpend]);
 
-  const handleActivateSplitView = useCallback(() => {
-    // Capture the current state as an immutable snapshot
-    setSnapshotSpend({ ...channelSpend });
-    // Update baseline to current spend when entering split view
-    setBaselineSpend({ ...channelSpend });
-    setIsSplitView(true);
-  }, [channelSpend]);
-
-  const handleCloseSplitView = useCallback(() => {
-    setIsSplitView(false);
-    setSnapshotSpend(null);
-  }, []);
-
   // Calculate remaining budget for snapshot (it's frozen, so it's based on snapshot spend)
   const snapshotRemainingBudget = useMemo(() => {
     if (!snapshotSpend) return 0;
@@ -91,7 +84,7 @@ export function SplitViewBarCharts({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleActivateSplitView}
+              onClick={onActivateSplitView}
               className="flex items-center gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
             >
               <SplitSquareHorizontal className="h-4 w-4" />
@@ -107,7 +100,7 @@ export function SplitViewBarCharts({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleCloseSplitView}
+                onClick={onCloseSplitView}
                 className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
