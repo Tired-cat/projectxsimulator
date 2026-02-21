@@ -104,16 +104,16 @@ function SplitPane({ pane, tabId, renderTabContent, draggingTabId, draggingPanel
         onDrop={handleDrop}
       >
         {/* Pane label header */}
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-b border-border">
+        <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1 bg-muted/50 border-b border-border">
           <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-          <span className="text-xs font-medium text-muted-foreground truncate">
+          <span className="text-[10px] font-medium text-muted-foreground truncate">
             {label}: {activeTab.title}
           </span>
         </div>
 
         {/* Content */}
         <ScrollArea className="flex-1">
-          <div className="p-4">
+          <div className="p-2">
             {renderTabContent(tabId)}
           </div>
         </ScrollArea>

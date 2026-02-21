@@ -64,14 +64,14 @@ export function ReasoningBoard() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex-shrink-0 p-6 pb-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <FlaskConical className="h-4 w-4 text-primary" />
+      <div className="flex-shrink-0 p-4 pb-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <FlaskConical className="h-3.5 w-3.5 text-primary" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Reasoning Board</h2>
-            <p className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-foreground">Reasoning Board</h2>
+            <p className="text-[10px] text-muted-foreground truncate">
               Drag evidence from Channel Performance into the blocks below
             </p>
           </div>
@@ -96,7 +96,7 @@ export function ReasoningBoard() {
       </div>
 
       {/* 4 reasoning blocks */}
-      <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start">
+      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start">
         {REASONING_BLOCKS.map((block) => {
           const chips = board[block.id];
           const isHovered = hoveredBlock === block.id && (draggingChip !== null || internalDrag !== null);
@@ -105,7 +105,7 @@ export function ReasoningBoard() {
             <div
               key={block.id}
               className={cn(
-                'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[200px]',
+                'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[140px]',
                 isHovered
                   ? 'border-dashed scale-[1.01] shadow-lg'
                   : 'border-border/60'
@@ -120,15 +120,15 @@ export function ReasoningBoard() {
             >
               {/* Block header */}
               <div
-                className="flex-shrink-0 px-4 pt-3 pb-2 rounded-t-xl border-b border-border/40"
+                className="flex-shrink-0 px-3 pt-2 pb-1.5 rounded-t-xl border-b border-border/40"
                 style={{ backgroundColor: block.bgColor }}
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-bold" style={{ color: block.color }}>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold" style={{ color: block.color }}>
                       {block.title}
                     </div>
-                    <div className="text-xs text-muted-foreground italic">
+                    <div className="text-[10px] text-muted-foreground italic truncate">
                       {block.question}
                     </div>
                   </div>
@@ -144,11 +144,11 @@ export function ReasoningBoard() {
               </div>
 
               {/* Drop zone / chip list */}
-              <div className="flex-1 p-3 space-y-2">
+              <div className="flex-1 p-2 space-y-1.5">
                 {chips.length === 0 ? (
                   <div
                     className={cn(
-                      'h-full min-h-[100px] flex items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground transition-colors',
+                      'h-full min-h-[60px] flex items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground transition-colors',
                       isHovered ? 'border-current' : 'border-border/40'
                     )}
                     style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
