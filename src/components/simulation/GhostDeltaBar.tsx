@@ -23,6 +23,7 @@ interface GhostDeltaBarProps {
   /** Callback to set the dragging chip in ReasoningBoardContext */
   onChipDragStart?: (chip: EvidenceChip) => void;
   onChipDragEnd?: () => void;
+  formatValue?: (value: number) => string;
 }
 
 export function GhostDeltaBar({
@@ -40,9 +41,11 @@ export function GhostDeltaBar({
   reasonMode = false,
   onChipDragStart,
   onChipDragEnd,
+  formatValue,
 }: GhostDeltaBarProps) {
   const [isDraggingGhost, setIsDraggingGhost] = useState(false);
   const [isDraggingDelta, setIsDraggingDelta] = useState(false);
+  const [isDraggingMainBar, setIsDraggingMainBar] = useState(false);
 
   const hasBaseline = baselineValue !== null && !isSnapshot;
   const delta = hasBaseline ? currentValue - baselineValue : 0;
@@ -156,6 +159,32 @@ export function GhostDeltaBar({
     setIsDraggingDelta(false);
   }, []);
 
+  // Main bar drag handler for reason mode (creates a metric chip for the current value)
+  const handleMainBarHtml5DragStart = useCallback((e: React.DragEvent) => {
+    e.stopPropagation();
+    const displayValue = formatValue ? formatValue(currentValue) : currentValue.toLocaleString();
+    const chip = createEvidenceChip(
+      `${channel.name} ${metricLabel}`,
+      displayValue,
+      `${metricLabel} • Channel Performance`,
+      `${channelId}-bar-${viewMode}`,
+      {
+        chipKind: 'metric',
+        channelName: channel.name,
+        metricName: metricLabel.toLowerCase(),
+      }
+    );
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    onChipDragStart?.(chip);
+    setIsDraggingMainBar(true);
+  }, [channelId, channel.name, currentValue, viewMode, metricLabel, onChipDragStart, formatValue]);
+
+  const handleMainBarHtml5DragEnd = useCallback(() => {
+    setIsDraggingMainBar(false);
+    onChipDragEnd?.();
+  }, [onChipDragEnd]);
+
   // Colors for delta
   const deltaDecreaseColor = 'hsl(0, 84%, 60%)'; // Red
   const ghostColor = 'hsl(var(--muted-foreground) / 0.25)';
@@ -215,11 +244,14 @@ export function GhostDeltaBar({
             minHeight: '4px',
           }}
         >
-          {/* Baseline Portion - bottom of stack */}
+          {/* Baseline Portion - bottom of stack, draggable in reason mode */}
           <motion.div
-            className={`w-full shrink-0 ${
+            draggable={reasonMode}
+            onDragStart={reasonMode ? handleMainBarHtml5DragStart as any : undefined}
+            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd as any : undefined}
+            className={`w-full shrink-0 ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : ''
-            }`}
+            } ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
             style={{
               backgroundColor: channel.color,
               // Explicit height based on proportion of baseline within total current
@@ -290,11 +322,14 @@ export function GhostDeltaBar({
       ) : (
         // SINGLE BAR: No increase delta, render full current bar
         <>
-          {/* Single bar - pointer events pass through to column */}
+          {/* Single bar - draggable in reason mode */}
           <motion.div
-            className={`relative w-full rounded-t-lg ${
+            draggable={reasonMode}
+            onDragStart={reasonMode ? handleMainBarHtml5DragStart as any : undefined}
+            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd as any : undefined}
+            className={`relative w-full rounded-t-lg ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
-            }`}
+            } ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
             style={{
               backgroundColor: isNegative 
                 ? 'hsl(var(--destructive))' 
