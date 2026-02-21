@@ -737,29 +737,8 @@ export function DraggableBarChart({
                       </div>
                     </div>
                     
-                    {/* REASON MODE: Single draggable bar, identical to normal appearance */}
-                    {reasonMode ? (
-                      <div
-                        draggable
-                        onDragStart={handleBarDragStart}
-                        onDragEnd={handleBarDragEnd}
-                        className="w-full max-w-[80px] rounded-t-lg cursor-grab active:cursor-grabbing select-none"
-                        style={{
-                          height: `${barHeightPct}%`,
-                          minHeight: '4px',
-                          backgroundColor: isNegative ? 'hsl(var(--destructive))' : channel.color,
-                          boxShadow: `0 4px 12px ${channel.color}40`,
-                        }}
-                        title={`Drag ${channel.name} ${metricLabel} to Reasoning Board`}
-                      >
-                        {/* Grab handle — matches normal bar style */}
-                        <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
-                          <div className="w-10 h-1.5 bg-white/60 rounded-full" />
-                        </div>
-                      </div>
-                    ) : (
-                      /* GhostDeltaBar - handles ghost baseline and delta overlay */
-                      <GhostDeltaBar
+                    {/* GhostDeltaBar - renders bar, ghost baseline, and delta segments */}
+                    <GhostDeltaBar
                       channelId={channelId}
                       channel={channel}
                       currentValue={metricValue}
@@ -775,6 +754,22 @@ export function DraggableBarChart({
                       onChipDragStart={setDraggingChip}
                       onChipDragEnd={() => setDraggingChip(null)}
                     />
+
+                    {/* REASON MODE: draggable overlay on the main bar portion (not delta/ghost) */}
+                    {reasonMode && (
+                      <div
+                        draggable
+                        onDragStart={handleBarDragStart}
+                        onDragEnd={handleBarDragEnd}
+                        className="absolute bottom-0 left-0 right-0 z-20 rounded-t-lg cursor-grab active:cursor-grabbing select-none"
+                        style={{
+                          height: `${barHeightPct}%`,
+                          minHeight: '4px',
+                          // Transparent overlay so the real bar shows through
+                          background: 'transparent',
+                        }}
+                        title={`Drag ${channel.name} ${metricLabel} to Reasoning Board`}
+                      />
                     )}
                   </div>
                 );
