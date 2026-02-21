@@ -261,7 +261,7 @@ export function GhostDeltaBar({
               height: deltaHeight > 0 
                 ? `${(deltaHeight / currentHeightPercent) * 100}%` 
                 : '0%',
-              minHeight: deltaHeight > 0 ? '16px' : '0px',
+              minHeight: deltaHeight > 0 ? '32px' : '0px',
               borderBottom: '2px solid hsl(142, 71%, 35%)',
               borderTop: isDraggingDelta ? '2px solid white' : 'none',
               boxShadow: isDraggingDelta 
