@@ -753,24 +753,10 @@ export function DraggableBarChart({
                       reasonMode={reasonMode}
                       onChipDragStart={setDraggingChip}
                       onChipDragEnd={() => setDraggingChip(null)}
+                      formatValue={formatValue}
                     />
 
-                    {/* REASON MODE: draggable overlay on the main bar portion (not delta/ghost) */}
-                    {reasonMode && (
-                      <div
-                        draggable
-                        onDragStart={handleBarDragStart}
-                        onDragEnd={handleBarDragEnd}
-                        className="absolute bottom-0 left-0 right-0 z-20 rounded-t-lg cursor-grab active:cursor-grabbing select-none"
-                        style={{
-                          height: `${barHeightPct}%`,
-                          minHeight: '4px',
-                          // Transparent overlay so the real bar shows through
-                          background: 'transparent',
-                        }}
-                        title={`Drag ${channel.name} ${metricLabel} to Reasoning Board`}
-                      />
-                    )}
+                    {/* Reason mode main bar drag is now handled inside GhostDeltaBar */}
                   </div>
                 );
               })}
