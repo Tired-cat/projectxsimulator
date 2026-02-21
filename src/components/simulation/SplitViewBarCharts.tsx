@@ -76,7 +76,7 @@ export function SplitViewBarCharts({
   }, [snapshotSpend]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Split View Control */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -149,9 +149,9 @@ export function SplitViewBarCharts({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="grid grid-cols-2 gap-4"
-            // Shared fixed height for both panels - ensures structural equality
-            style={{ height: '600px' }}
+            className="grid grid-cols-2 gap-2"
+            // Responsive height — fills available viewport
+            style={{ height: 'calc(100vh - 280px)', minHeight: '350px' }}
           >
             {/* Before Snapshot Panel - fixed height container */}
             <div 

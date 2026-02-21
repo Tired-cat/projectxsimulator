@@ -213,15 +213,15 @@ interface BudgetHeaderProps {
 
 export function BudgetHeader({ totalSpent, onReset, isSplit, onCloseSplit }: BudgetHeaderProps) {
   return (
-    <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
-      <div className="flex items-center gap-4">
-        <div>
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Budget Used</div>
-          <div className="text-xl font-bold text-foreground">
-            ${totalSpent.toLocaleString()} <span className="text-muted-foreground font-normal">/ ${GLOBAL_BUDGET.toLocaleString()}</span>
+    <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="min-w-0">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Budget Used</div>
+          <div className="text-base font-bold text-foreground truncate">
+            ${totalSpent.toLocaleString()} <span className="text-muted-foreground font-normal text-sm">/ ${GLOBAL_BUDGET.toLocaleString()}</span>
           </div>
         </div>
-        <div className="w-32 h-2.5 bg-secondary rounded-full overflow-hidden">
+        <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden flex-shrink-0">
           <div
             className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300"
             style={{ width: `${(totalSpent / GLOBAL_BUDGET) * 100}%` }}

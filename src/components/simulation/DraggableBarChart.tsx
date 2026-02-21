@@ -505,37 +505,37 @@ export function DraggableBarChart({
       }}
     >
       <Card className={`border-2 bg-card ${fillContainer ? 'h-full flex flex-col' : ''} ${isSnapshot ? 'border-slate-300 dark:border-slate-700' : 'border-primary/20'}`}>
-        <CardHeader className={`pb-2 ${fillContainer ? 'flex-shrink-0' : ''}`}>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <CardTitle className={`font-bold ${isSnapshot ? 'text-lg text-muted-foreground' : 'text-xl'}`}>
+        <CardHeader className={`pb-2 ${fillContainer ? 'flex-shrink-0 px-3 py-2' : ''}`}>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className={`font-bold ${fillContainer ? 'text-sm' : ''} ${isSnapshot ? 'text-lg text-muted-foreground' : fillContainer ? 'text-base' : 'text-xl'}`}>
               Channel Performance
             </CardTitle>
             
             {/* Filter Metrics Chips */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
               {/* Reason Mode Toggle */}
               {!isSnapshot && (
                 <button
                   onClick={() => setReasonMode(r => !r)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all border ${
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full ${fillContainer ? 'text-xs' : 'text-sm'} font-semibold transition-all border ${
                     reasonMode
                       ? 'bg-primary text-primary-foreground border-primary shadow-md'
                       : 'bg-secondary hover:bg-primary/10 text-foreground border-border hover:border-primary/40'
                   }`}
                   title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode: drag bars to Reasoning Board'}
                 >
-                  <FlaskConical className="w-3.5 h-3.5" />
+                  <FlaskConical className={`${fillContainer ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
                   Reason
                 </button>
               )}
 
-              <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <span className={`${fillContainer ? 'text-xs' : 'text-sm'} text-muted-foreground flex items-center gap-1`}>
+                <svg className={`${fillContainer ? 'w-3 h-3' : 'w-4 h-4'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
                 </svg>
-                Filter metrics:
+                {!fillContainer && 'Filter metrics:'}
               </span>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 {filterOptions.map((option) => {
                   const Icon = option.icon;
                   const isActive = viewMode === option.id;
@@ -543,13 +543,13 @@ export function DraggableBarChart({
                     <button
                       key={option.id}
                       onClick={() => setViewMode(option.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      className={`flex items-center gap-1 ${fillContainer ? 'px-1.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'} rounded-full font-medium transition-all ${
                         isActive
                           ? 'bg-foreground text-background shadow-md'
                           : 'bg-secondary hover:bg-secondary/80 text-foreground border border-border'
                       }`}
                     >
-                      <Icon className="w-3.5 h-3.5" />
+                      <Icon className={`${fillContainer ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
                       {option.label}
                     </button>
                   );
@@ -586,21 +586,21 @@ export function DraggableBarChart({
           )}
 
           {/* Summary Stats — draggable as evidence */}
-          <div className="grid grid-cols-3 gap-3 mt-4">
+          <div className={`grid grid-cols-3 ${fillContainer ? 'gap-1.5 mt-2' : 'gap-3 mt-4'}`}>
             <EvidenceHandle
               label="Total Views"
               value={totals.clicks.toLocaleString()}
               context="Views • Channel Performance"
               sourceId="kpi-total-views"
             >
-              <div className="p-3 bg-secondary/50 rounded-lg text-center">
+              <div className={`${fillContainer ? 'p-1.5' : 'p-3'} bg-secondary/50 rounded-lg text-center`}>
                 <div
-                  className="text-2xl font-bold text-primary transition-transform duration-150"
+                  className={`${fillContainer ? 'text-base' : 'text-2xl'} font-bold text-primary transition-transform duration-150`}
                   style={{ transform: isDragging ? 'none' : undefined }}
                 >
                   {totals.clicks.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">Total Views</div>
+                <div className={`${fillContainer ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Total Views</div>
               </div>
             </EvidenceHandle>
 
@@ -610,14 +610,14 @@ export function DraggableBarChart({
               context="Revenue • Channel Performance"
               sourceId="kpi-revenue"
             >
-              <div className="p-3 bg-secondary/50 rounded-lg text-center">
+              <div className={`${fillContainer ? 'p-1.5' : 'p-3'} bg-secondary/50 rounded-lg text-center`}>
                 <div
-                  className="text-2xl font-bold text-green-600 transition-transform duration-150"
+                  className={`${fillContainer ? 'text-base' : 'text-2xl'} font-bold text-green-600 transition-transform duration-150`}
                   style={{ transform: isDragging ? 'none' : undefined }}
                 >
                   ${totals.totalRevenue.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">Revenue</div>
+                <div className={`${fillContainer ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue</div>
               </div>
             </EvidenceHandle>
 
@@ -627,24 +627,24 @@ export function DraggableBarChart({
               context="Net Profit • Channel Performance"
               sourceId="kpi-net-profit"
             >
-              <div className="p-3 bg-secondary/50 rounded-lg text-center">
+              <div className={`${fillContainer ? 'p-1.5' : 'p-3'} bg-secondary/50 rounded-lg text-center`}>
                 <div
-                  className={`text-2xl font-bold transition-transform duration-150 ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
+                  className={`${fillContainer ? 'text-base' : 'text-2xl'} font-bold transition-transform duration-150 ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
                   style={{ transform: isDragging ? 'none' : undefined }}
                 >
                   ${totals.profit.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">Net Profit</div>
+                <div className={`${fillContainer ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Net Profit</div>
               </div>
             </EvidenceHandle>
           </div>
         </CardHeader>
 
-        <CardContent className={`pt-4 ${fillContainer ? 'flex-1 min-h-0 overflow-hidden' : ''}`}>
+        <CardContent className={`${fillContainer ? 'pt-2 px-2 flex-1 min-h-0 overflow-hidden' : 'pt-4'}`}>
           {/* Draggable Bar Chart - Fixed dimensions, no layout changes */}
           <div
             ref={chartRef}
-            className="relative bg-secondary/20 rounded-lg p-4 select-none"
+            className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} select-none`}
             style={{ 
               height: fillContainer ? '100%' : '350px', 
               minHeight: fillContainer ? undefined : '350px', 
@@ -655,21 +655,21 @@ export function DraggableBarChart({
             }}
           >
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-10 bottom-12 w-16 flex flex-col justify-between text-xs text-muted-foreground">
+            <div className={`absolute left-0 ${fillContainer ? 'top-6 bottom-8 w-10 text-[9px]' : 'top-10 bottom-12 w-16 text-xs'} flex flex-col justify-between text-muted-foreground`}>
               {getYAxisLabels().map((label, i) => (
                 <span key={i}>{label}</span>
               ))}
             </div>
 
             {/* Grid lines */}
-            <div className="absolute left-20 right-4 top-10 bottom-12 flex flex-col justify-between pointer-events-none">
+            <div className={`absolute ${fillContainer ? 'left-12 right-2 top-6 bottom-8' : 'left-20 right-4 top-10 bottom-12'} flex flex-col justify-between pointer-events-none`}>
               {[0, 1, 2, 3, 4].map((i) => (
                 <div key={i} className="border-t border-border/30" />
               ))}
             </div>
 
             {/* Bars Container - pointer-events handled per column */}
-            <div className="absolute left-20 right-4 top-10 bottom-12 flex items-end justify-around gap-4">
+            <div className={`absolute ${fillContainer ? 'left-12 right-2 top-6 bottom-8 gap-1' : 'left-20 right-4 top-10 bottom-12 gap-4'} flex items-end justify-around`}>
               {Object.entries(CHANNELS).map(([channelId, channel]) => {
                 const barValues = getBarValue(channelId);
                 const baselineValue = getBaselineValue(channelId);
@@ -714,16 +714,16 @@ export function DraggableBarChart({
                     />
                     
                     {/* Metric values label */}
-                    <div className="z-10 mb-1 pointer-events-none">
-                      <div className="text-center px-1 py-0.5">
+                    <div className="z-10 mb-0.5 pointer-events-none">
+                      <div className="text-center px-0.5">
                         <div
-                          className={`text-sm font-bold ${isNegative ? 'text-destructive' : ''}`}
+                          className={`${fillContainer ? 'text-xs' : 'text-sm'} font-bold ${isNegative ? 'text-destructive' : ''}`}
                           style={{ color: isNegative ? undefined : channel.color }}
                         >
                           {formatValue(metricValue)}
                         </div>
                         {viewMode === 'all' && barValues.secondary !== null && (
-                          <div className="text-xs" style={{ color: 'hsl(142 71% 45%)' }}>
+                          <div className={`${fillContainer ? 'text-[9px]' : 'text-xs'}`} style={{ color: 'hsl(142 71% 45%)' }}>
                             ${barValues.secondary.toLocaleString()}
                           </div>
                         )}
@@ -731,9 +731,9 @@ export function DraggableBarChart({
                     </div>
 
                     {/* Spend label */}
-                    <div className="z-10 mb-2 pointer-events-none">
-                      <div className="text-xs text-muted-foreground px-1 py-0.5 text-center">
-                        ${spend.toLocaleString()} spent
+                    <div className={`z-10 ${fillContainer ? 'mb-0.5' : 'mb-2'} pointer-events-none`}>
+                      <div className={`${fillContainer ? 'text-[9px]' : 'text-xs'} text-muted-foreground px-0.5 text-center`}>
+                        ${spend.toLocaleString()}{!fillContainer && ' spent'}
                       </div>
                     </div>
                     
@@ -777,10 +777,10 @@ export function DraggableBarChart({
             </div>
 
             {/* X-axis labels - pointer-events disabled to prevent blocking drag */}
-            <div className="absolute left-20 right-4 bottom-0 flex justify-around pointer-events-none z-0">
+            <div className={`absolute ${fillContainer ? 'left-12 right-2' : 'left-20 right-4'} bottom-0 flex justify-around pointer-events-none z-0`}>
               {Object.entries(CHANNELS).map(([channelId, channel]) => (
                 <div key={channelId} className="flex-1 text-center">
-                  <span className="text-xs font-medium" style={{ color: channel.color }}>
+                  <span className={`${fillContainer ? 'text-[9px]' : 'text-xs'} font-medium`} style={{ color: channel.color }}>
                     {channel.name}
                   </span>
                 </div>
