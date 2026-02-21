@@ -737,7 +737,36 @@ export function DraggableBarChart({
                       </div>
                     </div>
                     
-                    {/* GhostDeltaBar - handles ghost baseline, delta, and main bar dragging */}
+                    {/* REASON MODE: Draggable bar overlay */}
+                    {reasonMode && (
+                      <div
+                        draggable
+                        onDragStart={handleBarDragStart}
+                        onDragEnd={handleBarDragEnd}
+                        className="absolute bottom-0 left-1 right-1 z-20 rounded-t-lg cursor-grab active:cursor-grabbing select-none transition-all"
+                        style={{
+                          height: `${barHeightPct}%`,
+                          backgroundColor: channel.color,
+                          boxShadow: `0 4px 16px ${channel.color}60`,
+                          border: `2px dashed ${channel.color}`,
+                          opacity: 0.9,
+                        }}
+                        title={`Drag ${channel.name} ${metricLabel} to Reasoning Board`}
+                      >
+                        {/* Grab handle */}
+                        <div className="w-full flex items-center justify-center pt-2">
+                          <div className="w-8 h-1 bg-white/60 rounded-full" />
+                        </div>
+                        {/* Floating label */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-xs font-bold text-white drop-shadow-md bg-black/20 rounded px-1">
+                            🧪 Drag
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* GhostDeltaBar - handles ghost baseline and delta overlay */}
                     <GhostDeltaBar
                       channelId={channelId}
                       channel={channel}

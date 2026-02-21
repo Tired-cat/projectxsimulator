@@ -11,12 +11,12 @@ interface ProductMixChartProps {
 }
 
 const channelOptions = [
-{ id: 'all', label: 'All' },
-{ id: 'tiktok', label: 'TikTok' },
-{ id: 'instagram', label: 'Instagram' },
-{ id: 'facebook', label: 'Facebook' },
-{ id: 'newspaper', label: 'Newspaper' }];
-
+  { id: 'all', label: 'All' },
+  { id: 'tiktok', label: 'TikTok' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'newspaper', label: 'Newspaper' },
+];
 
 export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
@@ -32,7 +32,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         bottleSales: 0,
         cushionSales: 0,
         chairSales: 0,
-        clicks: 0
+        clicks: 0,
       };
       Object.values(channelMetrics).forEach((m) => {
         totals.bottleRevenue += m.bottleRevenue;
@@ -53,7 +53,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         bottleSales: metrics?.bottleSales || 0,
         cushionSales: metrics?.cushionSales || 0,
         chairSales: metrics?.chairSales || 0,
-        clicks: metrics?.clicks || 0
+        clicks: metrics?.clicks || 0,
       };
     }
   }, [selectedChannel, channelMetrics]);
@@ -62,34 +62,34 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const totalUnits = productData.bottleSales + productData.cushionSales + productData.chairSales;
 
   const segments = [
-  {
-    id: 'bottle',
-    label: PRODUCTS.BOTTLE.name,
-    revenue: productData.bottleRevenue,
-    units: productData.bottleSales,
-    color: 'hsl(199, 89%, 48%)' // Cyan
-  },
-  {
-    id: 'cushion',
-    label: PRODUCTS.CUSHION.name,
-    revenue: productData.cushionRevenue,
-    units: productData.cushionSales,
-    color: 'hsl(142, 71%, 45%)' // Green
-  },
-  {
-    id: 'chair',
-    label: PRODUCTS.CHAIR.name,
-    revenue: productData.chairRevenue,
-    units: productData.chairSales,
-    color: 'hsl(262, 83%, 58%)' // Purple
-  }];
-
+    { 
+      id: 'bottle', 
+      label: PRODUCTS.BOTTLE.name, 
+      revenue: productData.bottleRevenue,
+      units: productData.bottleSales,
+      color: 'hsl(199, 89%, 48%)' // Cyan
+    },
+    { 
+      id: 'cushion', 
+      label: PRODUCTS.CUSHION.name, 
+      revenue: productData.cushionRevenue,
+      units: productData.cushionSales,
+      color: 'hsl(142, 71%, 45%)' // Green
+    },
+    { 
+      id: 'chair', 
+      label: PRODUCTS.CHAIR.name, 
+      revenue: productData.chairRevenue,
+      units: productData.chairSales,
+      color: 'hsl(262, 83%, 58%)' // Purple
+    },
+  ];
 
   // Calculate pie segments
   let currentAngle = 0;
   const pieSegments = segments.map((segment) => {
-    const percentage = totalRevenue > 0 ? segment.revenue / totalRevenue * 100 : 0;
-    const angle = percentage / 100 * 360;
+    const percentage = totalRevenue > 0 ? (segment.revenue / totalRevenue) * 100 : 0;
+    const angle = (percentage / 100) * 360;
     const startAngle = currentAngle;
     currentAngle += angle;
     return { ...segment, percentage, startAngle, angle };
@@ -101,17 +101,17 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
     if (angle >= 360) {
       return `M 0 -${radius} A ${radius} ${radius} 0 1 1 0 ${radius} A ${radius} ${radius} 0 1 1 0 -${radius}`;
     }
-
-    const startRad = (startAngle - 90) * Math.PI / 180;
-    const endRad = (startAngle + angle - 90) * Math.PI / 180;
-
+    
+    const startRad = ((startAngle - 90) * Math.PI) / 180;
+    const endRad = ((startAngle + angle - 90) * Math.PI) / 180;
+    
     const x1 = radius * Math.cos(startRad);
     const y1 = radius * Math.sin(startRad);
     const x2 = radius * Math.cos(endRad);
     const y2 = radius * Math.sin(endRad);
-
+    
     const largeArc = angle > 180 ? 1 : 0;
-
+    
     return `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
   };
 
@@ -142,7 +142,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           type: 'warning' as const,
           icon: '💡',
           title: 'Notice',
-          message: `TikTok drives ${productData.clicks.toLocaleString()} views but mostly sells $10 Water Bottles (avg $${avgValue}/sale). Low-ticket items dominate!`
+          message: `TikTok drives ${productData.clicks.toLocaleString()} views but mostly sells $10 Water Bottles (avg $${avgValue}/sale). Low-ticket items dominate!`,
         };
       }
     }
@@ -152,7 +152,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           type: 'success' as const,
           icon: '✨',
           title: 'Insight',
-          message: `Newspaper drives only ${productData.clicks.toLocaleString()} views but sells ${productData.chairSales} Pro Chairs ($${productData.chairRevenue.toLocaleString()} revenue). High-ticket focus!`
+          message: `Newspaper drives only ${productData.clicks.toLocaleString()} views but sells ${productData.chairSales} Pro Chairs ($${productData.chairRevenue.toLocaleString()} revenue). High-ticket focus!`,
         };
       }
     }
@@ -161,7 +161,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         type: 'info' as const,
         icon: '📊',
         title: 'Analysis',
-        message: `Facebook has balanced performance with ${productData.chairSales} chair sales generating $${productData.chairRevenue.toLocaleString()} in revenue.`
+        message: `Facebook has balanced performance with ${productData.chairSales} chair sales generating $${productData.chairRevenue.toLocaleString()} in revenue.`,
       };
     }
     if (selectedChannel === 'instagram' && totalRevenue > 0) {
@@ -169,7 +169,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         type: 'info' as const,
         icon: '📱',
         title: 'Analysis',
-        message: `Instagram sells a mix of products. ${productData.cushionSales} cushions contribute $${productData.cushionRevenue.toLocaleString()} to revenue.`
+        message: `Instagram sells a mix of products. ${productData.cushionSales} cushions contribute $${productData.cushionRevenue.toLocaleString()} to revenue.`,
       };
     }
     return null;
@@ -189,14 +189,14 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           </div>
           {/* Reason toggle */}
           <button
-            onClick={() => setReasonMode((r) => !r)}
+            onClick={() => setReasonMode(r => !r)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all border ${
-            reasonMode ?
-            'bg-primary text-primary-foreground border-primary shadow-md' :
-            'bg-secondary hover:bg-primary/10 text-foreground border-border hover:border-primary/40'}`
-            }
-            title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode: drag pie segments to Reasoning Board'}>
-
+              reasonMode
+                ? 'bg-primary text-primary-foreground border-primary shadow-md'
+                : 'bg-secondary hover:bg-primary/10 text-foreground border-border hover:border-primary/40'
+            }`}
+            title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode: drag pie segments to Reasoning Board'}
+          >
             <FlaskConical className="w-3.5 h-3.5" />
             Reason
           </button>
@@ -213,51 +213,51 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                 key={option.id}
                 onClick={() => setSelectedChannel(option.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                isActive ?
-                'bg-primary text-primary-foreground shadow-md' :
-                'bg-secondary hover:bg-secondary/80 text-foreground'}`
-                }>
-
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'bg-secondary hover:bg-secondary/80 text-foreground'
+                }`}
+              >
                 {option.label}
-              </button>);
-
+              </button>
+            );
           })}
         </div>
 
-        {reasonMode &&
-        <div className="mb-4 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-xs text-primary font-medium flex items-center gap-2">
+        {reasonMode && (
+          <div className="mb-4 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-xs text-primary font-medium flex items-center gap-2">
             <FlaskConical className="w-3.5 h-3.5 flex-shrink-0" />
             Reason mode active — drag a pie segment or legend row to the Reasoning Board
           </div>
-        }
+        )}
 
         <div className="flex flex-col md:flex-row items-center gap-6">
           {/* Pie Chart */}
           <div className="relative w-48 h-48">
-            <svg viewBox="-120 -120 240 240" className="w-full h-full border-primary">
-              {totalRevenue > 0 ?
-              pieSegments.map((segment) =>
-              <path
-                key={segment.id}
-                d={createArcPath(segment.startAngle, segment.angle)}
-                fill={segment.color}
-                stroke="hsl(var(--background))"
-                strokeWidth="2"
-                className={`transition-all duration-300 ${
-                reasonMode && segment.revenue > 0 ?
-                'cursor-grab hover:opacity-70' :
-                'hover:opacity-80'}`
-                } />
-
-              ) :
-
-              <circle
-                r="100"
-                fill="hsl(var(--secondary))"
-                stroke="hsl(var(--border))"
-                strokeWidth="2" />
-
-              }
+            <svg viewBox="-120 -120 240 240" className="w-full h-full">
+              {totalRevenue > 0 ? (
+                pieSegments.map((segment) => (
+                  <path
+                    key={segment.id}
+                    d={createArcPath(segment.startAngle, segment.angle)}
+                    fill={segment.color}
+                    stroke="hsl(var(--background))"
+                    strokeWidth="2"
+                    className={`transition-all duration-300 ${
+                      reasonMode && segment.revenue > 0
+                        ? 'cursor-grab hover:opacity-70'
+                        : 'hover:opacity-80'
+                    }`}
+                  />
+                ))
+              ) : (
+                <circle
+                  r="100"
+                  fill="hsl(var(--secondary))"
+                  stroke="hsl(var(--border))"
+                  strokeWidth="2"
+                />
+              )}
               {/* Center hole for donut effect */}
               <circle r="50" fill="hsl(var(--card))" />
               {/* Center text */}
@@ -265,41 +265,41 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="fill-foreground font-bold text-lg"
-                fontSize="16">
-
+                fontSize="16"
+              >
                 ${totalRevenue.toLocaleString()}
               </text>
             </svg>
             {/* Reason mode overlay label */}
-            {reasonMode && totalRevenue > 0 &&
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-primary font-semibold whitespace-nowrap">
+            {reasonMode && totalRevenue > 0 && (
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-primary font-semibold whitespace-nowrap">
                 🧪 drag slices
               </div>
-            }
+            )}
           </div>
 
           {/* Legend with Units Sold */}
           <div className="flex-1 space-y-3">
             {segments.map((segment) => {
-              const percentage = totalRevenue > 0 ? segment.revenue / totalRevenue * 100 : 0;
+              const percentage = totalRevenue > 0 ? ((segment.revenue / totalRevenue) * 100) : 0;
               return (
                 <div
                   key={segment.id}
                   className={`flex items-center justify-between p-2 bg-secondary/30 rounded-lg transition-all ${
-                  reasonMode && segment.revenue > 0 ?
-                  'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none' :
-                  ''}`
-                  }
+                    reasonMode && segment.revenue > 0
+                      ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'
+                      : ''
+                  }`}
                   draggable={reasonMode && segment.revenue > 0}
                   onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, percentage) : undefined}
                   onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
-                  title={reasonMode && segment.revenue > 0 ? `Drag ${segment.label} to Reasoning Board` : undefined}>
-
+                  title={reasonMode && segment.revenue > 0 ? `Drag ${segment.label} to Reasoning Board` : undefined}
+                >
                   <div className="flex items-center gap-2">
                     <div
                       className="w-4 h-4 rounded"
-                      style={{ backgroundColor: segment.color }} />
-
+                      style={{ backgroundColor: segment.color }}
+                    />
                     <div>
                       <span className="text-sm font-medium">{segment.label}</span>
                       <div className="text-xs text-muted-foreground">
@@ -315,39 +315,39 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                       {percentage.toFixed(1)}%
                     </div>
                   </div>
-                </div>);
-
+                </div>
+              );
             })}
           </div>
         </div>
 
         {/* Dynamic Insight */}
-        {insight &&
-        <div className={`mt-4 p-3 rounded-lg border ${
-        insight.type === 'warning' ?
-        'bg-amber-500/10 border-amber-500/30' :
-        insight.type === 'success' ?
-        'bg-green-500/10 border-green-500/30' :
-        'bg-blue-500/10 border-blue-500/30'}`
-        }>
+        {insight && (
+          <div className={`mt-4 p-3 rounded-lg border ${
+            insight.type === 'warning' 
+              ? 'bg-amber-500/10 border-amber-500/30' 
+              : insight.type === 'success'
+              ? 'bg-green-500/10 border-green-500/30'
+              : 'bg-blue-500/10 border-blue-500/30'
+          }`}>
             <p className={`text-sm ${
-          insight.type === 'warning' ?
-          'text-amber-700 dark:text-amber-300' :
-          insight.type === 'success' ?
-          'text-green-700 dark:text-green-300' :
-          'text-blue-700 dark:text-blue-300'}`
-          }>
+              insight.type === 'warning'
+                ? 'text-amber-700 dark:text-amber-300'
+                : insight.type === 'success'
+                ? 'text-green-700 dark:text-green-300'
+                : 'text-blue-700 dark:text-blue-300'
+            }`}>
               {insight.icon} <strong>{insight.title}:</strong> {insight.message}
             </p>
           </div>
-        }
+        )}
 
-        {totalRevenue === 0 &&
-        <div className="mt-4 p-4 text-center text-muted-foreground">
+        {totalRevenue === 0 && (
+          <div className="mt-4 p-4 text-center text-muted-foreground">
             <p>No revenue data for this selection. Adjust your ad spend to see results.</p>
           </div>
-        }
+        )}
       </CardContent>
-    </Card>);
-
+    </Card>
+  );
 }

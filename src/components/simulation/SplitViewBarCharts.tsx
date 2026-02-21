@@ -137,8 +137,8 @@ export function SplitViewBarCharts({
               totals={totals}
               remainingBudget={remainingBudget}
               mode="live"
-              baselineSpend={isSplitView ? baselineSpend : null}
-              baselineMetrics={isSplitView ? baselineMetrics : null}
+              baselineSpend={baselineSpend}
+              baselineMetrics={baselineMetrics}
               onTokenDrag={onTokenDrag}
             />
           </motion.div>

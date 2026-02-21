@@ -111,30 +111,7 @@ export function GhostDeltaBar({
     onChipDragEnd?.();
   }, [onChipDragEnd]);
 
-  // Main bar drag handler (reason mode) — drags the current metric value as a chip
-  const handleBarHtml5DragStart = useCallback((e: React.DragEvent) => {
-    e.stopPropagation();
-    const chip = createEvidenceChip(
-      `${channel.name} ${metricLabel}`,
-      currentValue.toLocaleString(),
-      `${metricLabel} • Channel Performance`,
-      `${channelId}-bar-${viewMode}`,
-      {
-        chipKind: 'baseline',
-        channelName: channel.name,
-        metricName: metricLabel.toLowerCase(),
-      }
-    );
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
-    onChipDragStart?.(chip);
-  }, [channelId, channel.name, currentValue, viewMode, metricLabel, onChipDragStart]);
-
-  const handleBarHtml5DragEnd = useCallback(() => {
-    onChipDragEnd?.();
-  }, [onChipDragEnd]);
-
-
+  // Ghost bar drag handlers (original mouse-based for token drag)
   const handleGhostDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (reasonMode) return; // Use HTML5 drag in reason mode
     e.stopPropagation();
@@ -313,53 +290,39 @@ export function GhostDeltaBar({
       ) : (
         // SINGLE BAR: No increase delta, render full current bar
         <>
-          {/* Wrapper for HTML5 drag in reason mode */}
-          <div
-            draggable={reasonMode}
-            onDragStart={reasonMode ? handleBarHtml5DragStart : undefined}
-            onDragEnd={reasonMode ? handleBarHtml5DragEnd : undefined}
-            className={reasonMode ? 'cursor-grab active:cursor-grabbing pointer-events-auto w-full' : 'w-full'}
+          {/* Single bar - pointer events pass through to column */}
+          <motion.div
+            className={`relative w-full rounded-t-lg ${
+              isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
+            }`}
+            style={{
+              backgroundColor: isNegative 
+                ? 'hsl(var(--destructive))' 
+                : channel.color,
+              boxShadow: isThisBarDragging 
+                ? `0 0 30px ${channel.color}` 
+                : `0 4px 12px ${channel.color}40`,
+              willChange: isDraggingSpend ? 'height, transform' : 'auto',
+              opacity: isSnapshot ? 0.85 : 1,
+              filter: isSnapshot ? 'saturate(0.8)' : 'none',
+            }}
+            initial={false}
+            animate={{ 
+              height: `${Math.max(currentHeightPercent, 2)}%`,
+              scale: isThisBarDragging ? 1.02 : 1,
+            }}
+            transition={{ 
+              type: 'spring', 
+              stiffness: isDraggingSpend ? 500 : 200, 
+              damping: isDraggingSpend ? 35 : 25,
+              duration: isDraggingSpend ? 0.1 : undefined,
+            }}
           >
-            <motion.div
-              className={`relative w-full rounded-t-lg ${
-                isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
-              }`}
-              style={{
-                backgroundColor: isNegative 
-                  ? 'hsl(var(--destructive))' 
-                  : channel.color,
-                boxShadow: isThisBarDragging 
-                  ? `0 0 30px ${channel.color}` 
-                  : `0 4px 12px ${channel.color}40`,
-                willChange: isDraggingSpend ? 'height, transform' : 'auto',
-                opacity: isSnapshot ? 0.85 : 1,
-                filter: isSnapshot ? 'saturate(0.8)' : 'none',
-              }}
-              initial={false}
-              animate={{ 
-                height: `${Math.max(currentHeightPercent, 2)}%`,
-                scale: isThisBarDragging ? 1.02 : 1,
-              }}
-              transition={{ 
-                type: 'spring', 
-                stiffness: isDraggingSpend ? 500 : 200, 
-                damping: isDraggingSpend ? 35 : 25,
-                duration: isDraggingSpend ? 0.1 : undefined,
-              }}
-              title={reasonMode ? `Drag ${channel.name} ${metricLabel}` : undefined}
-            >
-              {/* Spend drag handle - visual only, drag handled by column */}
-              <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
-                <div className="w-10 h-1.5 bg-white/60 rounded-full" />
-              </div>
-              {/* Small reason mode label */}
-              {reasonMode && currentHeightPercent > 8 && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-[10px] font-bold text-white/80 drop-shadow-md">🧪</span>
-                </div>
-              )}
-            </motion.div>
-          </div>
+            {/* Spend drag handle - visual only, drag handled by column */}
+            <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
+              <div className="w-10 h-1.5 bg-white/60 rounded-full" />
+            </div>
+          </motion.div>
 
           {/* Delta Decrease Segment - visible gap between ghost and current, draggable for reasoning */}
           {hasDelta && hasBaseline && !isIncrease && (
