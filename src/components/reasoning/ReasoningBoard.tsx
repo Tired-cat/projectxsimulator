@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { X, GripVertical, FlaskConical } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
-import { REASONING_BLOCKS } from '@/types/evidenceChip';
+import { REASONING_BLOCKS, getSmartInsight } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import { cn } from '@/lib/utils';
 
@@ -180,6 +180,7 @@ export function ReasoningBoard() {
 // Individual chip card inside the board
 function ChipCard({
   chip,
+  blockId,
   blockColor,
   onRemove,
   onDragStart,
@@ -192,6 +193,11 @@ function ChipCard({
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }) {
+  const insight = getSmartInsight(chip, blockId);
+  const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
+  const isIncrease = chip.chipKind === 'delta-increase';
+  const isDecrease = chip.chipKind === 'delta-decrease';
+
   return (
     <div
       draggable
@@ -205,12 +211,27 @@ function ChipCard({
       {/* Chip content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
+          {isDelta && (
+            <span className={`text-xs ${isIncrease ? 'text-green-600' : 'text-red-500'}`}>
+              {isIncrease ? '▲' : '▼'}
+            </span>
+          )}
           <span className="text-xs font-semibold text-foreground truncate">{chip.label}:</span>
           <span className="text-xs font-bold flex-shrink-0" style={{ color: blockColor }}>
             {chip.value}
           </span>
         </div>
         <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{chip.context}</div>
+        {/* Smart insight */}
+        {insight && (
+          <div className={`mt-1.5 px-2 py-1 rounded text-[10px] font-medium ${
+            isIncrease ? 'bg-green-500/10 text-green-700 dark:text-green-400' :
+            isDecrease ? 'bg-red-500/10 text-red-700 dark:text-red-400' :
+            'bg-primary/10 text-primary'
+          }`}>
+            💡 {insight}
+          </div>
+        )}
       </div>
 
       {/* Remove button */}

@@ -767,28 +767,22 @@ export function DraggableBarChart({
                     )}
 
                     {/* GhostDeltaBar - handles ghost baseline and delta overlay */}
-                    {!reasonMode && (
-                      <GhostDeltaBar
-                        channelId={channelId}
-                        channel={channel}
-                        currentValue={metricValue}
-                        baselineValue={baselineValue}
-                        maxScale={maxScale}
-                        viewMode={viewMode}
-                        isNegative={isNegative}
-                        isDraggingSpend={isDragging}
-                        isThisBarDragging={isThisBarDragging}
-                        isSnapshot={isSnapshot}
-                        onTokenDrag={onTokenDrag}
-                      />
-                    )}
-
-                    {/* Normal mode: render GhostDeltaBar only; evidence chips stay on numbers */}
-                    {!reasonMode && (
-                      <>
-                        {/* Metric values draggable as evidence chips in normal mode */}
-                      </>
-                    )}
+                    <GhostDeltaBar
+                      channelId={channelId}
+                      channel={channel}
+                      currentValue={metricValue}
+                      baselineValue={baselineValue}
+                      maxScale={maxScale}
+                      viewMode={viewMode}
+                      isNegative={isNegative}
+                      isDraggingSpend={isDragging}
+                      isThisBarDragging={isThisBarDragging}
+                      isSnapshot={isSnapshot}
+                      onTokenDrag={onTokenDrag}
+                      reasonMode={reasonMode}
+                      onChipDragStart={setDraggingChip}
+                      onChipDragEnd={() => setDraggingChip(null)}
+                    />
                   </div>
                 );
               })}

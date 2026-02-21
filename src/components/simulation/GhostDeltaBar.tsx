@@ -3,6 +3,8 @@ import { useCallback, useState } from 'react';
 import type { ChannelConfig } from '@/lib/marketingConstants';
 import type { ReasoningToken } from '@/types/reasoningToken';
 import { createBaselineToken, createDeltaToken } from '@/types/reasoningToken';
+import { createEvidenceChip } from '@/types/evidenceChip';
+import type { EvidenceChip } from '@/types/evidenceChip';
 
 interface GhostDeltaBarProps {
   channelId: string;
@@ -16,6 +18,11 @@ interface GhostDeltaBarProps {
   isThisBarDragging: boolean;
   isSnapshot: boolean;
   onTokenDrag?: (token: ReasoningToken) => void;
+  /** When true, delta/ghost segments use HTML5 drag to create evidence chips */
+  reasonMode?: boolean;
+  /** Callback to set the dragging chip in ReasoningBoardContext */
+  onChipDragStart?: (chip: EvidenceChip) => void;
+  onChipDragEnd?: () => void;
 }
 
 export function GhostDeltaBar({
@@ -30,6 +37,9 @@ export function GhostDeltaBar({
   isThisBarDragging,
   isSnapshot,
   onTokenDrag,
+  reasonMode = false,
+  onChipDragStart,
+  onChipDragEnd,
 }: GhostDeltaBarProps) {
   const [isDraggingGhost, setIsDraggingGhost] = useState(false);
   const [isDraggingDelta, setIsDraggingDelta] = useState(false);
@@ -48,8 +58,62 @@ export function GhostDeltaBar({
     ? Math.max(0, (Math.abs(baselineValue) / maxScale) * 100)
     : 0;
 
-  // Ghost bar drag handlers
+  const metricLabel = viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
+
+  // HTML5 drag handlers for reason mode (evidence chips)
+  const handleDeltaHtml5DragStart = useCallback((e: React.DragEvent) => {
+    e.stopPropagation();
+    const isInc = delta > 0;
+    const chip = createEvidenceChip(
+      `${channel.name} ${metricLabel}`,
+      `${isInc ? '+' : ''}${delta.toLocaleString()}`,
+      `${isInc ? 'Increased' : 'Decreased'} ${metricLabel} • Channel Performance`,
+      `${channelId}-delta-${viewMode}`,
+      {
+        chipKind: isInc ? 'delta-increase' : 'delta-decrease',
+        channelName: channel.name,
+        metricName: metricLabel.toLowerCase(),
+        deltaValue: delta,
+      }
+    );
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    onChipDragStart?.(chip);
+    setIsDraggingDelta(true);
+  }, [channelId, channel.name, delta, viewMode, metricLabel, onChipDragStart]);
+
+  const handleDeltaHtml5DragEnd = useCallback(() => {
+    setIsDraggingDelta(false);
+    onChipDragEnd?.();
+  }, [onChipDragEnd]);
+
+  const handleGhostHtml5DragStart = useCallback((e: React.DragEvent) => {
+    e.stopPropagation();
+    const chip = createEvidenceChip(
+      `${channel.name} Baseline ${metricLabel}`,
+      baselineValue?.toLocaleString() ?? '0',
+      `Baseline ${metricLabel} • Channel Performance`,
+      `${channelId}-baseline-${viewMode}`,
+      {
+        chipKind: 'baseline',
+        channelName: channel.name,
+        metricName: metricLabel.toLowerCase(),
+      }
+    );
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    onChipDragStart?.(chip);
+    setIsDraggingGhost(true);
+  }, [channelId, channel.name, baselineValue, viewMode, metricLabel, onChipDragStart]);
+
+  const handleGhostHtml5DragEnd = useCallback(() => {
+    setIsDraggingGhost(false);
+    onChipDragEnd?.();
+  }, [onChipDragEnd]);
+
+  // Ghost bar drag handlers (original mouse-based for token drag)
   const handleGhostDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (reasonMode) return; // Use HTML5 drag in reason mode
     e.stopPropagation();
     setIsDraggingGhost(true);
     
@@ -63,14 +127,15 @@ export function GhostDeltaBar({
       );
       onTokenDrag(token);
     }
-  }, [channelId, channel.name, baselineValue, viewMode, onTokenDrag]);
+  }, [channelId, channel.name, baselineValue, viewMode, onTokenDrag, reasonMode]);
 
   const handleGhostDragEnd = useCallback(() => {
     setIsDraggingGhost(false);
   }, []);
 
-  // Delta segment drag handlers
+  // Delta segment drag handlers (original mouse-based for token drag)
   const handleDeltaDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (reasonMode) return; // Use HTML5 drag in reason mode
     e.stopPropagation();
     setIsDraggingDelta(true);
     
@@ -85,7 +150,7 @@ export function GhostDeltaBar({
       );
       onTokenDrag(token);
     }
-  }, [channelId, channel.name, baselineValue, currentValue, viewMode, onTokenDrag]);
+  }, [channelId, channel.name, baselineValue, currentValue, viewMode, onTokenDrag, reasonMode]);
 
   const handleDeltaDragEnd = useCallback(() => {
     setIsDraggingDelta(false);
@@ -111,37 +176,30 @@ export function GhostDeltaBar({
     >
       {/* Ghost Baseline Bar - faint shadow showing the original state */}
       {hasBaseline && (
-        <motion.div
-          className={`absolute bottom-0 left-0 right-0 rounded-t-lg pointer-events-auto ${
-            isDraggingGhost ? 'cursor-grabbing z-5' : 'cursor-grab z-5'
+        <div
+          draggable={reasonMode}
+          onDragStart={reasonMode ? handleGhostHtml5DragStart : undefined}
+          onDragEnd={reasonMode ? handleGhostHtml5DragEnd : undefined}
+          onMouseDown={reasonMode ? undefined : handleGhostDragStart}
+          onMouseUp={reasonMode ? undefined : handleGhostDragEnd}
+          onMouseLeave={reasonMode ? undefined : handleGhostDragEnd}
+          className={`absolute bottom-0 left-0 right-0 rounded-t-lg pointer-events-auto transition-transform ${
+            isDraggingGhost ? 'cursor-grabbing z-5 scale-105' : 'cursor-grab z-5'
           }`}
           style={{
             backgroundColor: ghostColor,
             borderTop: `2px dashed hsl(var(--muted-foreground) / 0.4)`,
-          }}
-          initial={false}
-          animate={{ 
             height: `${Math.max(baselineHeightPercent, 2)}%`,
-            scale: isDraggingGhost ? 1.05 : 1,
           }}
-          transition={{ 
-            type: 'spring', 
-            stiffness: 200, 
-            damping: 25,
-          }}
-          onMouseDown={handleGhostDragStart}
-          onMouseUp={handleGhostDragEnd}
-          onMouseLeave={handleGhostDragEnd}
-          title={`Baseline: ${baselineValue?.toLocaleString()}`}
+          title={reasonMode ? `Drag baseline ${metricLabel}: ${baselineValue?.toLocaleString()}` : `Baseline: ${baselineValue?.toLocaleString()}`}
         >
-          {/* Ghost grab handle */}
           <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-50">
             <div className="w-6 h-1 bg-muted-foreground/40 rounded-full" />
           </div>
           {isDraggingGhost && (
             <div className="absolute inset-0 rounded-t-lg ring-2 ring-primary ring-offset-1 ring-offset-background" />
           )}
-        </motion.div>
+        </div>
       )}
 
       {/* STACKED BAR using flexbox - grows from bottom */}
@@ -188,48 +246,37 @@ export function GhostDeltaBar({
           />
 
           {/* Delta Increase Segment - top of stack, GREEN for increase */}
-          <motion.div
-            className={`w-full shrink-0 pointer-events-auto rounded-t-lg ${
-              isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
+          <div
+            draggable={reasonMode}
+            onDragStart={reasonMode ? handleDeltaHtml5DragStart : undefined}
+            onDragEnd={reasonMode ? handleDeltaHtml5DragEnd : undefined}
+            onMouseDown={reasonMode ? undefined : handleDeltaDragStart}
+            onMouseUp={reasonMode ? undefined : handleDeltaDragEnd}
+            onMouseLeave={reasonMode ? undefined : handleDeltaDragEnd}
+            className={`w-full shrink-0 pointer-events-auto rounded-t-lg transition-transform ${
+              isDraggingDelta ? 'cursor-grabbing z-40 scale-[1.04]' : 'cursor-grab z-35'
             }`}
             style={{
-              // Green for increase - using semantic success color
-              backgroundColor: 'hsl(142, 71%, 45%)', // Vibrant green
-              // Explicit height based on proportion of delta within total current
+              backgroundColor: 'hsl(142, 71%, 45%)',
               height: deltaHeight > 0 
                 ? `${(deltaHeight / currentHeightPercent) * 100}%` 
                 : '0%',
-              minHeight: deltaHeight > 0 ? '16px' : '0px', // Minimum height for visibility
-              // Hard edge separator - clean border between baseline and delta
-              borderBottom: '2px solid hsl(142, 71%, 35%)', // Darker green border
+              minHeight: deltaHeight > 0 ? '16px' : '0px',
+              borderBottom: '2px solid hsl(142, 71%, 35%)',
               borderTop: isDraggingDelta ? '2px solid white' : 'none',
               boxShadow: isDraggingDelta 
                 ? '0 0 12px hsl(142, 71%, 45%)' 
                 : 'none',
             }}
-            initial={false}
-            animate={{ 
-              scale: isDraggingDelta ? 1.04 : 1,
-            }}
-            transition={{ 
-              type: 'spring', 
-              stiffness: 200, 
-              damping: 25,
-            }}
-            onMouseDown={handleDeltaDragStart}
-            onMouseUp={handleDeltaDragEnd}
-            onMouseLeave={handleDeltaDragEnd}
-            title={`Increase: +${delta.toLocaleString()}`}
+            title={reasonMode ? `Drag increase: +${delta.toLocaleString()}` : `Increase: +${delta.toLocaleString()}`}
           >
-            {/* Drag handle for delta increase */}
             <div className="w-full h-4 flex items-center justify-center bg-white/20 rounded-t-lg">
               <div className="w-8 h-1 bg-white/60 rounded-full" />
             </div>
-            {/* Delta indicator - only show if segment tall enough */}
             {deltaHeight > 3 && (
               <div className="flex items-center justify-center py-0.5">
                 <div className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap">
-                  ▲ +{Math.abs(delta).toLocaleString()}
+                  {reasonMode ? '🧪' : '▲'} +{Math.abs(delta).toLocaleString()}
                 </div>
               </div>
             )}
@@ -238,7 +285,7 @@ export function GhostDeltaBar({
                 className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background rounded-t-lg"
               />
             )}
-          </motion.div>
+          </div>
         </div>
       ) : (
         // SINGLE BAR: No increase delta, render full current bar
@@ -279,37 +326,30 @@ export function GhostDeltaBar({
 
           {/* Delta Decrease Segment - visible gap between ghost and current, draggable for reasoning */}
           {hasDelta && hasBaseline && !isIncrease && (
-            <motion.div
-              className={`absolute left-0 right-0 pointer-events-auto ${
-                isDraggingDelta ? 'cursor-grabbing z-40' : 'cursor-grab z-35'
+            <div
+              draggable={reasonMode}
+              onDragStart={reasonMode ? handleDeltaHtml5DragStart : undefined}
+              onDragEnd={reasonMode ? handleDeltaHtml5DragEnd : undefined}
+              onMouseDown={reasonMode ? undefined : handleDeltaDragStart}
+              onMouseUp={reasonMode ? undefined : handleDeltaDragEnd}
+              onMouseLeave={reasonMode ? undefined : handleDeltaDragEnd}
+              className={`absolute left-0 right-0 pointer-events-auto transition-transform ${
+                isDraggingDelta ? 'cursor-grabbing z-40 scale-[1.08]' : 'cursor-grab z-35'
               }`}
               style={{
                 bottom: `${currentHeightPercent}%`,
+                height: `${deltaHeight}%`,
                 backgroundColor: deltaDecreaseColor,
                 borderRadius: '0 0 0.5rem 0.5rem',
                 boxShadow: isDraggingDelta 
                   ? `0 0 20px ${deltaDecreaseColor}` 
                   : 'none',
               }}
-              initial={false}
-              animate={{ 
-                height: `${deltaHeight}%`,
-                scale: isDraggingDelta ? 1.08 : 1,
-              }}
-              transition={{ 
-                type: 'spring', 
-                stiffness: 200, 
-                damping: 25,
-              }}
-              onMouseDown={handleDeltaDragStart}
-              onMouseUp={handleDeltaDragEnd}
-              onMouseLeave={handleDeltaDragEnd}
-              title={`Decrease: ${delta.toLocaleString()}`}
+              title={reasonMode ? `Drag decrease: ${delta.toLocaleString()}` : `Decrease: ${delta.toLocaleString()}`}
             >
-              {/* Delta indicator */}
               <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
                 <div className="text-[10px] font-bold text-white drop-shadow-md whitespace-nowrap">
-                  ▼ {Math.abs(delta).toLocaleString()}
+                  {reasonMode ? '🧪' : '▼'} {Math.abs(delta).toLocaleString()}
                 </div>
               </div>
               {isDraggingDelta && (
@@ -318,7 +358,7 @@ export function GhostDeltaBar({
                   style={{ borderRadius: '0 0 0.5rem 0.5rem' }}
                 />
               )}
-            </motion.div>
+            </div>
           )}
         </>
       )}
