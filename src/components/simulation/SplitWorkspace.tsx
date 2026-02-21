@@ -65,6 +65,8 @@ function SplitPane({ pane, tabId, renderTabContent, draggingTabId, draggingPanel
   const isAnyDragging = !!draggingTabId || !!draggingPanelId;
 
   const handleDragOver = (e: DragEvent) => {
+    // Ignore evidence chip drags — let them pass through to inner drop zones (e.g. Reasoning Board)
+    if (e.dataTransfer.types.includes('application/evidence-chip')) return;
     if (!isAnyDragging) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -77,6 +79,8 @@ function SplitPane({ pane, tabId, renderTabContent, draggingTabId, draggingPanel
   };
 
   const handleDrop = (e: DragEvent) => {
+    // Ignore evidence chip drops — handled by inner Reasoning Board blocks
+    if (e.dataTransfer.types.includes('application/evidence-chip') && !e.dataTransfer.getData('tabId')) return;
     e.preventDefault();
     setIsDragOver(false);
 
