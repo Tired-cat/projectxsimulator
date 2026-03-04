@@ -13,69 +13,133 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-function formatEvidence(chip: EvidenceChip): string {
-  const base = `${chip.label}: ${chip.value}`;
-  if (chip.contextChip) {
-    return `${base} (supported by ${chip.contextChip.label}: ${chip.contextChip.value})`;
+// Determine if two evidence items contrast or reinforce each other
+function isContrastPair(a: EvidenceChip, b: EvidenceChip): boolean {
+  if ((a.chipKind === 'delta-increase' && b.chipKind === 'delta-decrease') ||
+      (a.chipKind === 'delta-decrease' && b.chipKind === 'delta-increase')) return true;
+  if (a.sourceId !== b.sourceId) return true;
+  return false;
+}
+
+const CONTRAST_RELATIONAL = ['despite', 'in contrast to', 'whereas', 'however, compared to', 'surprisingly, despite'];
+const ADDITIVE_RELATIONAL = ['consistent with', 'which aligns with', 'further supported by', 'alongside'];
+
+function pickRelational(seed: string, contrast: boolean): string {
+  const pool = contrast ? CONTRAST_RELATIONAL : ADDITIVE_RELATIONAL;
+  return pool[Math.floor(seededRandom(seed) * pool.length)];
+}
+
+// Generate a relational insight for a single chip (with or without context)
+function generateChipInsight(chip: EvidenceChip, blockId: ReasoningBlockId): string {
+  const primary = `${chip.label} (${chip.value})`;
+
+  if (!chip.contextChip) {
+    // Unpaired — simple observation
+    return generateUnpairedSentence(primary, chip, blockId);
   }
-  return base;
+
+  const ctx = chip.contextChip;
+  const context = `${ctx.label} (${ctx.value})`;
+  const contrast = isContrastPair(chip, ctx);
+  const relational = pickRelational(chip.id + ctx.id, contrast);
+
+  return generatePairedSentence(primary, context, relational, contrast, chip, ctx, blockId);
 }
 
-const CONTRAST_CONNECTORS = ['while', 'whereas', 'compared to', 'in contrast to'];
-const ADDITIVE_CONNECTORS = ['alongside', 'together with', 'and similarly', 'reinforced by'];
-
-function pickConnector(chipA: EvidenceChip, chipB: EvidenceChip): string {
-  const isContrast =
-    (chipA.chipKind === 'delta-increase' && chipB.chipKind === 'delta-decrease') ||
-    (chipA.chipKind === 'delta-decrease' && chipB.chipKind === 'delta-increase') ||
-    (chipA.sourceId !== chipB.sourceId);
-  const pool = isContrast ? CONTRAST_CONNECTORS : ADDITIVE_CONNECTORS;
-  const idx = Math.floor(seededRandom(chipA.id + chipB.id) * pool.length);
-  return pool[idx];
+function generateUnpairedSentence(primary: string, chip: EvidenceChip, blockId: ReasoningBlockId): string {
+  const templates: Record<ReasoningBlockId, string[]> = {
+    descriptive: [
+      `I noticed ${primary}, which stood out as a significant data point.`,
+      `Looking at the data, ${primary} caught my attention as noteworthy.`,
+    ],
+    diagnostic: [
+      `I believed ${primary} was a key factor explaining this outcome.`,
+      `Looking deeper, ${primary} appeared to be driving what I was seeing.`,
+    ],
+    prescriptive: [
+      `Given ${primary}, I felt a strategic adjustment was warranted.`,
+      `Because of ${primary}, I decided a change needed to be made.`,
+    ],
+    predictive: [
+      `After my adjustments, ${primary} suggests this trajectory will continue.`,
+      `Following my decision, ${primary} indicates the impact is becoming visible.`,
+    ],
+  };
+  const pool = templates[blockId];
+  return pool[Math.floor(seededRandom(chip.id + blockId) * pool.length)];
 }
 
-const SINGLE_OPENERS: Record<ReasoningBlockId, string[]> = {
-  descriptive: [
-    'I noticed that [items], which stood out as significant.',
-    'Looking at the data, I observed [items].',
-    'One thing that caught my attention was [items].',
-  ],
-  diagnostic: [
-    'I believed that [items] explained why this outcome occurred.',
-    'Looking deeper, I concluded that [items] was the underlying cause.',
-    'At this point, I thought [items] was the reason behind what I was seeing.',
-  ],
-  prescriptive: [
-    'Given what I observed, I decided to act because of [items].',
-    'Because of [items], I felt a change needed to be made.',
-    'Taking [items] into account, I chose to adjust my strategy.',
-  ],
-  predictive: [
-    'After adjusting my strategy, [items] suggests this trend will continue.',
-    'Following my decision, [items] indicates things are shifting.',
-    'Now that I\'ve made changes, [items] tells me what to expect going forward.',
-  ],
-};
+function generatePairedSentence(
+  primary: string, context: string, relational: string, contrast: boolean,
+  chip: EvidenceChip, ctx: EvidenceChip, blockId: ReasoningBlockId
+): string {
+  const seed = chip.id + ctx.id + blockId;
+
+  if (contrast) {
+    const implications: Record<ReasoningBlockId, string[]> = {
+      descriptive: [
+        `${relational.charAt(0).toUpperCase() + relational.slice(1)} ${primary} showing strong performance, ${context} tells a different story, suggesting uneven distribution across channels.`,
+        `${primary} appeared strong, ${relational} ${context}, which revealed an imbalance worth investigating.`,
+      ],
+      diagnostic: [
+        `${relational.charAt(0).toUpperCase() + relational.slice(1)} ${primary}, ${context} moved in the opposite direction, suggesting these factors may be competing for the same outcome.`,
+        `The gap between ${primary} and ${context} pointed to a deeper structural issue driving the disparity.`,
+      ],
+      prescriptive: [
+        `${relational.charAt(0).toUpperCase() + relational.slice(1)} the strength of ${primary}, the weakness in ${context} indicated resources should be reallocated to maximise overall impact.`,
+        `The contrast between ${primary} and ${context} made it clear that a targeted rebalancing was needed.`,
+      ],
+      predictive: [
+        `${relational.charAt(0).toUpperCase() + relational.slice(1)} ${primary} trending positively, ${context} lagging behind suggests the gap will widen without intervention.`,
+        `If ${primary} continues on this path while ${context} remains subdued, the divergence will likely intensify.`,
+      ],
+    };
+    const pool = implications[blockId];
+    return pool[Math.floor(seededRandom(seed) * pool.length)];
+  } else {
+    const implications: Record<ReasoningBlockId, string[]> = {
+      descriptive: [
+        `${primary}, ${relational} ${context}, painted a consistent picture of the current state.`,
+        `Both ${primary} and ${context} reinforced the same observation, strengthening my confidence in this reading.`,
+      ],
+      diagnostic: [
+        `${primary}, ${relational} ${context}, confirmed that these factors were working together to produce this outcome.`,
+        `The alignment between ${primary} and ${context} suggested a shared underlying driver.`,
+      ],
+      prescriptive: [
+        `${primary}, ${relational} ${context}, reinforced my conviction that doubling down on the current direction was the right call.`,
+        `Because ${primary} and ${context} both pointed the same way, the strategic decision felt well-supported.`,
+      ],
+      predictive: [
+        `${primary}, ${relational} ${context}, suggests momentum is building and the trend is likely to sustain.`,
+        `With both ${primary} and ${context} aligned, the outlook appears stable and predictable.`,
+      ],
+    };
+    const pool = implications[blockId];
+    return pool[Math.floor(seededRandom(seed) * pool.length)];
+  }
+}
+
+// Multi-chip weaving connectors
+const MULTI_CONTRAST = ['while', 'whereas', 'in contrast,'];
+const MULTI_ADDITIVE = ['alongside this,', 'similarly,', 'reinforcing this,'];
 
 function generateCombinedSentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
   if (chips.length === 0) return '';
+  if (chips.length === 1) return generateChipInsight(chips[0], blockId);
 
-  let evidencePhrase: string;
-  if (chips.length === 1) {
-    evidencePhrase = formatEvidence(chips[0]);
-  } else {
-    const parts: string[] = [formatEvidence(chips[0])];
-    for (let i = 1; i < chips.length; i++) {
-      const connector = pickConnector(chips[i - 1], chips[i]);
-      parts.push(`${connector} ${formatEvidence(chips[i])}`);
-    }
-    evidencePhrase = parts.join(', ');
+  // Generate individual insights, then weave them
+  const insights = chips.map(c => generateChipInsight(c, blockId));
+  const parts: string[] = [insights[0]];
+  for (let i = 1; i < insights.length; i++) {
+    const contrast = isContrastPair(chips[i - 1], chips[i]);
+    const pool = contrast ? MULTI_CONTRAST : MULTI_ADDITIVE;
+    const connector = pool[Math.floor(seededRandom(chips[i - 1].id + chips[i].id + 'multi') * pool.length)];
+    // Lowercase the next insight's first char and prepend connector
+    const next = insights[i].charAt(0).toLowerCase() + insights[i].slice(1);
+    parts.push(`${connector} ${next}`);
   }
-
-  const templates = SINGLE_OPENERS[blockId];
-  const seedStr = chips.map(c => c.id).join('-') + blockId;
-  const idx = Math.floor(seededRandom(seedStr) * templates.length);
-  return templates[idx].replace('[items]', evidencePhrase);
+  return parts.join(' ');
 }
 
 const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
