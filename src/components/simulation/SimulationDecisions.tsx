@@ -1,5 +1,5 @@
 import { ReactNode, useState, useCallback } from 'react';
-import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
+import { BarChart3, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, CHANNEL_IDS, calculateMixedRevenue as calcRevenue } from '@/lib/marketingConstants';
@@ -18,7 +18,7 @@ import { DraggableCard } from '@/components/workspace';
 import { useTabs } from '@/contexts/TabContext';
 import type { PanelId } from '@/types/workspaceTypes';
 
-const REVENUE_GOAL = 100000;
+
 
 interface SimulationDecisionsProps {
   channelSpend: ChannelSpend;
@@ -96,8 +96,6 @@ export function SimulationDecisions({
         );
       case 'product-mix':
         return <ProductMixChart channelMetrics={channelMetrics} />;
-      case 'goal-tracker':
-        return <GoalTrackerContent totals={totals} hasUserModified={hasUserModified} />;
       case 'hints':
         return <HintsContent />;
       case 'assumptions':
@@ -137,18 +135,8 @@ export function SimulationDecisions({
         {renderPanelContent('product-mix')}
       </DraggableCard>
 
-      {/* Goal Tracker */}
-      <DraggableCard
-        panelId="goal-tracker"
-        title="Goal Tracker"
-        icon={<DollarSign className="h-4 w-4" />}
-        onDragStart={setDraggingPanelId}
-        onDragEnd={() => setDraggingPanelId(null)}
-        onAddAsTab={handleAddAsTab}
-        onOpenInSplit={handleOpenInSplit}
-      >
-        {renderPanelContent('goal-tracker')}
-      </DraggableCard>
+
+
 
       {/* Hints - full width */}
       <DraggableCard
@@ -246,54 +234,6 @@ export function BudgetHeader({ totalSpent, onReset, isSplit, onCloseSplit }: Bud
 
 // Internal content components
 
-interface GoalTrackerContentProps {
-  totals: {
-    totalRevenue: number;
-  };
-  hasUserModified: boolean;
-}
-
-function GoalTrackerContent({ totals, hasUserModified }: GoalTrackerContentProps) {
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm text-muted-foreground">Goal Progress</div>
-          <div className="text-2xl font-bold">
-            ${totals.totalRevenue.toLocaleString()}
-            <span className="text-muted-foreground text-lg font-normal">
-              {' '}
-              / ${REVENUE_GOAL.toLocaleString()}
-            </span>
-          </div>
-        </div>
-        <div className="w-48">
-          <div className="h-4 bg-secondary rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ${
-                totals.totalRevenue >= REVENUE_GOAL
-                  ? 'bg-green-500'
-                  : 'bg-gradient-to-r from-primary to-primary/70'
-              }`}
-              style={{ width: `${Math.min((totals.totalRevenue / REVENUE_GOAL) * 100, 100)}%` }}
-            />
-          </div>
-          <div className="text-xs text-muted-foreground text-right mt-1">
-            {((totals.totalRevenue / REVENUE_GOAL) * 100).toFixed(1)}% of goal
-          </div>
-        </div>
-      </div>
-
-      {hasUserModified && totals.totalRevenue >= REVENUE_GOAL && (
-        <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-center">
-          <span className="text-green-600 font-bold">
-            🎉 Congratulations! You've reached the revenue goal!
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function HintsContent() {
   return (

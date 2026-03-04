@@ -3,7 +3,6 @@
 export type PanelId = 
   | 'channel-performance'
   | 'product-mix'
-  | 'goal-tracker'
   | 'hints'
   | 'assumptions';
 
@@ -37,7 +36,7 @@ export type DropTarget = 'tab' | 'split-left' | 'split-right';
 export const PANEL_DEFINITIONS: Record<PanelId, PanelDefinition> = {
   'channel-performance': { id: 'channel-performance', title: 'Channel Performance', icon: 'BarChart3' },
   'product-mix': { id: 'product-mix', title: 'Product Mix', icon: 'PieChart' },
-  'goal-tracker': { id: 'goal-tracker', title: 'Goal Tracker', icon: 'DollarSign' },
+  
   'hints': { id: 'hints', title: 'Hints & Tips', icon: 'AlertCircle' },
   'assumptions': { id: 'assumptions', title: 'Assumptions', icon: 'Settings' },
 };
