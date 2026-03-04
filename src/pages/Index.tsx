@@ -1,5 +1,5 @@
 import { useCallback, useState, ReactNode } from 'react';
-import { BarChart3, DollarSign, AlertCircle, PieChart, Settings } from 'lucide-react';
+import { BarChart3, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
 import { SimulationShell } from '@/components/simulation/SimulationShell';
 import { SimulationHome } from '@/components/simulation/SimulationHome';
@@ -18,7 +18,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
-const REVENUE_GOAL = 100000;
+
 
 function SimulationContent() {
   const { openTab } = useTabs();
@@ -74,44 +74,6 @@ function SimulationContent() {
         );
       case 'product-mix':
         return <ProductMixChart channelMetrics={channelMetrics} />;
-      case 'goal-tracker':
-        return (
-          <div>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-muted-foreground">Goal Progress</div>
-                <div className="text-2xl font-bold">
-                  ${totals.totalRevenue.toLocaleString()}
-                  <span className="text-muted-foreground text-lg font-normal">
-                    {' '}/ ${REVENUE_GOAL.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="w-48">
-                <div className="h-4 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      totals.totalRevenue >= REVENUE_GOAL
-                        ? 'bg-green-500'
-                        : 'bg-gradient-to-r from-primary to-primary/70'
-                    }`}
-                    style={{ width: `${Math.min((totals.totalRevenue / REVENUE_GOAL) * 100, 100)}%` }}
-                  />
-                </div>
-                <div className="text-xs text-muted-foreground text-right mt-1">
-                  {((totals.totalRevenue / REVENUE_GOAL) * 100).toFixed(1)}% of goal
-                </div>
-              </div>
-            </div>
-            {hasUserModified && totals.totalRevenue >= REVENUE_GOAL && (
-              <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-center">
-                <span className="text-green-600 font-bold">
-                  🎉 Congratulations! You've reached the revenue goal!
-                </span>
-              </div>
-            )}
-          </div>
-        );
       case 'hints':
         return (
           <div className="bg-gradient-to-r from-primary/5 to-secondary/30 rounded-lg p-4">

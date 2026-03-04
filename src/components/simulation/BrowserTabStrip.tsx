@@ -1,5 +1,5 @@
 import { DragEvent, useState, useRef } from 'react';
-import { X, Home, BarChart3, PieChart, DollarSign, AlertCircle, Settings, FlaskConical, Columns2, LucideIcon } from 'lucide-react';
+import { X, Home, BarChart3, PieChart, AlertCircle, Settings, FlaskConical, Columns2, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTabs, type Tab, type TabKind } from '@/contexts/TabContext';
 import type { PanelId } from '@/types/workspaceTypes';
@@ -14,7 +14,7 @@ const TAB_ICONS: Record<TabKind, LucideIcon> = {
 const PANEL_ICONS: Record<PanelId, LucideIcon> = {
   'channel-performance': BarChart3,
   'product-mix': PieChart,
-  'goal-tracker': DollarSign,
+  
   'hints': AlertCircle,
   'assumptions': Settings,
 };
@@ -29,7 +29,7 @@ function getTabIcon(tab: Tab): LucideIcon {
 const PANEL_TITLES: Record<PanelId, string> = {
   'channel-performance': 'Channel Performance',
   'product-mix': 'Product Mix',
-  'goal-tracker': 'Goal Tracker',
+  
   'hints': 'Hints & Tips',
   'assumptions': 'Assumptions',
 };
