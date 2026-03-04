@@ -8,6 +8,8 @@ import { SplitViewBarCharts } from '@/components/simulation/SplitViewBarCharts';
 import { ProductMixChart } from '@/components/simulation/ProductMixChart';
 import { TabProvider, useTabs } from '@/contexts/TabContext';
 import { ReasoningBoardProvider } from '@/contexts/ReasoningBoardContext';
+import { TutorialProvider } from '@/contexts/TutorialContext';
+import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
@@ -121,27 +123,30 @@ function SimulationContent() {
   }, [channelSpend, updateChannelSpend, channelMetrics, totals, remainingBudget, hasUserModified, shellCompareActive, shellSnapshotSpend, shellBaselineSpend, handleShellActivateCompare, handleShellCloseCompare]);
 
   return (
-    <SimulationShell
-      homeContent={
-        <SimulationHome 
-          onStartDecisions={handleStartDecisions}
-          currentRevenue={totals.totalRevenue}
-        />
-      }
-      decisionsContent={
-        <SimulationDecisions
-          channelSpend={channelSpend}
-          updateChannelSpend={updateChannelSpend}
-          channelMetrics={channelMetrics}
-          totals={totals}
-          remainingBudget={remainingBudget}
-          hasUserModified={hasUserModified}
-          totalSpent={totalSpent}
-          onReset={resetSimulation}
-        />
-      }
-      renderPanelContent={renderPanelContent}
-    />
+    <>
+      <SimulationShell
+        homeContent={
+          <SimulationHome 
+            onStartDecisions={handleStartDecisions}
+            currentRevenue={totals.totalRevenue}
+          />
+        }
+        decisionsContent={
+          <SimulationDecisions
+            channelSpend={channelSpend}
+            updateChannelSpend={updateChannelSpend}
+            channelMetrics={channelMetrics}
+            totals={totals}
+            remainingBudget={remainingBudget}
+            hasUserModified={hasUserModified}
+            totalSpent={totalSpent}
+            onReset={resetSimulation}
+          />
+        }
+        renderPanelContent={renderPanelContent}
+      />
+      <TutorialOverlay />
+    </>
   );
 }
 
@@ -149,7 +154,9 @@ const Index = () => {
   return (
     <TabProvider>
       <ReasoningBoardProvider>
-        <SimulationContent />
+        <TutorialProvider>
+          <SimulationContent />
+        </TutorialProvider>
       </ReasoningBoardProvider>
     </TabProvider>
   );
