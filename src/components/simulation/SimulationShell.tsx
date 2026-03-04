@@ -103,23 +103,6 @@ export function SimulationShell({
         )}
       </div>
 
-      {/* ── FLOATING REASON BUTTON ── */}
-      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50" data-tutorial="reason-button">
-        <button
-          onClick={toggleReasonMode}
-          className={cn(
-            'flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 shadow-lg border-2',
-            reasonMode
-              ? 'bg-primary text-primary-foreground border-primary shadow-primary/30 scale-105'
-              : 'bg-card hover:bg-primary/10 text-primary border-primary/40 hover:border-primary hover:shadow-xl'
-          )}
-          title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode'}
-        >
-          <FlaskConical className="w-5 h-5" />
-          {reasonMode ? '✓ Reasoning Active' : 'Reason'}
-        </button>
-      </div>
-
       {/* ── STATUS BAR ── */}
       <div className="flex-shrink-0 bg-muted border-t border-border px-4 py-1">
         <div className="flex items-center justify-between text-xs text-muted-foreground">

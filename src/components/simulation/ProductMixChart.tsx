@@ -5,6 +5,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { FlaskConical } from 'lucide-react';
 import { createEvidenceChip } from '@/types/evidenceChip';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
+import { Button } from '@/components/ui/button';
 
 interface ProductMixChartProps {
   channelMetrics: Record<string, ReturnType<typeof calculateMixedRevenue>>;
@@ -20,7 +21,7 @@ const channelOptions = [
 
 export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const { setDraggingChip, reasonMode } = useReasoningBoard();
+  const { setDraggingChip, reasonMode, toggleReasonMode } = useReasoningBoard();
 
   const productData = useMemo(() => {
     if (selectedChannel === 'all') {
@@ -310,8 +311,6 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           </div>
         </div>
 
-
-
         {/* Dynamic Insight */}
         {insight && (
           <div className={`mt-4 p-3 rounded-lg border ${
@@ -338,6 +337,23 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
             <p>No revenue data for this selection. Adjust your ad spend to see results.</p>
           </div>
         )}
+
+        {/* Reason Button */}
+        <div className="mt-6 flex justify-center">
+          <Button
+            onClick={toggleReasonMode}
+            className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 border-2 ${
+              reasonMode
+                ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/30 scale-105'
+                : 'bg-card hover:bg-primary/10 text-primary border-primary/40 hover:border-primary'
+            }`}
+            title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode'}
+            variant="ghost"
+          >
+            <FlaskConical className="w-5 h-5" />
+            {reasonMode ? '✓ Reasoning Active' : 'Reason'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
