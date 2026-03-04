@@ -12,8 +12,6 @@ interface TutorialContextValue {
   advanceStep: () => void;
   completeAction: () => void;
   actionCompleted: boolean;
-  /** Notify the tutorial that a split/compare view was activated */
-  notifySplitActivated: () => void;
 }
 
 const NOOP = () => {};
@@ -25,7 +23,6 @@ const DEFAULT_VALUE: TutorialContextValue = {
   advanceStep: NOOP,
   completeAction: NOOP,
   actionCompleted: false,
-  notifySplitActivated: NOOP,
 };
 
 const TutorialContext = createContext<TutorialContextValue>(DEFAULT_VALUE);
@@ -74,13 +71,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     setActionCompleted(true);
   }, []);
 
-  const notifySplitActivated = useCallback(() => {
-    if (active && step === 1) {
-      setActionCompleted(true);
-    }
-  }, [active, step]);
-
-  // Step 1: watch for split view activation (tab-level split)
+  // Step 1: watch for split view activation
   useEffect(() => {
     if (!active || step !== 1) return;
     if (split.enabled) {
@@ -106,7 +97,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       advanceStep,
       completeAction,
       actionCompleted,
-      notifySplitActivated,
     }}>
       {children}
     </TutorialContext.Provider>

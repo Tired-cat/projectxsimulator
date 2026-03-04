@@ -8,7 +8,7 @@ import { SplitViewBarCharts } from '@/components/simulation/SplitViewBarCharts';
 import { ProductMixChart } from '@/components/simulation/ProductMixChart';
 import { TabProvider, useTabs } from '@/contexts/TabContext';
 import { ReasoningBoardProvider } from '@/contexts/ReasoningBoardContext';
-import { TutorialProvider, useTutorial } from '@/contexts/TutorialContext';
+import { TutorialProvider } from '@/contexts/TutorialContext';
 import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
@@ -24,7 +24,6 @@ import {
 
 function SimulationContent() {
   const { openTab } = useTabs();
-  const { notifySplitActivated } = useTutorial();
   
   const {
     channelSpend,
@@ -46,8 +45,7 @@ function SimulationContent() {
     setShellSnapshotSpend({ ...channelSpend });
     setShellBaselineSpend({ ...channelSpend });
     setShellCompareActive(true);
-    notifySplitActivated();
-  }, [channelSpend, notifySplitActivated]);
+  }, [channelSpend]);
 
   const handleShellCloseCompare = useCallback(() => {
     setShellCompareActive(false);

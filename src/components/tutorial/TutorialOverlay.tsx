@@ -109,11 +109,12 @@ export function TutorialOverlay() {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none">
+    <div className="fixed inset-0 z-[9999]">
       {/* Dimmed overlay with spotlight cutout */}
       <div
-        className="absolute inset-0 bg-black/60 transition-all duration-300 pointer-events-none"
+        className="absolute inset-0 bg-black/60 transition-all duration-300"
         style={{ clipPath }}
+        onClick={(e) => e.stopPropagation()}
       />
 
       {/* Spotlight border ring */}
