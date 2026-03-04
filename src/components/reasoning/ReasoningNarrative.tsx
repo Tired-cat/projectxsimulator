@@ -44,42 +44,38 @@ export function ReasoningNarrative() {
 
   const totalChips = BLOCK_ORDER.reduce((s, id) => s + board[id].length, 0);
 
-  // Pick one contextualised chip per quadrant; generate sentence once, reuse in both sections
+  // Generate a sentence for EVERY chip in every quadrant
   const quadrantData = useMemo(() => {
     const result: Record<ReasoningBlockId, {
-      sentence: string | null;
-      chip: EvidenceChip | null;
+      sentences: { chip: EvidenceChip; sentence: string }[];
     }> = {
-      descriptive: { sentence: null, chip: null },
-      diagnostic: { sentence: null, chip: null },
-      prescriptive: { sentence: null, chip: null },
-      predictive: { sentence: null, chip: null },
+      descriptive: { sentences: [] },
+      diagnostic: { sentences: [] },
+      prescriptive: { sentences: [] },
+      predictive: { sentences: [] },
     };
     for (const blockId of BLOCK_ORDER) {
-      // Find first contextualised chip for the sentence
-      const contextualised = board[blockId].find(c => !!c.contextChip);
-      if (contextualised) {
-        result[blockId] = {
-          chip: contextualised,
-          sentence: generateStableSentence(contextualised, blockId),
-        };
-      }
+      result[blockId].sentences = board[blockId].map(chip => ({
+        chip,
+        sentence: generateStableSentence(chip, blockId),
+      }));
     }
     return result;
   }, [board]);
 
-  // Full story sentences reusing the same sentence from quadrantData
+  // Full story: take first sentence from each quadrant that has chips
   const storySentences = useMemo(() => {
     const sentences: { text: string; blockId: ReasoningBlockId }[] = [];
     for (const blockId of BLOCK_ORDER) {
-      const { sentence } = quadrantData[blockId];
-      if (!sentence) continue;
+      const { sentences: blockSentences } = quadrantData[blockId];
+      if (blockSentences.length === 0) continue;
+      const combined = blockSentences.map(s => s.sentence).join(' ');
       const connector = QUADRANT_CONNECTORS[blockId];
       let text: string;
       if (connector) {
-        text = connector + sentence.charAt(0).toLowerCase() + sentence.slice(1);
+        text = connector + combined.charAt(0).toLowerCase() + combined.slice(1);
       } else {
-        text = sentence;
+        text = combined;
       }
       sentences.push({ text, blockId });
     }
@@ -132,9 +128,9 @@ export function ReasoningNarrative() {
                         </div>
                       ))}
                     </div>
-                    {quadrantData[blockId].sentence && (
+                    {quadrantData[blockId].sentences.length > 0 && (
                       <div className={`leading-relaxed ${colors.text} opacity-80`}>
-                        {quadrantData[blockId].sentence}
+                        {quadrantData[blockId].sentences.map(s => s.sentence).join(' ')}
                       </div>
                     )}
                   </>
