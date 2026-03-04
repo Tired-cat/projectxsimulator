@@ -245,37 +245,43 @@ export function GhostDeltaBar({
           }}
         >
           {/* Baseline Portion - bottom of stack, draggable in reason mode */}
-          <motion.div
+          {/* Wrap motion.div in a regular div for HTML5 drag (Framer Motion intercepts onDragStart) */}
+          <div
             draggable={reasonMode}
-            onDragStart={reasonMode ? handleMainBarHtml5DragStart as any : undefined}
-            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd as any : undefined}
-            className={`w-full shrink-0 ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
-              isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : ''
-            } ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
+            onDragStart={reasonMode ? handleMainBarHtml5DragStart : undefined}
+            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd : undefined}
+            className={`shrink-0 ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
             style={{
-              backgroundColor: channel.color,
-              // Explicit height based on proportion of baseline within total current
               height: baselineHeightPercent > 0 
                 ? `${(baselineHeightPercent / currentHeightPercent) * 100}%` 
                 : '0%',
               minHeight: baselineHeightPercent > 0 ? '2px' : '0px',
-              boxShadow: isThisBarDragging 
-                ? `0 0 30px ${channel.color}` 
-                : `0 4px 12px ${channel.color}40`,
-              willChange: isDraggingSpend ? 'height' : 'auto',
-              opacity: isSnapshot ? 0.85 : 1,
-              filter: isSnapshot ? 'saturate(0.8)' : 'none',
             }}
-            initial={false}
-            animate={{ 
-              scale: isThisBarDragging ? 1.02 : 1,
-            }}
-            transition={{ 
-              type: 'spring', 
-              stiffness: isDraggingSpend ? 500 : 200, 
-              damping: isDraggingSpend ? 35 : 25,
-            }}
-          />
+          >
+            <motion.div
+              className={`w-full h-full ${
+                isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : ''
+              }`}
+              style={{
+                backgroundColor: channel.color,
+                boxShadow: isThisBarDragging 
+                  ? `0 0 30px ${channel.color}` 
+                  : `0 4px 12px ${channel.color}40`,
+                willChange: isDraggingSpend ? 'height' : 'auto',
+                opacity: isSnapshot ? 0.85 : 1,
+                filter: isSnapshot ? 'saturate(0.8)' : 'none',
+              }}
+              initial={false}
+              animate={{ 
+                scale: isThisBarDragging ? 1.02 : 1,
+              }}
+              transition={{ 
+                type: 'spring', 
+                stiffness: isDraggingSpend ? 500 : 200, 
+                damping: isDraggingSpend ? 35 : 25,
+              }}
+            />
+          </div>
 
           {/* Delta Increase Segment - top of stack, GREEN for increase */}
           <div
@@ -322,42 +328,46 @@ export function GhostDeltaBar({
       ) : (
         // SINGLE BAR: No increase delta, render full current bar
         <>
-          {/* Single bar - draggable in reason mode */}
-          <motion.div
+          {/* Single bar - wrap in regular div for HTML5 drag (Framer Motion intercepts onDragStart) */}
+          <div
             draggable={reasonMode}
-            onDragStart={reasonMode ? handleMainBarHtml5DragStart as any : undefined}
-            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd as any : undefined}
-            className={`relative w-full rounded-t-lg ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
-              isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
-            } ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
-            style={{
-              backgroundColor: isNegative 
-                ? 'hsl(var(--destructive))' 
-                : channel.color,
-              boxShadow: isThisBarDragging 
-                ? `0 0 30px ${channel.color}` 
-                : `0 4px 12px ${channel.color}40`,
-              willChange: isDraggingSpend ? 'height, transform' : 'auto',
-              opacity: isSnapshot ? 0.85 : 1,
-              filter: isSnapshot ? 'saturate(0.8)' : 'none',
-            }}
-            initial={false}
-            animate={{ 
-              height: `${Math.max(currentHeightPercent, 2)}%`,
-              scale: isThisBarDragging ? 1.02 : 1,
-            }}
-            transition={{ 
-              type: 'spring', 
-              stiffness: isDraggingSpend ? 500 : 200, 
-              damping: isDraggingSpend ? 35 : 25,
-              duration: isDraggingSpend ? 0.1 : undefined,
-            }}
+            onDragStart={reasonMode ? handleMainBarHtml5DragStart : undefined}
+            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd : undefined}
+            className={`relative w-full ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background rounded-t-lg' : ''}`}
           >
-            {/* Spend drag handle - visual only, drag handled by column */}
-            <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
-              <div className="w-10 h-1.5 bg-white/60 rounded-full" />
-            </div>
-          </motion.div>
+            <motion.div
+              className={`relative w-full rounded-t-lg ${
+                isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
+              }`}
+              style={{
+                backgroundColor: isNegative 
+                  ? 'hsl(var(--destructive))' 
+                  : channel.color,
+                boxShadow: isThisBarDragging 
+                  ? `0 0 30px ${channel.color}` 
+                  : `0 4px 12px ${channel.color}40`,
+                willChange: isDraggingSpend ? 'height, transform' : 'auto',
+                opacity: isSnapshot ? 0.85 : 1,
+                filter: isSnapshot ? 'saturate(0.8)' : 'none',
+              }}
+              initial={false}
+              animate={{ 
+                height: `${Math.max(currentHeightPercent, 2)}%`,
+                scale: isThisBarDragging ? 1.02 : 1,
+              }}
+              transition={{ 
+                type: 'spring', 
+                stiffness: isDraggingSpend ? 500 : 200, 
+                damping: isDraggingSpend ? 35 : 25,
+                duration: isDraggingSpend ? 0.1 : undefined,
+              }}
+            >
+              {/* Spend drag handle - visual only, drag handled by column */}
+              <div className="w-full h-4 flex items-center justify-center rounded-t-lg bg-white/20">
+                <div className="w-10 h-1.5 bg-white/60 rounded-full" />
+              </div>
+            </motion.div>
+          </div>
 
           {/* Delta Decrease Segment - visible gap between ghost and current, draggable for reasoning */}
           {hasDelta && hasBaseline && !isIncrease && (
