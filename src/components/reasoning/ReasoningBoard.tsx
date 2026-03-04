@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X, GripVertical, FlaskConical } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Check } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { REASONING_BLOCKS, getSmartInsight } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
@@ -7,9 +7,8 @@ import { cn } from '@/lib/utils';
 import { ReasoningNarrative } from './ReasoningNarrative';
 
 export function ReasoningBoard() {
-  const { board, addChip, removeChip, moveChip, draggingChip } = useReasoningBoard();
+  const { board, addChip, removeChip, moveChip, contextualiseChip, draggingChip } = useReasoningBoard();
   const [hoveredBlock, setHoveredBlock] = useState<ReasoningBlockId | null>(null);
-  // Track which chip is being dragged within the board (for inter-block moves)
   const [internalDrag, setInternalDrag] = useState<{
     chip: EvidenceChip;
     fromBlock: ReasoningBlockId;
@@ -31,14 +30,12 @@ export function ReasoningBoard() {
     e.preventDefault();
     setHoveredBlock(null);
 
-    // Internal board move
     if (internalDrag) {
       moveChip(internalDrag.fromBlock, blockId, internalDrag.chip.id);
       setInternalDrag(null);
       return;
     }
 
-    // Drop from dashboard
     const raw = e.dataTransfer.getData('application/evidence-chip');
     if (raw) {
       try {
@@ -62,6 +59,27 @@ export function ReasoningBoard() {
     setInternalDrag(null);
   }, []);
 
+  // Handle contextualise drop on a chip card
+  const handleContextualiseDrop = useCallback((
+    e: React.DragEvent,
+    blockId: ReasoningBlockId,
+    targetChipId: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // If it's an internal drag (moving a chip between blocks), don't contextualise
+    if (internalDrag) return;
+
+    const raw = e.dataTransfer.getData('application/evidence-chip');
+    if (raw) {
+      try {
+        const chip: EvidenceChip = JSON.parse(raw);
+        contextualiseChip(blockId, targetChipId, chip);
+      } catch { /* ignore */ }
+    }
+  }, [internalDrag, contextualiseChip]);
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -83,7 +101,6 @@ export function ReasoningBoard() {
           )}
         </div>
 
-        {/* Instructions hint */}
         {totalChips === 0 && (
           <div className="mt-4 p-3 bg-muted/50 border border-dashed border-border rounded-lg text-center space-y-1">
             <p className="text-xs text-muted-foreground">
@@ -166,6 +183,8 @@ export function ReasoningBoard() {
                       onRemove={() => removeChip(block.id, chip.id)}
                       onDragStart={(e) => handleChipDragStart(e, chip, block.id)}
                       onDragEnd={handleChipDragEnd}
+                      onContextualiseDrop={(e) => handleContextualiseDrop(e, block.id, chip.id)}
+                      isDraggingExternal={draggingChip !== null || internalDrag !== null}
                     />
                   ))
                 )}
@@ -189,6 +208,8 @@ function ChipCard({
   onRemove,
   onDragStart,
   onDragEnd,
+  onContextualiseDrop,
+  isDraggingExternal,
 }: {
   chip: EvidenceChip;
   blockId: ReasoningBlockId;
@@ -196,55 +217,94 @@ function ChipCard({
   onRemove: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
+  onContextualiseDrop: (e: React.DragEvent) => void;
+  isDraggingExternal: boolean;
 }) {
+  const [contextHover, setContextHover] = useState(false);
   const insight = getSmartInsight(chip, blockId);
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
+  const hasContext = !!chip.contextChip;
 
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className="group flex items-start gap-2 p-2.5 bg-background rounded-lg border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-grab active:cursor-grabbing select-none"
+      className="group flex flex-col bg-background rounded-lg border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-grab active:cursor-grabbing select-none"
     >
-      {/* Drag handle */}
-      <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground mt-0.5 flex-shrink-0" />
+      <div className="flex items-start gap-2 p-2.5">
+        {/* Drag handle */}
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground mt-0.5 flex-shrink-0" />
 
-      {/* Chip content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          {isDelta && (
-            <span className={`text-xs ${isIncrease ? 'text-green-600' : 'text-red-500'}`}>
-              {isIncrease ? '▲' : '▼'}
+        {/* Chip content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            {isDelta && (
+              <span className={`text-xs ${isIncrease ? 'text-green-600' : 'text-red-500'}`}>
+                {isIncrease ? '▲' : '▼'}
+              </span>
+            )}
+            <span className="text-xs font-semibold text-foreground truncate">{chip.label}:</span>
+            <span className="text-xs font-bold flex-shrink-0" style={{ color: blockColor }}>
+              {chip.value}
             </span>
-          )}
-          <span className="text-xs font-semibold text-foreground truncate">{chip.label}:</span>
-          <span className="text-xs font-bold flex-shrink-0" style={{ color: blockColor }}>
-            {chip.value}
-          </span>
-        </div>
-        <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{chip.context}</div>
-        {/* Smart insight */}
-        {insight && (
-          <div className={`mt-1.5 px-2 py-1 rounded text-[10px] font-medium ${
-            isIncrease ? 'bg-green-500/10 text-green-700 dark:text-green-400' :
-            isDecrease ? 'bg-red-500/10 text-red-700 dark:text-red-400' :
-            'bg-primary/10 text-primary'
-          }`}>
-            💡 {insight}
           </div>
-        )}
+          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{chip.context}</div>
+          {/* Smart insight */}
+          {insight && (
+            <div className={`mt-1.5 px-2 py-1 rounded text-[10px] font-medium ${
+              isIncrease ? 'bg-green-500/10 text-green-700 dark:text-green-400' :
+              isDecrease ? 'bg-red-500/10 text-red-700 dark:text-red-400' :
+              'bg-primary/10 text-primary'
+            }`}>
+              💡 {insight}
+            </div>
+          )}
+        </div>
+
+        {/* Remove button */}
+        <button
+          onClick={onRemove}
+          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
+        >
+          <X className="h-3 w-3" />
+        </button>
       </div>
 
-      {/* Remove button */}
-      <button
-        onClick={onRemove}
-        className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
-      >
-        <X className="h-3 w-3" />
-      </button>
+      {/* Contextualise zone */}
+      {!hasContext ? (
+        <div
+          className={cn(
+            'mx-2.5 mb-2 px-2 py-1.5 rounded border border-dashed text-[10px] text-center transition-all',
+            contextHover
+              ? 'border-primary bg-primary/5 text-primary'
+              : 'border-border/50 text-muted-foreground/60'
+          )}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setContextHover(true);
+          }}
+          onDragLeave={() => setContextHover(false)}
+          onDrop={(e) => {
+            setContextHover(false);
+            onContextualiseDrop(e);
+          }}
+        >
+          {contextHover
+            ? '↓ Drop to contextualise'
+            : 'Contextualise this — drag another bar here to support or explain this observation.'}
+        </div>
+      ) : (
+        <div className="mx-2.5 mb-2 px-2 py-1.5 rounded border border-border bg-muted/30 text-[10px] flex items-center gap-1.5">
+          <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+          <span className="text-foreground/70 truncate">
+            Contextualised with <strong>{chip.contextChip!.label}</strong>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
