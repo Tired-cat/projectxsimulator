@@ -75,27 +75,120 @@ function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId
   return templates[idx].replace('[items]', phrase);
 }
 
-// ── Full Reasoning Story: human, relationship-focused, no raw data ──
+// ── Full Reasoning Story: value-derived, relationship-focused, no raw data ──
 
-function chipsContrast(a: EvidenceChip, b: EvidenceChip): boolean {
-  return (
-    (a.chipKind === 'delta-increase' && b.chipKind === 'delta-decrease') ||
-    (a.chipKind === 'delta-decrease' && b.chipKind === 'delta-increase') ||
-    (a.sourceId !== b.sourceId)
-  );
+/** Extract a numeric value from a chip's value string or deltaValue */
+function extractNumeric(chip: EvidenceChip): number | null {
+  if (chip.deltaValue != null) return chip.deltaValue;
+  const cleaned = chip.value.replace(/[$£€,%\s]/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
 }
 
-function describeChip(chip: EvidenceChip): string {
-  const ch = chip.channelName || chip.label.split(' ')[0];
-  const m = chip.metricName || 'performance';
+/** Analyse the actual numeric relationship between two chips */
+function analyseRelationship(a: EvidenceChip, b: EvidenceChip): {
+  isContrast: boolean;
+  magnitude: 'similar' | 'moderate' | 'considerable' | 'vast';
+  aHigher: boolean;
+} {
+  const numA = extractNumeric(a);
+  const numB = extractNumeric(b);
+
+  if (numA == null || numB == null) {
+    // Fallback: use chipKind if numbers unavailable
+    const isContrast =
+      (a.chipKind === 'delta-increase' && b.chipKind === 'delta-decrease') ||
+      (a.chipKind === 'delta-decrease' && b.chipKind === 'delta-increase');
+    return { isContrast, magnitude: 'moderate', aHigher: true };
+  }
+
+  const absA = Math.abs(numA);
+  const absB = Math.abs(numB);
+  const max = Math.max(absA, absB);
+  const ratio = max === 0 ? 1 : Math.abs(absA - absB) / max;
+
+  // Direction analysis: are they moving the same way?
+  const sameDirection = (numA >= 0 && numB >= 0) || (numA < 0 && numB < 0);
+  const isContrast = !sameDirection || ratio > 0.4;
+
+  let magnitude: 'similar' | 'moderate' | 'considerable' | 'vast';
+  if (ratio < 0.15) magnitude = 'similar';
+  else if (ratio < 0.5) magnitude = 'moderate';
+  else if (ratio < 0.8) magnitude = 'considerable';
+  else magnitude = 'vast';
+
+  return { isContrast, magnitude, aHigher: absA >= absB };
+}
+
+const STORY_CONTRAST_WORDS = ['despite', 'whereas', 'yet', 'however', 'in contrast to'];
+const STORY_REINFORCE_WORDS = ['consistent with', 'which aligns with', 'alongside', 'further supported by'];
+
+function channelOf(chip: EvidenceChip): string {
+  return chip.channelName || chip.label.split(' ')[0];
+}
+
+function metricOf(chip: EvidenceChip): string {
+  return chip.metricName || 'performance';
+}
+
+/** Build a single-chip description (no context) */
+function describeChipAlone(chip: EvidenceChip): string {
+  const ch = channelOf(chip);
+  const m = metricOf(chip);
   if (chip.chipKind === 'delta-increase') return `strong ${m} growth in ${ch}`;
   if (chip.chipKind === 'delta-decrease') return `declining ${m} in ${ch}`;
   if (chip.chipKind === 'baseline') return `the baseline ${m} level for ${ch}`;
   return `${ch}'s current ${m}`;
 }
 
-const STORY_CONTRAST = ['despite', 'whereas', 'however', 'in contrast to'];
-const STORY_REINFORCE = ['consistent with', 'which aligns with', 'alongside', 'supported by'];
+/** Build a relationship sentence between a chip and its context chip */
+function describeRelationship(chip: EvidenceChip, ctx: EvidenceChip, seed: string): string {
+  const rel = analyseRelationship(chip, ctx);
+  const chA = channelOf(chip);
+  const chB = channelOf(ctx);
+  const mA = metricOf(chip);
+  const mB = metricOf(ctx);
+
+  if (rel.isContrast) {
+    const word = STORY_CONTRAST_WORDS[Math.floor(seededRandom(seed) * STORY_CONTRAST_WORDS.length)];
+    const higher = rel.aHigher ? chA : chB;
+    const lower = rel.aHigher ? chB : chA;
+    const higherM = rel.aHigher ? mA : mB;
+    const lowerM = rel.aHigher ? mB : mA;
+
+    if (rel.magnitude === 'vast')
+      return `${word} ${higher} driving ${rel.magnitude === 'vast' ? 'far' : ''} more ${higherM} than ${lower}, this gap suggests the ${lowerM} allocation may need rethinking`;
+    if (rel.magnitude === 'considerable')
+      return `${word} ${higher} generating considerably stronger ${higherM} than ${lower}, the disparity in ${lowerM} warrants attention`;
+    return `${word} ${higher}'s ${higherM} outpacing ${lower}'s ${lowerM}, the difference points to an imbalance worth investigating`;
+  } else {
+    const word = STORY_REINFORCE_WORDS[Math.floor(seededRandom(seed) * STORY_REINFORCE_WORDS.length)];
+    if (rel.magnitude === 'similar')
+      return `${chA}'s ${mA}, ${word} ${chB}'s ${mB}, showing a consistent pattern across both channels`;
+    return `${chA}'s ${mA} trending in the same direction as ${chB}'s ${mB}, ${word} the broader trend`;
+  }
+}
+
+/** Build a relationship sentence between two standalone chips (no context relationship) */
+function describePairRelationship(a: EvidenceChip, b: EvidenceChip, seed: string): string {
+  const rel = analyseRelationship(a, b);
+  const chA = channelOf(a);
+  const chB = channelOf(b);
+  const mA = metricOf(a);
+  const mB = metricOf(b);
+
+  if (rel.isContrast) {
+    const word = STORY_CONTRAST_WORDS[Math.floor(seededRandom(seed) * STORY_CONTRAST_WORDS.length)];
+    const higher = rel.aHigher ? chA : chB;
+    const lower = rel.aHigher ? chB : chA;
+    const higherM = rel.aHigher ? mA : mB;
+    const lowerM = rel.aHigher ? mB : mA;
+    return `${word} ${higher}'s ${higherM} significantly differing from ${lower}'s ${lowerM}`;
+  } else {
+    const word = STORY_REINFORCE_WORDS[Math.floor(seededRandom(seed) * STORY_REINFORCE_WORDS.length)];
+    return `${chA}'s ${mA}, ${word} ${chB}'s ${mB}`;
+  }
+}
 
 const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
   descriptive: [
@@ -125,22 +218,17 @@ function generateStorySentence(chips: EvidenceChip[], blockId: ReasoningBlockId)
 
   let insight: string;
   if (chips.length === 1) {
-    let base = describeChip(chips[0]);
-    if (chips[0].contextChip) {
-      const ctxChip = chips[0].contextChip;
-      const contrast = chipsContrast(chips[0], ctxChip);
-      const pool = contrast ? STORY_CONTRAST : STORY_REINFORCE;
-      const word = pool[Math.floor(seededRandom(chips[0].id + 'ctx') * pool.length)];
-      base = `${base}, ${word} ${describeChip(ctxChip)}`;
+    const chip = chips[0];
+    if (chip.contextChip) {
+      insight = describeRelationship(chip, chip.contextChip, chip.id + 'ctx');
+    } else {
+      insight = describeChipAlone(chip);
     }
-    insight = base;
   } else {
-    const parts = [describeChip(chips[0])];
+    // Weave multiple chips using value-derived relationships
+    const parts: string[] = [describeChipAlone(chips[0])];
     for (let i = 1; i < chips.length; i++) {
-      const contrast = chipsContrast(chips[i - 1], chips[i]);
-      const pool = contrast ? STORY_CONTRAST : STORY_REINFORCE;
-      const word = pool[Math.floor(seededRandom(chips[i - 1].id + chips[i].id) * pool.length)];
-      parts.push(`${word} ${describeChip(chips[i])}`);
+      parts.push(describePairRelationship(chips[i - 1], chips[i], chips[i - 1].id + chips[i].id));
     }
     insight = parts.join(', ');
   }
