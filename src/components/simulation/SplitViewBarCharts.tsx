@@ -83,13 +83,13 @@ export function SplitViewBarCharts({
           {!isSplitView ? (
             <Button
               variant="outline"
-              size="sm"
+              size="default"
               onClick={onActivateSplitView}
-              className="flex items-center gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
+              className="flex items-center gap-2 border-2 border-blue-500/40 hover:border-blue-500 bg-blue-500/5 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold shadow-sm hover:shadow-md transition-all"
             >
-              <SplitSquareHorizontal className="h-4 w-4" />
-              <span>Split View</span>
-              <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+              <SplitSquareHorizontal className="h-5 w-5" />
+              <span className="text-sm">Compare Before / After</span>
+              <Camera className="h-4 w-4 opacity-60" />
             </Button>
           ) : (
             <div className="flex items-center gap-3">

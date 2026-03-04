@@ -166,15 +166,17 @@ export function ReasoningBoard() {
                 {chips.length === 0 ? (
                   <div
                     className={cn(
-                      'h-full min-h-[60px] flex items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground transition-colors',
+                      'h-full min-h-[60px] flex flex-col items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground transition-colors gap-1',
                       isHovered ? 'border-current' : 'border-border/40'
                     )}
                     style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                   >
-                    {isHovered ? '↓ Drop evidence here' : 'Drop evidence here'}
+                    <span>{isHovered ? '↓ Drop evidence here' : 'Drop evidence here'}</span>
+                    <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
                   </div>
                 ) : (
-                  chips.map((chip) => (
+                  <>
+                  {chips.map((chip) => (
                     <ChipCard
                       key={chip.id}
                       chip={chip}
@@ -186,7 +188,11 @@ export function ReasoningBoard() {
                       onContextualiseDrop={(e) => handleContextualiseDrop(e, block.id, chip.id)}
                       isDraggingExternal={draggingChip !== null || internalDrag !== null}
                     />
-                  ))
+                  ))}
+                  <div className="text-[9px] text-muted-foreground/40 italic text-center pt-0.5">
+                    You can add multiple pieces of evidence here
+                  </div>
+                  </>
                 )}
               </div>
             </div>
