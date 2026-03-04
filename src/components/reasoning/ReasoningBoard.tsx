@@ -6,7 +6,7 @@ import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import { cn } from '@/lib/utils';
 
 export function ReasoningBoard() {
-  const { board, addChip, removeChip, moveChip, draggingChip } = useReasoningBoard();
+  const { board, addChip, removeChip, moveChip, draggingChip, narrative } = useReasoningBoard();
   const [hoveredBlock, setHoveredBlock] = useState<ReasoningBlockId | null>(null);
   // Track which chip is being dragged within the board (for inter-block moves)
   const [internalDrag, setInternalDrag] = useState<{
@@ -173,6 +173,20 @@ export function ReasoningBoard() {
           );
         })}
       </div>
+
+      {/* Live Reflection Narrative */}
+      {narrative.length > 0 && (
+        <div className="flex-shrink-0 border-t border-border p-3">
+          <h3 className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
+            <span>📖</span> My Reasoning Story
+          </h3>
+          <div className="max-h-[120px] overflow-y-auto pr-1 space-y-0.5">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {narrative.map((entry) => entry.text).join(' ')}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

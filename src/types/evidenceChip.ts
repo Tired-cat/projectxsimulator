@@ -39,20 +39,63 @@ export const REASONING_BLOCKS: {
     bgColor: 'hsl(38 92% 50% / 0.08)',
   },
   {
-    id: 'predictive',
-    title: 'Predictive',
-    question: 'What will happen next if…?',
-    color: 'hsl(271 81% 56%)',
-    bgColor: 'hsl(271 81% 56% / 0.08)',
-  },
-  {
     id: 'prescriptive',
     title: 'Prescriptive',
     question: 'What should we do?',
     color: 'hsl(142 71% 45%)',
     bgColor: 'hsl(142 71% 45% / 0.08)',
   },
+  {
+    id: 'predictive',
+    title: 'Predictive',
+    question: 'What will happen next if…?',
+    color: 'hsl(271 81% 56%)',
+    bgColor: 'hsl(271 81% 56% / 0.08)',
+  },
 ];
+
+// Narrative templates per quadrant
+export const NARRATIVE_TEMPLATES: Record<ReasoningBlockId, string[]> = {
+  descriptive: [
+    'Before making any changes, I noticed that [evidence], which stood out to me as significant.',
+    'Looking at the original data, I observed that [evidence].',
+    'At the start, one thing that caught my attention was that [evidence].',
+    'Before I adjusted anything, the data was showing me that [evidence], which I felt was worth noting.',
+  ],
+  diagnostic: [
+    'Before making any changes, I believed that [evidence] explained why this outcome occurred.',
+    'Looking at the original numbers, I concluded that [evidence] was the underlying cause.',
+    'At this point, I thought that [evidence] was the reason behind what I was seeing.',
+    'Before adjusting, I felt that [evidence] is what had caused this situation.',
+  ],
+  prescriptive: [
+    'Given what I observed, I decided to act because of [evidence].',
+    'Because of [evidence], I felt that a change needed to be made.',
+    'Taking [evidence] into account, I chose to adjust my strategy.',
+    'I made a decision to intervene based on [evidence].',
+  ],
+  predictive: [
+    'After adjusting my strategy, the data now shows [evidence], which suggests this trend will continue.',
+    'Following my decision, I can see that [evidence] indicates things are shifting.',
+    'Now that I\'ve made changes, [evidence] tells me what I can expect going forward.',
+    'After acting, the new data showing [evidence] suggests the impact of my decision is becoming visible.',
+  ],
+};
+
+export function generateNarrativeSentence(
+  chip: EvidenceChip,
+  blockId: ReasoningBlockId,
+  sentenceIndex: number
+): string {
+  const templates = NARRATIVE_TEMPLATES[blockId];
+  const template = templates[Math.floor(Math.random() * templates.length)];
+  const evidence = `${chip.label}: ${chip.value}`;
+  const sentence = template.replace('[evidence]', evidence);
+
+  if (sentenceIndex === 0) return sentence;
+  if (sentenceIndex === 1) return `Then, ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
+  return `Following that, ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
+}
 
 // Generate smart insight text based on chip metadata and target reasoning block
 export function getSmartInsight(chip: EvidenceChip, blockId: ReasoningBlockId): string | null {
