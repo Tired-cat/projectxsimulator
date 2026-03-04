@@ -10,6 +10,7 @@ import { GhostDeltaBar } from './GhostDeltaBar';
 import type { ReasoningToken } from '@/types/reasoningToken';
 import { createEvidenceChip } from '@/types/evidenceChip';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
+import { Button } from '@/components/ui/button';
 
 type ChartMode = 'live' | 'snapshot';
 
@@ -59,7 +60,7 @@ export function DraggableBarChart({
   onTokenDrag,
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
-  const { setDraggingChip, reasonMode } = useReasoningBoard();
+  const { setDraggingChip, reasonMode, toggleReasonMode } = useReasoningBoard();
   
   // Snapshot mode: draggable for reasoning but NOT adjustable
   // Live mode: adjustable but NOT draggable (for now)
@@ -908,6 +909,23 @@ export function DraggableBarChart({
                   : (baselineSpend ? '↕ Adjust bars | 🎯 Drag ghost/delta' : '↕ Drag bars to adjust spend')
               )}
             </div>
+          </div>
+
+          {/* Reason Button */}
+          <div className="mt-6 flex justify-center">
+            <Button
+              onClick={toggleReasonMode}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 border-2 ${
+                reasonMode
+                  ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/30 scale-105'
+                  : 'bg-card hover:bg-primary/10 text-primary border-primary/40 hover:border-primary'
+              }`}
+              title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode'}
+              variant="ghost"
+            >
+              <FlaskConical className="w-5 h-5" />
+              {reasonMode ? '✓ Reasoning Active' : 'Reason'}
+            </Button>
           </div>
         </CardContent>
       </Card>
