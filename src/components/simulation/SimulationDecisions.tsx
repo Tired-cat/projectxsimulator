@@ -1,4 +1,5 @@
 import { ReactNode, useState, useCallback } from 'react';
+import { useTutorial } from '@/contexts/TutorialContext';
 import { BarChart3, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
@@ -56,11 +57,14 @@ export function SimulationDecisions({
   const [snapshotSpend, setSnapshotSpend] = useState<ChannelSpend | null>(null);
   const [baselineSpend, setBaselineSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND } as ChannelSpend);
 
+  const { notifySplitActivated } = useTutorial();
+
   const handleActivateCompare = useCallback(() => {
     setSnapshotSpend({ ...channelSpend });
     setBaselineSpend({ ...channelSpend });
     setCompareActive(true);
-  }, [channelSpend]);
+    notifySplitActivated();
+  }, [channelSpend, notifySplitActivated]);
 
   const handleCloseCompare = useCallback(() => {
     setCompareActive(false);
