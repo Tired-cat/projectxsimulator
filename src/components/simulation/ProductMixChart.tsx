@@ -119,8 +119,8 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const handleSegmentDragStart = useCallback((e: React.DragEvent, segment: typeof segments[0], percentage: number) => {
     const channelLabel = selectedChannel === 'all' ? 'All Channels' : CHANNELS[selectedChannel]?.name || selectedChannel;
     const chip = createEvidenceChip(
-      `${segment.label} Revenue`,
-      `$${segment.revenue.toLocaleString()} (${percentage.toFixed(1)}%)`,
+      `${channelLabel} — ${segment.label}`,
+      `$${segment.revenue.toLocaleString()} revenue, ${segment.units.toLocaleString()} sold`,
       `Product Mix • ${channelLabel}`,
       `product-mix-${segment.id}-${selectedChannel}`
     );
