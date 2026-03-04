@@ -10,12 +10,22 @@ interface TutorialContextValue {
   startTutorial: () => void;
   skipTutorial: () => void;
   advanceStep: () => void;
-  /** Mark the current step's required action as completed */
   completeAction: () => void;
   actionCompleted: boolean;
 }
 
-const TutorialContext = createContext<TutorialContextValue | null>(null);
+const NOOP = () => {};
+const DEFAULT_VALUE: TutorialContextValue = {
+  active: false,
+  step: 1,
+  startTutorial: NOOP,
+  skipTutorial: NOOP,
+  advanceStep: NOOP,
+  completeAction: NOOP,
+  actionCompleted: false,
+};
+
+const TutorialContext = createContext<TutorialContextValue>(DEFAULT_VALUE);
 
 export function TutorialProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState(false);
@@ -94,7 +104,5 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 }
 
 export function useTutorial() {
-  const ctx = useContext(TutorialContext);
-  if (!ctx) throw new Error('useTutorial must be used within TutorialProvider');
-  return ctx;
+  return useContext(TutorialContext);
 }
