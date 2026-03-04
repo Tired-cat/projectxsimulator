@@ -13,16 +13,48 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-function formatEvidence(chip: EvidenceChip): string {
-  const base = `${chip.label}: ${chip.value}`;
-  if (chip.contextChip) {
-    return `${base} (supported by ${chip.contextChip.label}: ${chip.contextChip.value})`;
-  }
-  return base;
+// Describe a chip's metric naturally without raw data strings
+function describeChip(chip: EvidenceChip): string {
+  const channel = chip.channelName || chip.sourceId || 'this channel';
+  const metric = chip.metricName || extractMetric(chip.label);
+
+  if (chip.chipKind === 'delta-increase') return `${channel}'s rising ${metric}`;
+  if (chip.chipKind === 'delta-decrease') return `${channel}'s declining ${metric}`;
+  if (chip.chipKind === 'baseline') return `${channel}'s baseline ${metric}`;
+  if (chip.chipKind === 'product') return `${channel}'s ${metric} performance`;
+  return `${channel}'s ${metric}`;
 }
 
-const CONTRAST_CONNECTORS = ['while', 'whereas', 'compared to', 'in contrast to'];
-const ADDITIVE_CONNECTORS = ['alongside', 'together with', 'and similarly', 'reinforced by'];
+function extractMetric(label: string): string {
+  const lower = label.toLowerCase();
+  if (lower.includes('revenue')) return 'revenue';
+  if (lower.includes('profit')) return 'profit';
+  if (lower.includes('spend')) return 'spend';
+  if (lower.includes('click')) return 'clicks';
+  if (lower.includes('view')) return 'views';
+  if (lower.includes('sales') || lower.includes('units')) return 'sales';
+  // Fallback: use the label portion after any channel name
+  const parts = label.split(' ');
+  return parts.length > 1 ? parts.slice(1).join(' ').toLowerCase() : 'performance';
+}
+
+// Describe a chip with its context naturally
+function describeChipWithContext(chip: EvidenceChip): string {
+  const main = describeChip(chip);
+  if (!chip.contextChip) return main;
+  const ctx = describeChip(chip.contextChip);
+  return `${main} alongside ${ctx}`;
+}
+
+// Assess whether the chip conveys high/strong or low/weak magnitude
+function toneSuffix(chip: EvidenceChip): string {
+  if (chip.chipKind === 'delta-increase') return 'strong';
+  if (chip.chipKind === 'delta-decrease') return 'weak';
+  return 'notable';
+}
+
+const CONTRAST_CONNECTORS = ['while', 'whereas', 'yet', 'but'];
+const ADDITIVE_CONNECTORS = ['alongside', 'together with', 'coupled with', 'and'];
 
 function pickConnector(chipA: EvidenceChip, chipB: EvidenceChip): string {
   const isContrast =
@@ -34,26 +66,26 @@ function pickConnector(chipA: EvidenceChip, chipB: EvidenceChip): string {
   return pool[idx];
 }
 
-const SINGLE_OPENERS: Record<ReasoningBlockId, string[]> = {
+const SINGLE_TEMPLATES: Record<ReasoningBlockId, string[]> = {
   descriptive: [
-    'I noticed that [items], which stood out as significant.',
-    'Looking at the data, I observed [items].',
-    'One thing that caught my attention was [items].',
+    '[items] caught my attention.',
+    'I noticed [items] stood out.',
+    '[items] was worth paying attention to.',
   ],
   diagnostic: [
-    'I believed that [items] explained why this outcome occurred.',
-    'Looking deeper, I concluded that [items] was the underlying cause.',
-    'At this point, I thought [items] was the reason behind what I was seeing.',
+    'I think [items] helps explain why this happened.',
+    'Looking deeper, [items] seemed to be a key driver.',
+    '[items] appeared to be behind the outcome I was seeing.',
   ],
   prescriptive: [
-    'Given what I observed, I decided to act because of [items].',
-    'Because of [items], I felt a change needed to be made.',
-    'Taking [items] into account, I chose to adjust my strategy.',
+    'Based on [items], I decided a change was needed.',
+    '[items] made it clear I should adjust my approach.',
+    'Given [items], I chose to shift my strategy.',
   ],
   predictive: [
-    'After adjusting my strategy, [items] suggests this trend will continue.',
-    'Following my decision, [items] indicates things are shifting.',
-    'Now that I\'ve made changes, [items] tells me what to expect going forward.',
+    'Going forward, [items] suggests this trend will continue.',
+    'Based on [items], I expect to see a shift.',
+    '[items] tells me what to watch for next.',
   ],
 };
 
@@ -62,17 +94,17 @@ function generateCombinedSentence(chips: EvidenceChip[], blockId: ReasoningBlock
 
   let evidencePhrase: string;
   if (chips.length === 1) {
-    evidencePhrase = formatEvidence(chips[0]);
+    evidencePhrase = describeChipWithContext(chips[0]);
   } else {
-    const parts: string[] = [formatEvidence(chips[0])];
+    const parts: string[] = [describeChipWithContext(chips[0])];
     for (let i = 1; i < chips.length; i++) {
       const connector = pickConnector(chips[i - 1], chips[i]);
-      parts.push(`${connector} ${formatEvidence(chips[i])}`);
+      parts.push(`${connector} ${describeChipWithContext(chips[i])}`);
     }
-    evidencePhrase = parts.join(', ');
+    evidencePhrase = parts.join(' ');
   }
 
-  const templates = SINGLE_OPENERS[blockId];
+  const templates = SINGLE_TEMPLATES[blockId];
   const seedStr = chips.map(c => c.id).join('-') + blockId;
   const idx = Math.floor(seededRandom(seedStr) * templates.length);
   return templates[idx].replace('[items]', evidencePhrase);
