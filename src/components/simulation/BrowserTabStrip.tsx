@@ -148,6 +148,7 @@ export function BrowserTabStrip() {
   return (
     <div
       ref={stripRef}
+      data-tutorial="tab-strip"
       className={cn(
         'flex items-end px-2 pt-2 gap-0.5 bg-muted/60 transition-colors min-h-[44px]',
         cardDragOver && 'bg-primary/10'

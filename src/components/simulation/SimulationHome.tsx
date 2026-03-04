@@ -1,7 +1,8 @@
-import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
+import { useTutorial } from '@/contexts/TutorialContext';
 
 interface SimulationHomeProps {
   onStartDecisions: () => void;
@@ -12,9 +13,27 @@ const REVENUE_GOAL = 100000;
 
 export function SimulationHome({ onStartDecisions, currentRevenue }: SimulationHomeProps) {
   const progressPercent = Math.min((currentRevenue / REVENUE_GOAL) * 100, 100);
+  const { startTutorial } = useTutorial();
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      {/* Tutorial Banner */}
+      <button
+        onClick={startTutorial}
+        className="w-full flex items-center gap-4 p-5 rounded-xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all group text-left"
+      >
+        <div className="p-3 bg-primary/20 rounded-xl group-hover:bg-primary/30 transition-colors">
+          <GraduationCap className="w-7 h-7 text-primary" />
+        </div>
+        <div className="flex-1">
+          <div className="font-bold text-lg text-foreground">Learn how to use the simulation</div>
+          <div className="text-sm text-muted-foreground">
+            A quick interactive walkthrough — you'll try each feature on the real interface.
+          </div>
+        </div>
+        <ArrowRight className="w-5 h-5 text-primary opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+      </button>
+
       {/* Hero Section */}
       <div className="text-center space-y-4">
         <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium">

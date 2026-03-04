@@ -104,7 +104,7 @@ export function SimulationShell({
       </div>
 
       {/* ── FLOATING REASON BUTTON ── */}
-      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50">
+      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50" data-tutorial="reason-button">
         <button
           onClick={toggleReasonMode}
           className={cn(

@@ -201,7 +201,9 @@ export function ReasoningBoard() {
       </div>
 
       {/* Narrative sections */}
-      <ReasoningNarrative />
+      <div data-tutorial="narrative">
+        <ReasoningNarrative />
+      </div>
     </div>
   );
 }
