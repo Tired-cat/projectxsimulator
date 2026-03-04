@@ -44,40 +44,47 @@ export function ReasoningNarrative() {
 
   const totalChips = BLOCK_ORDER.reduce((s, id) => s + board[id].length, 0);
 
-  // Full story sentences with quadrant connectors
+  // Pick one contextualised chip per quadrant; generate sentence once, reuse in both sections
+  const quadrantData = useMemo(() => {
+    const result: Record<ReasoningBlockId, {
+      sentence: string | null;
+      chip: EvidenceChip | null;
+    }> = {
+      descriptive: { sentence: null, chip: null },
+      diagnostic: { sentence: null, chip: null },
+      prescriptive: { sentence: null, chip: null },
+      predictive: { sentence: null, chip: null },
+    };
+    for (const blockId of BLOCK_ORDER) {
+      // Find first contextualised chip for the sentence
+      const contextualised = board[blockId].find(c => !!c.contextChip);
+      if (contextualised) {
+        result[blockId] = {
+          chip: contextualised,
+          sentence: generateStableSentence(contextualised, blockId),
+        };
+      }
+    }
+    return result;
+  }, [board]);
+
+  // Full story sentences reusing the same sentence from quadrantData
   const storySentences = useMemo(() => {
     const sentences: { text: string; blockId: ReasoningBlockId }[] = [];
     for (const blockId of BLOCK_ORDER) {
-      const chips = board[blockId];
-      if (chips.length === 0) continue;
-      // Use only the first chip per quadrant for the flowing story
-      const chip = chips[0];
-      const raw = generateStableSentence(chip, blockId);
+      const { sentence } = quadrantData[blockId];
+      if (!sentence) continue;
       const connector = QUADRANT_CONNECTORS[blockId];
-      // Apply connector: descriptive stands alone, others get prefixed
       let text: string;
       if (connector) {
-        text = connector + raw.charAt(0).toLowerCase() + raw.slice(1);
+        text = connector + sentence.charAt(0).toLowerCase() + sentence.slice(1);
       } else {
-        text = raw;
+        text = sentence;
       }
       sentences.push({ text, blockId });
     }
     return sentences;
-  }, [board]);
-
-  // Per-block sentences for At a Glance cards
-  const blockSentences = useMemo(() => {
-    const result: Record<ReasoningBlockId, string[]> = {
-      descriptive: [], diagnostic: [], prescriptive: [], predictive: [],
-    };
-    for (const blockId of BLOCK_ORDER) {
-      board[blockId].forEach((chip) => {
-        result[blockId].push(generateStableSentence(chip, blockId));
-      });
-    }
-    return result;
-  }, [board]);
+  }, [quadrantData]);
 
   if (totalChips === 0) return null;
 
@@ -92,7 +99,6 @@ export function ReasoningNarrative() {
           {BLOCK_ORDER.map((blockId) => {
             const colors = BLOCK_COLORS[blockId];
             const chips = board[blockId];
-            const sentences = blockSentences[blockId];
             const isEmpty = chips.length === 0;
 
             return (
@@ -126,9 +132,11 @@ export function ReasoningNarrative() {
                         </div>
                       ))}
                     </div>
-                    <div className={`leading-relaxed ${colors.text} opacity-80`}>
-                      {sentences.join(' ')}
-                    </div>
+                    {quadrantData[blockId].sentence && (
+                      <div className={`leading-relaxed ${colors.text} opacity-80`}>
+                        {quadrantData[blockId].sentence}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
