@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
-import { REASONING_BLOCKS, generateNarrativeSentence } from '@/types/evidenceChip';
+import { NARRATIVE_TEMPLATES } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import { Separator } from '@/components/ui/separator';
 
@@ -15,8 +15,7 @@ function seededRandom(seed: string): number {
 }
 
 function generateStableSentence(chip: EvidenceChip, blockId: ReasoningBlockId, sentenceIndex: number): string {
-  const { NARRATIVE_TEMPLATES } = require('@/types/evidenceChip');
-  const templates = NARRATIVE_TEMPLATES[blockId] as string[];
+  const templates = NARRATIVE_TEMPLATES[blockId];
   const idx = Math.floor(seededRandom(chip.id + blockId) * templates.length);
   const template = templates[idx];
   const evidence = `${chip.label}: ${chip.value}`;
