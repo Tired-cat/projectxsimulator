@@ -20,8 +20,7 @@ const channelOptions = [
 
 export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const [reasonMode, setReasonMode] = useState(false);
-  const { setDraggingChip } = useReasoningBoard();
+  const { setDraggingChip, reasonMode } = useReasoningBoard();
 
   const productData = useMemo(() => {
     if (selectedChannel === 'all') {
@@ -178,7 +177,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const insight = getInsight();
 
   return (
-    <Card className="border-2 border-primary/20 bg-card">
+    <Card className={`border-2 transition-all duration-200 ${reasonMode ? 'border-primary bg-primary/[0.04] shadow-md shadow-primary/10' : 'border-primary/20 bg-card'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -187,19 +186,12 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
               See what products each channel is actually selling
             </p>
           </div>
-          {/* Reason toggle */}
-          <button
-            onClick={() => setReasonMode(r => !r)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all border ${
-              reasonMode
-                ? 'bg-primary text-primary-foreground border-primary shadow-md'
-                : 'bg-secondary hover:bg-primary/10 text-foreground border-border hover:border-primary/40'
-            }`}
-            title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode: drag pie segments to Reasoning Board'}
-          >
-            <FlaskConical className="w-3.5 h-3.5" />
-            Reason
-          </button>
+          {reasonMode && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
+              <FlaskConical className="w-3.5 h-3.5" />
+              Reason mode — drag segments to Reasoning Board
+            </div>
+          )}
         </div>
       </CardHeader>
 

@@ -59,8 +59,7 @@ export function DraggableBarChart({
   onTokenDrag,
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
-  const [reasonMode, setReasonMode] = useState(false);
-  const { setDraggingChip } = useReasoningBoard();
+  const { setDraggingChip, reasonMode } = useReasoningBoard();
   
   // Snapshot mode: draggable for reasoning but NOT adjustable
   // Live mode: adjustable but NOT draggable (for now)
@@ -514,23 +513,11 @@ export function DraggableBarChart({
             {/* Filter Metrics Chips */}
           <div className="flex items-center gap-1.5 flex-wrap">
               {/* Reason Mode Toggle */}
-              {!isSnapshot && (
-                <button
-                  onClick={() => setReasonMode(r => !r)}
-                  className={`flex items-center gap-1.5 rounded-lg font-bold transition-all border-2 ${
-                    fillContainer
-                      ? 'px-3 py-1.5 text-sm'
-                      : 'px-4 py-2 text-base'
-                  } ${
-                    reasonMode
-                      ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-[1.02]'
-                      : 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/40 hover:border-primary hover:shadow-md'
-                  }`}
-                  title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode: drag bars to Reasoning Board'}
-                >
-                  <FlaskConical className={fillContainer ? 'w-4 h-4' : 'w-5 h-5'} />
-                  {reasonMode ? '✓ Reasoning' : 'Reason'}
-                </button>
+              {reasonMode && !isSnapshot && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
+                  <FlaskConical className={fillContainer ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
+                  Reason mode — drag bars to Reasoning Board
+                </div>
               )}
 
               <span className={`${fillContainer ? 'text-xs' : 'text-sm'} text-muted-foreground flex items-center gap-1`}>
