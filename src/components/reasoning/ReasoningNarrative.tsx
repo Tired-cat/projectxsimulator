@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
-import { NARRATIVE_TEMPLATES } from '@/types/evidenceChip';
+import { NARRATIVE_TEMPLATES, PAIRED_NARRATIVE_TEMPLATES, QUADRANT_CONNECTORS } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import { Separator } from '@/components/ui/separator';
 
@@ -14,16 +14,20 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-function generateStableSentence(chip: EvidenceChip, blockId: ReasoningBlockId, sentenceIndex: number): string {
-  const templates = NARRATIVE_TEMPLATES[blockId];
+function generateStableSentence(chip: EvidenceChip, blockId: ReasoningBlockId): string {
+  const isPaired = !!chip.contextChip;
+  const templates = isPaired ? PAIRED_NARRATIVE_TEMPLATES[blockId] : NARRATIVE_TEMPLATES[blockId];
   const idx = Math.floor(seededRandom(chip.id + blockId) * templates.length);
   const template = templates[idx];
   const evidence = `${chip.label}: ${chip.value}`;
-  const sentence = template.replace('[evidence]', evidence);
+  let sentence = template.replace(/\[evidence\]/g, evidence);
 
-  if (sentenceIndex === 0) return sentence;
-  if (sentenceIndex === 1) return `Then, ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
-  return `Following that, ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
+  if (isPaired && chip.contextChip) {
+    const ctx = `${chip.contextChip.label}: ${chip.contextChip.value}`;
+    sentence = sentence.replace(/\[context\]/g, ctx);
+  }
+
+  return sentence;
 }
 
 const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
@@ -40,18 +44,24 @@ export function ReasoningNarrative() {
 
   const totalChips = BLOCK_ORDER.reduce((s, id) => s + board[id].length, 0);
 
-  // Derive all sentences from current board state
-  const allSentences = useMemo(() => {
+  // Full story sentences with quadrant connectors
+  const storySentences = useMemo(() => {
     const sentences: { text: string; blockId: ReasoningBlockId }[] = [];
-    let globalIndex = 0;
     for (const blockId of BLOCK_ORDER) {
-      for (const chip of board[blockId]) {
-        sentences.push({
-          text: generateStableSentence(chip, blockId, globalIndex),
-          blockId,
-        });
-        globalIndex++;
+      const chips = board[blockId];
+      if (chips.length === 0) continue;
+      // Use only the first chip per quadrant for the flowing story
+      const chip = chips[0];
+      const raw = generateStableSentence(chip, blockId);
+      const connector = QUADRANT_CONNECTORS[blockId];
+      // Apply connector: descriptive stands alone, others get prefixed
+      let text: string;
+      if (connector) {
+        text = connector + raw.charAt(0).toLowerCase() + raw.slice(1);
+      } else {
+        text = raw;
       }
+      sentences.push({ text, blockId });
     }
     return sentences;
   }, [board]);
@@ -62,8 +72,8 @@ export function ReasoningNarrative() {
       descriptive: [], diagnostic: [], prescriptive: [], predictive: [],
     };
     for (const blockId of BLOCK_ORDER) {
-      board[blockId].forEach((chip, i) => {
-        result[blockId].push(generateStableSentence(chip, blockId, i));
+      board[blockId].forEach((chip) => {
+        result[blockId].push(generateStableSentence(chip, blockId));
       });
     }
     return result;
@@ -107,6 +117,11 @@ export function ReasoningNarrative() {
                           <span className="w-1 h-1 rounded-full bg-current opacity-40 flex-shrink-0" />
                           <span className="truncate text-foreground/80">
                             {chip.label}: <strong>{chip.value}</strong>
+                            {chip.contextChip && (
+                              <span className="text-muted-foreground ml-1">
+                                + {chip.contextChip.label}
+                              </span>
+                            )}
                           </span>
                         </div>
                       ))}
@@ -133,7 +148,7 @@ export function ReasoningNarrative() {
         </h3>
         <div className="max-h-[120px] overflow-y-auto pr-1">
           <p className="text-[11px] leading-relaxed">
-            {allSentences.map((entry, i) => {
+            {storySentences.map((entry, i) => {
               const colors = BLOCK_COLORS[entry.blockId];
               return (
                 <span key={i} className={colors.text}>

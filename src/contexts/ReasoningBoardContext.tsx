@@ -6,6 +6,7 @@ interface ReasoningBoardContextValue {
   addChip: (blockId: ReasoningBlockId, chip: EvidenceChip) => void;
   removeChip: (blockId: ReasoningBlockId, chipId: string) => void;
   moveChip: (fromBlock: ReasoningBlockId, toBlock: ReasoningBlockId, chipId: string) => void;
+  contextualiseChip: (blockId: ReasoningBlockId, targetChipId: string, contextChip: EvidenceChip) => void;
   draggingChip: EvidenceChip | null;
   setDraggingChip: (chip: EvidenceChip | null) => void;
 }
@@ -49,12 +50,22 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const contextualiseChip = useCallback((blockId: ReasoningBlockId, targetChipId: string, contextChip: EvidenceChip) => {
+    setBoard(prev => ({
+      ...prev,
+      [blockId]: prev[blockId].map(c =>
+        c.id === targetChipId ? { ...c, contextChip } : c
+      ),
+    }));
+  }, []);
+
   return (
     <ReasoningBoardContext.Provider value={{
       board,
       addChip,
       removeChip,
       moveChip,
+      contextualiseChip,
       draggingChip,
       setDraggingChip,
     }}>

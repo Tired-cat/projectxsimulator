@@ -11,6 +11,8 @@ export interface EvidenceChip {
   channelName?: string;
   metricName?: string;
   deltaValue?: number;
+  // Contextualisation — a second chip attached as supporting evidence
+  contextChip?: EvidenceChip | null;
 }
 
 export type ReasoningBlockId = 'descriptive' | 'diagnostic' | 'predictive' | 'prescriptive';
@@ -54,7 +56,7 @@ export const REASONING_BLOCKS: {
   },
 ];
 
-// Narrative templates per quadrant
+// Single evidence templates (no context)
 export const NARRATIVE_TEMPLATES: Record<ReasoningBlockId, string[]> = {
   descriptive: [
     'Before making any changes, I noticed that [evidence], which stood out to me as significant.',
@@ -80,6 +82,42 @@ export const NARRATIVE_TEMPLATES: Record<ReasoningBlockId, string[]> = {
     'Now that I\'ve made changes, [evidence] tells me what I can expect going forward.',
     'After acting, the new data showing [evidence] suggests the impact of my decision is becoming visible.',
   ],
+};
+
+// Paired evidence templates (with context chip)
+export const PAIRED_NARRATIVE_TEMPLATES: Record<ReasoningBlockId, string[]> = {
+  descriptive: [
+    'Before making any changes, I noticed that [evidence], and when I looked at [context] alongside it, this stood out as significant.',
+    'Looking at the original data, I observed that [evidence], which together with [context] caught my attention.',
+    'At the start, [evidence] alone told one story, but pairing it with [context] revealed something more important.',
+    'Before adjusting anything, I saw that [evidence], and [context] helped me understand the full picture.',
+  ],
+  diagnostic: [
+    'Before making changes, I believed that [evidence] combined with [context] explained why this outcome occurred.',
+    'Looking deeper, I concluded that [evidence] was the surface issue, but [context] revealed the real cause.',
+    'At this point I thought [evidence] was significant, and [context] confirmed why this situation existed.',
+    'Before adjusting, [evidence] pointed to the problem, and [context] helped me understand what was driving it.',
+  ],
+  prescriptive: [
+    'Given that [evidence] showed one thing and [context] showed another, I decided a change needed to be made.',
+    'Because [evidence] combined with [context] painted a clear picture, I chose to adjust my strategy.',
+    'Taking both [evidence] and [context] into account, I made a decision to act.',
+    'The combination of [evidence] and [context] led me to conclude that intervention was necessary.',
+  ],
+  predictive: [
+    'After adjusting my strategy, [evidence] alongside [context] suggests this change will have a meaningful impact.',
+    'Following my decision, seeing both [evidence] and [context] indicates things are shifting in the right direction.',
+    'Now that I\'ve acted, [evidence] combined with [context] tells me what I can expect going forward.',
+    'After making changes, the relationship between [evidence] and [context] suggests my decision is taking effect.',
+  ],
+};
+
+// Quadrant-specific connectors for the full story
+export const QUADRANT_CONNECTORS: Record<ReasoningBlockId, string> = {
+  descriptive: '',            // stands alone
+  diagnostic: 'This led me to question… ',
+  prescriptive: 'As a result, ',
+  predictive: 'After acting, ',
 };
 
 export function generateNarrativeSentence(
