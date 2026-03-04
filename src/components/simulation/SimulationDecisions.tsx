@@ -122,11 +122,12 @@ export function SimulationDecisions({
         {renderPanelContent('channel-performance')}
       </DraggableCard>
 
-      {/* Product Mix */}
+      {/* Product Mix — full width */}
       <DraggableCard
         panelId="product-mix"
         title="Product Mix"
         icon={<PieChart className="h-4 w-4" />}
+        className="lg:col-span-2"
         onDragStart={setDraggingPanelId}
         onDragEnd={() => setDraggingPanelId(null)}
         onAddAsTab={handleAddAsTab}

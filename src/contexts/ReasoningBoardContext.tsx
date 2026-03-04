@@ -9,6 +9,8 @@ interface ReasoningBoardContextValue {
   contextualiseChip: (blockId: ReasoningBlockId, targetChipId: string, contextChip: EvidenceChip) => void;
   draggingChip: EvidenceChip | null;
   setDraggingChip: (chip: EvidenceChip | null) => void;
+  reasonMode: boolean;
+  toggleReasonMode: () => void;
 }
 
 const ReasoningBoardContext = createContext<ReasoningBoardContextValue | null>(null);
@@ -23,7 +25,11 @@ const EMPTY_BOARD: ReasoningBoardState = {
 export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   const [board, setBoard] = useState<ReasoningBoardState>(EMPTY_BOARD);
   const [draggingChip, setDraggingChip] = useState<EvidenceChip | null>(null);
+  const [reasonMode, setReasonMode] = useState(false);
 
+  const toggleReasonMode = useCallback(() => {
+    setReasonMode(prev => !prev);
+  }, []);
   const addChip = useCallback((blockId: ReasoningBlockId, chip: EvidenceChip) => {
     setBoard(prev => ({
       ...prev,
@@ -68,6 +74,8 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       contextualiseChip,
       draggingChip,
       setDraggingChip,
+      reasonMode,
+      toggleReasonMode,
     }}>
       {children}
     </ReasoningBoardContext.Provider>

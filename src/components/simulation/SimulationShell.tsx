@@ -2,9 +2,11 @@ import { ReactNode } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useTabs } from '@/contexts/TabContext';
+import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { BrowserTabStrip } from './BrowserTabStrip';
 import { SplitWorkspace } from './SplitWorkspace';
 import { ReasoningBoard } from '@/components/reasoning/ReasoningBoard';
+import { FlaskConical } from 'lucide-react';
 import type { PanelId } from '@/types/workspaceTypes';
 
 interface SimulationShellProps {
@@ -24,6 +26,7 @@ export function SimulationShell({
   renderPanelContent,
 }: SimulationShellProps) {
   const { tabs, activeTabId, split } = useTabs();
+  const { reasonMode, toggleReasonMode } = useReasoningBoard();
   const activeTab = tabs.find(t => t.id === activeTabId);
 
   /**
@@ -98,6 +101,23 @@ export function SimulationShell({
             )}
           </>
         )}
+      </div>
+
+      {/* ── FLOATING REASON BUTTON ── */}
+      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50">
+        <button
+          onClick={toggleReasonMode}
+          className={cn(
+            'flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 shadow-lg border-2',
+            reasonMode
+              ? 'bg-primary text-primary-foreground border-primary shadow-primary/30 scale-105'
+              : 'bg-card hover:bg-primary/10 text-primary border-primary/40 hover:border-primary hover:shadow-xl'
+          )}
+          title={reasonMode ? 'Exit Reason mode' : 'Enter Reason mode'}
+        >
+          <FlaskConical className="w-5 h-5" />
+          {reasonMode ? '✓ Reasoning Active' : 'Reason'}
+        </button>
       </div>
 
       {/* ── STATUS BAR ── */}
