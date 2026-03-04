@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
-import { NARRATIVE_TEMPLATES, PAIRED_NARRATIVE_TEMPLATES, QUADRANT_CONNECTORS } from '@/types/evidenceChip';
+import { QUADRANT_CONNECTORS } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import { Separator } from '@/components/ui/separator';
 
-// Stable sentence per chip+block using chip id as seed
 function seededRandom(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -14,20 +13,69 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-function generateStableSentence(chip: EvidenceChip, blockId: ReasoningBlockId): string {
-  const isPaired = !!chip.contextChip;
-  const templates = isPaired ? PAIRED_NARRATIVE_TEMPLATES[blockId] : NARRATIVE_TEMPLATES[blockId];
-  const idx = Math.floor(seededRandom(chip.id + blockId) * templates.length);
-  const template = templates[idx];
-  const evidence = `${chip.label}: ${chip.value}`;
-  let sentence = template.replace(/\[evidence\]/g, evidence);
+function formatEvidence(chip: EvidenceChip): string {
+  const base = `${chip.label}: ${chip.value}`;
+  if (chip.contextChip) {
+    return `${base} (supported by ${chip.contextChip.label}: ${chip.contextChip.value})`;
+  }
+  return base;
+}
 
-  if (isPaired && chip.contextChip) {
-    const ctx = `${chip.contextChip.label}: ${chip.contextChip.value}`;
-    sentence = sentence.replace(/\[context\]/g, ctx);
+const CONTRAST_CONNECTORS = ['while', 'whereas', 'compared to', 'in contrast to'];
+const ADDITIVE_CONNECTORS = ['alongside', 'together with', 'and similarly', 'reinforced by'];
+
+function pickConnector(chipA: EvidenceChip, chipB: EvidenceChip): string {
+  const isContrast =
+    (chipA.chipKind === 'delta-increase' && chipB.chipKind === 'delta-decrease') ||
+    (chipA.chipKind === 'delta-decrease' && chipB.chipKind === 'delta-increase') ||
+    (chipA.sourceId !== chipB.sourceId);
+  const pool = isContrast ? CONTRAST_CONNECTORS : ADDITIVE_CONNECTORS;
+  const idx = Math.floor(seededRandom(chipA.id + chipB.id) * pool.length);
+  return pool[idx];
+}
+
+const SINGLE_OPENERS: Record<ReasoningBlockId, string[]> = {
+  descriptive: [
+    'I noticed that [items], which stood out as significant.',
+    'Looking at the data, I observed [items].',
+    'One thing that caught my attention was [items].',
+  ],
+  diagnostic: [
+    'I believed that [items] explained why this outcome occurred.',
+    'Looking deeper, I concluded that [items] was the underlying cause.',
+    'At this point, I thought [items] was the reason behind what I was seeing.',
+  ],
+  prescriptive: [
+    'Given what I observed, I decided to act because of [items].',
+    'Because of [items], I felt a change needed to be made.',
+    'Taking [items] into account, I chose to adjust my strategy.',
+  ],
+  predictive: [
+    'After adjusting my strategy, [items] suggests this trend will continue.',
+    'Following my decision, [items] indicates things are shifting.',
+    'Now that I\'ve made changes, [items] tells me what to expect going forward.',
+  ],
+};
+
+function generateCombinedSentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
+  if (chips.length === 0) return '';
+
+  let evidencePhrase: string;
+  if (chips.length === 1) {
+    evidencePhrase = formatEvidence(chips[0]);
+  } else {
+    const parts: string[] = [formatEvidence(chips[0])];
+    for (let i = 1; i < chips.length; i++) {
+      const connector = pickConnector(chips[i - 1], chips[i]);
+      parts.push(`${connector} ${formatEvidence(chips[i])}`);
+    }
+    evidencePhrase = parts.join(', ');
   }
 
-  return sentence;
+  const templates = SINGLE_OPENERS[blockId];
+  const seedStr = chips.map(c => c.id).join('-') + blockId;
+  const idx = Math.floor(seededRandom(seedStr) * templates.length);
+  return templates[idx].replace('[items]', evidencePhrase);
 }
 
 const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
@@ -44,43 +92,35 @@ export function ReasoningNarrative() {
 
   const totalChips = BLOCK_ORDER.reduce((s, id) => s + board[id].length, 0);
 
-  // Generate a sentence for EVERY chip in every quadrant
-  const quadrantData = useMemo(() => {
-    const result: Record<ReasoningBlockId, {
-      sentences: { chip: EvidenceChip; sentence: string }[];
-    }> = {
-      descriptive: { sentences: [] },
-      diagnostic: { sentences: [] },
-      prescriptive: { sentences: [] },
-      predictive: { sentences: [] },
+  // One combined sentence per quadrant
+  const quadrantSentences = useMemo(() => {
+    const result: Record<ReasoningBlockId, string> = {
+      descriptive: '', diagnostic: '', prescriptive: '', predictive: '',
     };
     for (const blockId of BLOCK_ORDER) {
-      result[blockId].sentences = board[blockId].map(chip => ({
-        chip,
-        sentence: generateStableSentence(chip, blockId),
-      }));
+      if (board[blockId].length > 0) {
+        result[blockId] = generateCombinedSentence(board[blockId], blockId);
+      }
     }
     return result;
   }, [board]);
 
-  // Full story: take first sentence from each quadrant that has chips
   const storySentences = useMemo(() => {
     const sentences: { text: string; blockId: ReasoningBlockId }[] = [];
     for (const blockId of BLOCK_ORDER) {
-      const { sentences: blockSentences } = quadrantData[blockId];
-      if (blockSentences.length === 0) continue;
-      const combined = blockSentences.map(s => s.sentence).join(' ');
+      const sentence = quadrantSentences[blockId];
+      if (!sentence) continue;
       const connector = QUADRANT_CONNECTORS[blockId];
       let text: string;
       if (connector) {
-        text = connector + combined.charAt(0).toLowerCase() + combined.slice(1);
+        text = connector + sentence.charAt(0).toLowerCase() + sentence.slice(1);
       } else {
-        text = combined;
+        text = sentence;
       }
       sentences.push({ text, blockId });
     }
     return sentences;
-  }, [quadrantData]);
+  }, [quadrantSentences]);
 
   if (totalChips === 0) return null;
 
@@ -128,9 +168,9 @@ export function ReasoningNarrative() {
                         </div>
                       ))}
                     </div>
-                    {quadrantData[blockId].sentences.length > 0 && (
+                    {quadrantSentences[blockId] && (
                       <div className={`leading-relaxed ${colors.text} opacity-80`}>
-                        {quadrantData[blockId].sentences.map(s => s.sentence).join(' ')}
+                        {quadrantSentences[blockId]}
                       </div>
                     )}
                   </>
