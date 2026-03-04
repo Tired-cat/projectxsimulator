@@ -1,11 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import type { EvidenceChip, ReasoningBlockId, ReasoningBoardState } from '@/types/evidenceChip';
-import { generateNarrativeSentence } from '@/types/evidenceChip';
-
-interface NarrativeEntry {
-  id: string;
-  text: string;
-}
 
 interface ReasoningBoardContextValue {
   board: ReasoningBoardState;
@@ -14,7 +8,6 @@ interface ReasoningBoardContextValue {
   moveChip: (fromBlock: ReasoningBlockId, toBlock: ReasoningBlockId, chipId: string) => void;
   draggingChip: EvidenceChip | null;
   setDraggingChip: (chip: EvidenceChip | null) => void;
-  narrative: NarrativeEntry[];
 }
 
 const ReasoningBoardContext = createContext<ReasoningBoardContextValue | null>(null);
@@ -29,22 +22,13 @@ const EMPTY_BOARD: ReasoningBoardState = {
 export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   const [board, setBoard] = useState<ReasoningBoardState>(EMPTY_BOARD);
   const [draggingChip, setDraggingChip] = useState<EvidenceChip | null>(null);
-  const [narrative, setNarrative] = useState<NarrativeEntry[]>([]);
-
-  const appendNarrative = useCallback((chip: EvidenceChip, blockId: ReasoningBlockId) => {
-    setNarrative(prev => {
-      const sentence = generateNarrativeSentence(chip, blockId, prev.length);
-      return [...prev, { id: `nar-${Date.now()}-${Math.random()}`, text: sentence }];
-    });
-  }, []);
 
   const addChip = useCallback((blockId: ReasoningBlockId, chip: EvidenceChip) => {
     setBoard(prev => ({
       ...prev,
       [blockId]: [...prev[blockId], chip],
     }));
-    appendNarrative(chip, blockId);
-  }, [appendNarrative]);
+  }, []);
 
   const removeChip = useCallback((blockId: ReasoningBlockId, chipId: string) => {
     setBoard(prev => ({
@@ -73,7 +57,6 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       moveChip,
       draggingChip,
       setDraggingChip,
-      narrative,
     }}>
       {children}
     </ReasoningBoardContext.Provider>
