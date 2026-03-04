@@ -13,6 +13,8 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
+// ── At a Glance: data-referenced, uses labels & values directly ──
+
 function formatEvidence(chip: EvidenceChip): string {
   const base = `${chip.label}: ${chip.value}`;
   if (chip.contextChip) {
@@ -21,20 +23,19 @@ function formatEvidence(chip: EvidenceChip): string {
   return base;
 }
 
-const CONTRAST_CONNECTORS = ['while', 'whereas', 'compared to', 'in contrast to'];
-const ADDITIVE_CONNECTORS = ['alongside', 'together with', 'and similarly', 'reinforced by'];
+const GLANCE_CONTRAST = ['while', 'whereas', 'compared to', 'in contrast to'];
+const GLANCE_ADDITIVE = ['alongside', 'together with', 'which together with', 'reinforced by'];
 
-function pickConnector(chipA: EvidenceChip, chipB: EvidenceChip): string {
-  const isContrast =
-    (chipA.chipKind === 'delta-increase' && chipB.chipKind === 'delta-decrease') ||
-    (chipA.chipKind === 'delta-decrease' && chipB.chipKind === 'delta-increase') ||
-    (chipA.sourceId !== chipB.sourceId);
-  const pool = isContrast ? CONTRAST_CONNECTORS : ADDITIVE_CONNECTORS;
-  const idx = Math.floor(seededRandom(chipA.id + chipB.id) * pool.length);
-  return pool[idx];
+function pickGlanceConnector(a: EvidenceChip, b: EvidenceChip): string {
+  const contrast =
+    (a.chipKind === 'delta-increase' && b.chipKind === 'delta-decrease') ||
+    (a.chipKind === 'delta-decrease' && b.chipKind === 'delta-increase') ||
+    (a.sourceId !== b.sourceId);
+  const pool = contrast ? GLANCE_CONTRAST : GLANCE_ADDITIVE;
+  return pool[Math.floor(seededRandom(a.id + b.id) * pool.length)];
 }
 
-const SINGLE_OPENERS: Record<ReasoningBlockId, string[]> = {
+const GLANCE_OPENERS: Record<ReasoningBlockId, string[]> = {
   descriptive: [
     'I noticed that [items], which stood out as significant.',
     'Looking at the data, I observed [items].',
@@ -57,26 +58,99 @@ const SINGLE_OPENERS: Record<ReasoningBlockId, string[]> = {
   ],
 };
 
-function generateCombinedSentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
+function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
+  if (chips.length === 0) return '';
+  let phrase: string;
+  if (chips.length === 1) {
+    phrase = formatEvidence(chips[0]);
+  } else {
+    const parts = [formatEvidence(chips[0])];
+    for (let i = 1; i < chips.length; i++) {
+      parts.push(`${pickGlanceConnector(chips[i - 1], chips[i])} ${formatEvidence(chips[i])}`);
+    }
+    phrase = parts.join(', ');
+  }
+  const templates = GLANCE_OPENERS[blockId];
+  const idx = Math.floor(seededRandom(chips.map(c => c.id).join('-') + blockId) * templates.length);
+  return templates[idx].replace('[items]', phrase);
+}
+
+// ── Full Reasoning Story: human, relationship-focused, no raw data ──
+
+function chipsContrast(a: EvidenceChip, b: EvidenceChip): boolean {
+  return (
+    (a.chipKind === 'delta-increase' && b.chipKind === 'delta-decrease') ||
+    (a.chipKind === 'delta-decrease' && b.chipKind === 'delta-increase') ||
+    (a.sourceId !== b.sourceId)
+  );
+}
+
+function describeChip(chip: EvidenceChip): string {
+  const ch = chip.channelName || chip.label.split(' ')[0];
+  const m = chip.metricName || 'performance';
+  if (chip.chipKind === 'delta-increase') return `strong ${m} growth in ${ch}`;
+  if (chip.chipKind === 'delta-decrease') return `declining ${m} in ${ch}`;
+  if (chip.chipKind === 'baseline') return `the baseline ${m} level for ${ch}`;
+  return `${ch}'s current ${m}`;
+}
+
+const STORY_CONTRAST = ['despite', 'whereas', 'however', 'in contrast to'];
+const STORY_REINFORCE = ['consistent with', 'which aligns with', 'alongside', 'supported by'];
+
+const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
+  descriptive: [
+    'Before making changes, I saw [insight].',
+    'The data initially revealed [insight].',
+    'What stood out to me first was [insight].',
+  ],
+  diagnostic: [
+    'This led me to believe [insight] was driving the outcome.',
+    'Digging deeper, I concluded [insight] was the root cause.',
+    'I traced the issue back to [insight].',
+  ],
+  prescriptive: [
+    'Based on this understanding, I chose to act on [insight].',
+    'Recognising [insight], I decided a strategic shift was needed.',
+    'Given [insight], I adjusted my approach accordingly.',
+  ],
+  predictive: [
+    'Going forward, I expect [insight] to shape results.',
+    'After acting, [insight] signals what comes next.',
+    'Looking ahead, [insight] points to the likely trajectory.',
+  ],
+};
+
+function generateStorySentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
   if (chips.length === 0) return '';
 
-  let evidencePhrase: string;
+  let insight: string;
   if (chips.length === 1) {
-    evidencePhrase = formatEvidence(chips[0]);
-  } else {
-    const parts: string[] = [formatEvidence(chips[0])];
-    for (let i = 1; i < chips.length; i++) {
-      const connector = pickConnector(chips[i - 1], chips[i]);
-      parts.push(`${connector} ${formatEvidence(chips[i])}`);
+    let base = describeChip(chips[0]);
+    if (chips[0].contextChip) {
+      const ctxChip = chips[0].contextChip;
+      const contrast = chipsContrast(chips[0], ctxChip);
+      const pool = contrast ? STORY_CONTRAST : STORY_REINFORCE;
+      const word = pool[Math.floor(seededRandom(chips[0].id + 'ctx') * pool.length)];
+      base = `${base}, ${word} ${describeChip(ctxChip)}`;
     }
-    evidencePhrase = parts.join(', ');
+    insight = base;
+  } else {
+    const parts = [describeChip(chips[0])];
+    for (let i = 1; i < chips.length; i++) {
+      const contrast = chipsContrast(chips[i - 1], chips[i]);
+      const pool = contrast ? STORY_CONTRAST : STORY_REINFORCE;
+      const word = pool[Math.floor(seededRandom(chips[i - 1].id + chips[i].id) * pool.length)];
+      parts.push(`${word} ${describeChip(chips[i])}`);
+    }
+    insight = parts.join(', ');
   }
 
-  const templates = SINGLE_OPENERS[blockId];
-  const seedStr = chips.map(c => c.id).join('-') + blockId;
-  const idx = Math.floor(seededRandom(seedStr) * templates.length);
-  return templates[idx].replace('[items]', evidencePhrase);
+  const templates = STORY_OPENERS[blockId];
+  const idx = Math.floor(seededRandom(chips.map(c => c.id).join('-') + blockId + 'story') * templates.length);
+  return templates[idx].replace('[insight]', insight);
 }
+
+// ── Layout ──
 
 const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
 
@@ -89,38 +163,31 @@ const BLOCK_COLORS: Record<ReasoningBlockId, { text: string; bg: string; border:
 
 export function ReasoningNarrative() {
   const { board } = useReasoningBoard();
-
   const totalChips = BLOCK_ORDER.reduce((s, id) => s + board[id].length, 0);
 
-  // One combined sentence per quadrant
-  const quadrantSentences = useMemo(() => {
-    const result: Record<ReasoningBlockId, string> = {
-      descriptive: '', diagnostic: '', prescriptive: '', predictive: '',
-    };
-    for (const blockId of BLOCK_ORDER) {
-      if (board[blockId].length > 0) {
-        result[blockId] = generateCombinedSentence(board[blockId], blockId);
-      }
+  // At a Glance: data-referenced sentences
+  const glanceSentences = useMemo(() => {
+    const result: Record<ReasoningBlockId, string> = { descriptive: '', diagnostic: '', prescriptive: '', predictive: '' };
+    for (const id of BLOCK_ORDER) {
+      if (board[id].length > 0) result[id] = generateGlanceSentence(board[id], id);
     }
     return result;
   }, [board]);
 
+  // Full Story: relationship-focused sentences
   const storySentences = useMemo(() => {
     const sentences: { text: string; blockId: ReasoningBlockId }[] = [];
     for (const blockId of BLOCK_ORDER) {
-      const sentence = quadrantSentences[blockId];
+      const sentence = generateStorySentence(board[blockId], blockId);
       if (!sentence) continue;
       const connector = QUADRANT_CONNECTORS[blockId];
-      let text: string;
-      if (connector) {
-        text = connector + sentence.charAt(0).toLowerCase() + sentence.slice(1);
-      } else {
-        text = sentence;
-      }
+      const text = connector
+        ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
+        : sentence;
       sentences.push({ text, blockId });
     }
     return sentences;
-  }, [quadrantSentences]);
+  }, [board]);
 
   if (totalChips === 0) return null;
 
@@ -141,9 +208,7 @@ export function ReasoningNarrative() {
               <div
                 key={blockId}
                 className={`rounded-lg border p-2 text-[10px] transition-all ${
-                  isEmpty
-                    ? 'border-border/40 bg-muted/20'
-                    : `${colors.border} ${colors.bg}`
+                  isEmpty ? 'border-border/40 bg-muted/20' : `${colors.border} ${colors.bg}`
                 }`}
               >
                 <div className={`font-bold mb-1 ${isEmpty ? 'text-muted-foreground/50' : colors.text}`}>
@@ -160,17 +225,15 @@ export function ReasoningNarrative() {
                           <span className="truncate text-foreground/80">
                             {chip.label}: <strong>{chip.value}</strong>
                             {chip.contextChip && (
-                              <span className="text-muted-foreground ml-1">
-                                + {chip.contextChip.label}
-                              </span>
+                              <span className="text-muted-foreground ml-1">+ {chip.contextChip.label}</span>
                             )}
                           </span>
                         </div>
                       ))}
                     </div>
-                    {quadrantSentences[blockId] && (
+                    {glanceSentences[blockId] && (
                       <div className={`leading-relaxed ${colors.text} opacity-80`}>
-                        {quadrantSentences[blockId]}
+                        {glanceSentences[blockId]}
                       </div>
                     )}
                   </>
@@ -181,9 +244,7 @@ export function ReasoningNarrative() {
         </div>
       </div>
 
-      <div className="px-3">
-        <Separator />
-      </div>
+      <div className="px-3"><Separator /></div>
 
       {/* Full Reasoning Story */}
       <div className="p-3 pt-2">
@@ -192,14 +253,11 @@ export function ReasoningNarrative() {
         </h3>
         <div className="max-h-[120px] overflow-y-auto pr-1">
           <p className="text-[11px] leading-relaxed">
-            {storySentences.map((entry, i) => {
-              const colors = BLOCK_COLORS[entry.blockId];
-              return (
-                <span key={i} className={colors.text}>
-                  {entry.text}{' '}
-                </span>
-              );
-            })}
+            {storySentences.map((entry, i) => (
+              <span key={i} className={BLOCK_COLORS[entry.blockId].text}>
+                {entry.text}{' '}
+              </span>
+            ))}
           </p>
         </div>
       </div>
