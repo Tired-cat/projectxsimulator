@@ -231,55 +231,9 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          {/* Pie Chart */}
-          <div className="relative w-48 h-48">
-            <svg viewBox="-120 -120 240 240" className="w-full h-full">
-              {totalRevenue > 0 ? (
-                pieSegments.map((segment) => (
-                  <path
-                    key={segment.id}
-                    d={createArcPath(segment.startAngle, segment.angle)}
-                    fill={segment.color}
-                    stroke="hsl(var(--background))"
-                    strokeWidth="2"
-                    className={`transition-all duration-300 ${
-                      reasonMode && segment.revenue > 0
-                        ? 'cursor-grab hover:opacity-70'
-                        : 'hover:opacity-80'
-                    }`}
-                  />
-                ))
-              ) : (
-                <circle
-                  r="100"
-                  fill="hsl(var(--secondary))"
-                  stroke="hsl(var(--border))"
-                  strokeWidth="2"
-                />
-              )}
-              {/* Center hole for donut effect */}
-              <circle r="50" fill="hsl(var(--card))" />
-              {/* Center text */}
-              <text
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="fill-foreground font-bold text-lg"
-                fontSize="16"
-              >
-                ${totalRevenue.toLocaleString()}
-              </text>
-            </svg>
-            {/* Reason mode overlay label */}
-            {reasonMode && totalRevenue > 0 && (
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-primary font-semibold whitespace-nowrap">
-                🧪 drag slices
-              </div>
-            )}
-          </div>
-
+        <div className="flex flex-col gap-6">
           {/* Legend with Units Sold */}
-          <div className="flex-1 space-y-3">
+          <div className="space-y-3">
             {segments.map((segment) => {
               const percentage = totalRevenue > 0 ? ((segment.revenue / totalRevenue) * 100) : 0;
               return (
@@ -319,7 +273,52 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
               );
             })}
           </div>
+
+          {/* Donut Chart */}
+          <div className="relative w-48 h-48 mx-auto">
+            <svg viewBox="-120 -120 240 240" className="w-full h-full">
+              {totalRevenue > 0 ? (
+                pieSegments.map((segment) => (
+                  <path
+                    key={segment.id}
+                    d={createArcPath(segment.startAngle, segment.angle)}
+                    fill={segment.color}
+                    stroke="hsl(var(--background))"
+                    strokeWidth="2"
+                    className={`transition-all duration-300 ${
+                      reasonMode && segment.revenue > 0
+                        ? 'cursor-grab hover:opacity-70'
+                        : 'hover:opacity-80'
+                    }`}
+                  />
+                ))
+              ) : (
+                <circle
+                  r="100"
+                  fill="hsl(var(--secondary))"
+                  stroke="hsl(var(--border))"
+                  strokeWidth="2"
+                />
+              )}
+              <circle r="50" fill="hsl(var(--card))" />
+              <text
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="fill-foreground font-bold text-lg"
+                fontSize="16"
+              >
+                ${totalRevenue.toLocaleString()}
+              </text>
+            </svg>
+            {reasonMode && totalRevenue > 0 && (
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-primary font-semibold whitespace-nowrap">
+                🧪 drag slices
+              </div>
+            )}
+          </div>
         </div>
+
+
 
         {/* Dynamic Insight */}
         {insight && (
