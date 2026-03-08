@@ -344,6 +344,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         {/* Reason Button */}
         <div className="mt-6 flex justify-center">
           <Button
+            data-tutorial="reason-button"
             onClick={toggleReasonMode}
             className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 border-2 ${
               reasonMode
