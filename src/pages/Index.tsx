@@ -45,6 +45,7 @@ function SimulationContent() {
     setShellSnapshotSpend({ ...channelSpend });
     setShellBaselineSpend({ ...channelSpend });
     setShellCompareActive(true);
+    window.dispatchEvent(new Event('tutorial:compare-activated'));
   }, [channelSpend]);
 
   const handleShellCloseCompare = useCallback(() => {

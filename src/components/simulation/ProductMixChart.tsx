@@ -278,6 +278,9 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                     fill={segment.color}
                     stroke="hsl(var(--background))"
                     strokeWidth="2"
+                    draggable={reasonMode && segment.revenue > 0}
+                    onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, segment.percentage) : undefined}
+                    onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
                     className={`transition-all duration-300 ${
                       reasonMode && segment.revenue > 0
                         ? 'cursor-grab hover:opacity-70'
@@ -341,6 +344,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         {/* Reason Button */}
         <div className="mt-6 flex justify-center">
           <Button
+            data-tutorial="reason-button"
             onClick={toggleReasonMode}
             className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 border-2 ${
               reasonMode
