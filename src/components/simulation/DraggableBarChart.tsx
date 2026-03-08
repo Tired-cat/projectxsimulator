@@ -663,6 +663,7 @@ export function DraggableBarChart({
         <CardContent className={`${fillContainer ? 'pt-2 px-2 flex-1 min-h-0 overflow-hidden' : 'pt-4'}`}>
           {/* Draggable Bar Chart - Fixed dimensions, no layout changes */}
           <div
+            data-tutorial="chart-area"
             ref={chartRef}
             className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} select-none`}
             style={{ 

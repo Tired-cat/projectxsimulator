@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { cn } from '@/lib/utils';
 import { ArrowRight, CheckCircle2, X } from 'lucide-react';
@@ -43,6 +43,7 @@ const STEP_CONFIG = [
 export function TutorialOverlay() {
   const { active, step, skipTutorial, advanceStep, actionCompleted } = useTutorial();
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const config = STEP_CONFIG[step - 1];
 
@@ -75,6 +76,11 @@ export function TutorialOverlay() {
     };
   }, [active, measureTarget]);
 
+  useEffect(() => {
+    if (!active) return;
+    setIsMinimized(false);
+  }, [active, step]);
+
   if (!active || !config) return null;
 
   // Build clip-path to cut out the spotlight area
@@ -91,22 +97,89 @@ export function TutorialOverlay() {
       )`
     : undefined;
 
-  // Position tooltip near spotlight
-  const tooltipStyle: React.CSSProperties = {};
-  if (spotlight) {
-    if (config.tooltipSide === 'bottom') {
-      tooltipStyle.top = spotlight.top + spotlight.height + 16;
-      tooltipStyle.left = Math.max(16, Math.min(spotlight.left, window.innerWidth - 420));
-    } else {
-      tooltipStyle.top = spotlight.top - 16;
-      tooltipStyle.left = Math.max(16, Math.min(spotlight.left, window.innerWidth - 420));
-      tooltipStyle.transform = 'translateY(-100%)';
+  const tooltipStyle = useMemo((): React.CSSProperties => {
+    const margin = 16;
+    const tooltipWidth = isMinimized ? 300 : 400;
+    const tooltipHeight = isMinimized ? 64 : 280;
+
+    // Fallback to centered placement if no spotlight target exists.
+    if (!spotlight) {
+      return {
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      };
     }
-  } else {
-    tooltipStyle.top = '50%';
-    tooltipStyle.left = '50%';
-    tooltipStyle.transform = 'translate(-50%, -50%)';
-  }
+
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+    const centerX = spotlight.left + spotlight.width / 2;
+    const centerY = spotlight.top + spotlight.height / 2;
+
+    const candidates = [
+      { x: centerX - tooltipWidth / 2, y: spotlight.top + spotlight.height + margin }, // below
+      { x: centerX - tooltipWidth / 2, y: spotlight.top - tooltipHeight - margin }, // above
+      { x: spotlight.left + spotlight.width + margin, y: centerY - tooltipHeight / 2 }, // right
+      { x: spotlight.left - tooltipWidth - margin, y: centerY - tooltipHeight / 2 }, // left
+    ].map((c) => ({
+      x: clamp(c.x, margin, window.innerWidth - tooltipWidth - margin),
+      y: clamp(c.y, margin, window.innerHeight - tooltipHeight - margin),
+    }));
+
+    // Avoid blocking likely interaction zones on step 2 (chart + reasoning board).
+    const avoidRects: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+    if (step === 2) {
+      document.querySelectorAll('[data-tutorial="chart-area"], [data-tutorial="reasoning-board"]').forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        avoidRects.push({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom });
+      });
+    }
+
+    const overlapArea = (
+      a: { left: number; top: number; right: number; bottom: number },
+      b: { left: number; top: number; right: number; bottom: number }
+    ) => {
+      const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+      const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      return overlapX * overlapY;
+    };
+
+    let best = candidates[0];
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (const candidate of candidates) {
+      const rect = {
+        left: candidate.x,
+        top: candidate.y,
+        right: candidate.x + tooltipWidth,
+        bottom: candidate.y + tooltipHeight,
+      };
+
+      const spotlightRect = {
+        left: spotlight.left,
+        top: spotlight.top,
+        right: spotlight.left + spotlight.width,
+        bottom: spotlight.top + spotlight.height,
+      };
+
+      const spotlightOverlap = overlapArea(rect, spotlightRect);
+      const avoidOverlap = avoidRects.reduce((sum, avoid) => sum + overlapArea(rect, avoid), 0);
+      const dx = rect.left + tooltipWidth / 2 - centerX;
+      const dy = rect.top + tooltipHeight / 2 - centerY;
+      const distancePenalty = Math.sqrt(dx * dx + dy * dy);
+
+      const score = spotlightOverlap * 100 + avoidOverlap * 10 + distancePenalty;
+      if (score < bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+
+    return {
+      top: best.y,
+      left: best.x,
+    };
+  }, [spotlight, step, isMinimized]);
 
   return (
     <div className="fixed inset-0 z-[9999] pointer-events-none">
@@ -131,7 +204,10 @@ export function TutorialOverlay() {
 
       {/* Tooltip card */}
       <div
-        className="absolute w-[400px] max-w-[calc(100vw-32px)] pointer-events-auto"
+        className={cn(
+          'absolute max-w-[calc(100vw-32px)] pointer-events-auto transition-all duration-200',
+          isMinimized ? 'w-[300px]' : 'w-[400px]'
+        )}
         style={tooltipStyle}
       >
         <div className="bg-card border border-border rounded-xl shadow-2xl p-5 space-y-3">
@@ -154,13 +230,27 @@ export function TutorialOverlay() {
               <span className="text-xs text-muted-foreground ml-1">Step {step} of 3</span>
             </div>
             <button
-              onClick={skipTutorial}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              onClick={() => setIsMinimized((prev) => !prev)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              title={isMinimized ? 'Expand tutorial' : 'Minimize tutorial'}
             >
-              <X className="w-3 h-3" />
-              Skip Tutorial
+              {isMinimized ? 'Expand' : 'Minimize'}
             </button>
           </div>
+
+          {isMinimized ? (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Tutorial minimized while you interact.</p>
+              <button
+                onClick={skipTutorial}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Skip
+              </button>
+            </div>
+          ) : (
+            <>
 
           {/* Title + description */}
           <div>
@@ -211,6 +301,8 @@ export function TutorialOverlay() {
               Got It — Finish Tutorial
               <CheckCircle2 className="w-4 h-4" />
             </button>
+          )}
+            </>
           )}
         </div>
       </div>
