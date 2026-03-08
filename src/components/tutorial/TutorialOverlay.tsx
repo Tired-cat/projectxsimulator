@@ -81,7 +81,7 @@ export function TutorialOverlay() {
     setIsMinimized(false);
   }, [active, step]);
 
-  if (!active || !config) return null;
+  const shouldRender = active && !!config;
 
   // Build clip-path to cut out the spotlight area
   const clipPath = spotlight
