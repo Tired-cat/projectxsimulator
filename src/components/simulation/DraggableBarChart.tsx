@@ -1,8 +1,8 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { EvidenceHandle } from '@/components/reasoning/EvidenceHandle';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CHANNELS, GLOBAL_BUDGET } from '@/lib/marketingConstants';
+import { CHANNELS, GLOBAL_BUDGET, calculateMixedRevenue } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { Eye, DollarSign, TrendingUp, LayoutGrid, FlaskConical } from 'lucide-react';
@@ -51,7 +51,7 @@ export function DraggableBarChart({
   channelSpend,
   onSpendChange,
   channelMetrics,
-  totals,
+  totals: _totals,
   remainingBudget,
   mode = 'live',
   fillContainer = false,
@@ -79,13 +79,41 @@ export function DraggableBarChart({
   // Use draft spend during drag, otherwise use real spend
   const displaySpend = draftSpend ?? channelSpend;
 
+  // Recompute metrics from draft spend during drag so KPI and bars stay truly real-time
+  const displayMetrics = useMemo(() => {
+    if (!draftSpend) return channelMetrics;
+
+    return Object.keys(CHANNELS).reduce((acc, channelId) => {
+      acc[channelId] = calculateMixedRevenue(
+        channelId,
+        draftSpend[channelId as keyof ChannelSpend]
+      );
+      return acc;
+    }, {} as Record<string, ReturnType<typeof calculateMixedRevenue>>);
+  }, [draftSpend, channelMetrics]);
+
+  const displayTotals = useMemo(() => {
+    const values = Object.values(displayMetrics);
+    return {
+      clicks: values.reduce((sum, m) => sum + m.clicks, 0),
+      totalRevenue: values.reduce((sum, m) => sum + m.totalRevenue, 0),
+      profit: values.reduce((sum, m) => sum + m.profit, 0),
+    };
+  }, [displayMetrics]);
+
+  const displayRemainingBudget = useMemo(() => {
+    if (!draftSpend) return remainingBudget;
+    const spent = Object.values(draftSpend).reduce((sum, val) => sum + val, 0);
+    return GLOBAL_BUDGET - spent;
+  }, [draftSpend, remainingBudget]);
+
   // Calculate dynamic max scale based on actual data values
   const calculateDynamicMaxScale = useCallback(() => {
     // Get all current values based on view mode
     const allValues: number[] = [];
     
     Object.keys(CHANNELS).forEach((channelId) => {
-      const metrics = channelMetrics[channelId];
+      const metrics = displayMetrics[channelId];
       if (metrics) {
         switch (viewMode) {
           case 'clicks':
@@ -140,7 +168,7 @@ export function DraggableBarChart({
     else cleanMultiplier = 10;
     
     return Math.ceil(cleanMultiplier * magnitude);
-  }, [viewMode, channelMetrics, baselineMetrics]);
+  }, [viewMode, displayMetrics, baselineMetrics]);
 
   // Use stable scale during drag, recalculate on drag end or view mode change
   const maxScale = stableMaxScale ?? calculateDynamicMaxScale();
@@ -185,7 +213,7 @@ export function DraggableBarChart({
 
   // Get bar value based on view mode
   const getBarValue = useCallback((channelId: string) => {
-    const metrics = channelMetrics[channelId];
+    const metrics = displayMetrics[channelId];
     if (!metrics) return { primary: 0, secondary: null };
     
     switch (viewMode) {
@@ -200,7 +228,7 @@ export function DraggableBarChart({
       default:
         return { primary: 0, secondary: null };
     }
-  }, [viewMode, channelMetrics]);
+  }, [viewMode, displayMetrics]);
 
   // Get baseline value based on view mode
   const getBaselineValue = useCallback((channelId: string): number | null => {
@@ -468,7 +496,7 @@ export function DraggableBarChart({
     
     // Calculate the value at this y position (inverted: top = max, bottom = 0)
     const percentage = 1 - (relativeY / chartHeight);
-    const valueAtCursor = Math.round(percentage * GLOBAL_BUDGET);
+    const valueAtCursor = Math.round(percentage * maxScale);
     
     // Format based on view mode
     const isDollar = viewMode === 'revenue' || viewMode === 'profit';
@@ -483,7 +511,7 @@ export function DraggableBarChart({
       formattedValue,
       isInBounds: relativeY >= 0 && relativeY <= chartHeight,
     };
-  }, [cursorPos, viewMode]);
+  }, [cursorPos, viewMode, maxScale]);
 
   return (
     // Fixed-height sandbox container - prevents ALL layout propagation during drag
@@ -559,7 +587,7 @@ export function DraggableBarChart({
                     <div>
                       <div className="text-sm font-medium text-muted-foreground">Available Budget</div>
                       <div className="text-3xl font-bold text-green-500">
-                        ${remainingBudget.toLocaleString()}
+                        ${displayRemainingBudget.toLocaleString()}
                       </div>
                     </div>
                     <div className="text-right">
@@ -567,7 +595,7 @@ export function DraggableBarChart({
                       <div className="w-32 h-3 bg-secondary rounded-full overflow-hidden mt-1">
                         <div
                           className="h-full bg-gradient-to-r from-primary to-green-500 transition-all duration-150"
-                          style={{ width: `${((GLOBAL_BUDGET - remainingBudget) / GLOBAL_BUDGET) * 100}%` }}
+                          style={{ width: `${((GLOBAL_BUDGET - displayRemainingBudget) / GLOBAL_BUDGET) * 100}%` }}
                         />
                       </div>
                     </div>
@@ -581,7 +609,7 @@ export function DraggableBarChart({
           <div className={`grid grid-cols-3 ${fillContainer ? 'gap-1.5 mt-2' : 'gap-3 mt-4'}`}>
             <EvidenceHandle
               label="Total Views"
-              value={totals.clicks.toLocaleString()}
+              value={displayTotals.clicks.toLocaleString()}
               context="Views • Channel Performance"
               sourceId="kpi-total-views"
             >
@@ -590,7 +618,7 @@ export function DraggableBarChart({
                   className={`${fillContainer ? 'text-base' : 'text-2xl'} font-bold text-primary transition-transform duration-150`}
                   style={{ transform: isDragging ? 'none' : undefined }}
                 >
-                  {totals.clicks.toLocaleString()}
+                  {displayTotals.clicks.toLocaleString()}
                 </div>
                 <div className={`${fillContainer ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Total Views</div>
               </div>
@@ -598,7 +626,7 @@ export function DraggableBarChart({
 
             <EvidenceHandle
               label="Revenue"
-              value={`$${totals.totalRevenue.toLocaleString()}`}
+              value={`$${displayTotals.totalRevenue.toLocaleString()}`}
               context="Revenue • Channel Performance"
               sourceId="kpi-revenue"
             >
@@ -607,7 +635,7 @@ export function DraggableBarChart({
                   className={`${fillContainer ? 'text-base' : 'text-2xl'} font-bold text-green-600 transition-transform duration-150`}
                   style={{ transform: isDragging ? 'none' : undefined }}
                 >
-                  ${totals.totalRevenue.toLocaleString()}
+                  ${displayTotals.totalRevenue.toLocaleString()}
                 </div>
                 <div className={`${fillContainer ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue</div>
               </div>
@@ -615,16 +643,16 @@ export function DraggableBarChart({
 
             <EvidenceHandle
               label="Net Profit"
-              value={`$${totals.profit.toLocaleString()}`}
+              value={`$${displayTotals.profit.toLocaleString()}`}
               context="Net Profit • Channel Performance"
               sourceId="kpi-net-profit"
             >
               <div className={`${fillContainer ? 'p-1.5' : 'p-3'} bg-secondary/50 rounded-lg text-center`}>
                 <div
-                  className={`${fillContainer ? 'text-base' : 'text-2xl'} font-bold transition-transform duration-150 ${totals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
+                  className={`${fillContainer ? 'text-base' : 'text-2xl'} font-bold transition-transform duration-150 ${displayTotals.profit >= 0 ? 'text-green-600' : 'text-destructive'}`}
                   style={{ transform: isDragging ? 'none' : undefined }}
                 >
-                  ${totals.profit.toLocaleString()}
+                  ${displayTotals.profit.toLocaleString()}
                 </div>
                 <div className={`${fillContainer ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Net Profit</div>
               </div>
@@ -635,6 +663,7 @@ export function DraggableBarChart({
         <CardContent className={`${fillContainer ? 'pt-2 px-2 flex-1 min-h-0 overflow-hidden' : 'pt-4'}`}>
           {/* Draggable Bar Chart - Fixed dimensions, no layout changes */}
           <div
+            data-tutorial="chart-area"
             ref={chartRef}
             className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} select-none`}
             style={{ 
@@ -779,8 +808,8 @@ export function DraggableBarChart({
                   <div
                     className="absolute pointer-events-none z-30"
                     style={{
-                      left: '80px', // Start after y-axis (left-20 = 80px)
-                      right: '16px', // End before right padding
+                      left: fillContainer ? '48px' : '80px',
+                      right: fillContainer ? '8px' : '16px',
                       top: crosshairData.yPosition,
                       height: '1px',
                       background: `linear-gradient(90deg, ${guideColor} 0%, ${guideColor}80 50%, ${guideColor} 100%)`,
@@ -914,6 +943,7 @@ export function DraggableBarChart({
           {/* Reason Button */}
           <div className="mt-6 flex justify-center">
             <Button
+              data-tutorial="reason-button"
               onClick={toggleReasonMode}
               className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 border-2 ${
                 reasonMode

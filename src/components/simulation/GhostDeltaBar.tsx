@@ -53,9 +53,7 @@ export function GhostDeltaBar({
   const isIncrease = delta > 0;
 
   // Calculate heights
-  const currentHeightPercent = isNegative 
-    ? 0 
-    : Math.max(0, (Math.abs(currentValue) / maxScale) * 100);
+  const currentHeightPercent = Math.max(0, (Math.abs(currentValue) / maxScale) * 100);
   
   const baselineHeightPercent = hasBaseline 
     ? Math.max(0, (Math.abs(baselineValue) / maxScale) * 100)

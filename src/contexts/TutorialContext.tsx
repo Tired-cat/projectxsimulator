@@ -79,6 +79,18 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }
   }, [active, step, split.enabled]);
 
+  // Step 1 alternative completion: compare mode toggle in Channel Performance
+  useEffect(() => {
+    if (!active || step !== 1) return;
+
+    const onCompareActivated = () => setActionCompleted(true);
+    window.addEventListener('tutorial:compare-activated', onCompareActivated as EventListener);
+
+    return () => {
+      window.removeEventListener('tutorial:compare-activated', onCompareActivated as EventListener);
+    };
+  }, [active, step]);
+
   // Step 2: watch for any chip added to the board
   useEffect(() => {
     if (!active || step !== 2) return;
