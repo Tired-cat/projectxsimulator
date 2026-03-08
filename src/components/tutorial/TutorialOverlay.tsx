@@ -181,6 +181,8 @@ export function TutorialOverlay() {
     };
   }, [spotlight, step, isMinimized]);
 
+  if (!shouldRender) return null;
+
   return (
     <div className="fixed inset-0 z-[9999] pointer-events-none">
       {/* Dimmed overlay with spotlight cutout */}
