@@ -81,7 +81,7 @@ export function TutorialOverlay() {
     setIsMinimized(false);
   }, [active, step]);
 
-  if (!active || !config) return null;
+  const shouldRender = active && !!config;
 
   // Build clip-path to cut out the spotlight area
   const clipPath = spotlight
@@ -180,6 +180,8 @@ export function TutorialOverlay() {
       left: best.x,
     };
   }, [spotlight, step, isMinimized]);
+
+  if (!shouldRender) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] pointer-events-none">
