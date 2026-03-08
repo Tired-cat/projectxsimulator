@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, GLOBAL_BUDGET, calculateMixedRevenue } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
-import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { Eye, DollarSign, TrendingUp, LayoutGrid, FlaskConical } from 'lucide-react';
 import { GhostDeltaBar } from './GhostDeltaBar';
 import type { ReasoningToken } from '@/types/reasoningToken';

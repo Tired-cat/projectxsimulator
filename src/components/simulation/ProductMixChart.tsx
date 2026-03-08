@@ -278,7 +278,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                     fill={segment.color}
                     stroke="hsl(var(--background))"
                     strokeWidth="2"
-                    draggable={reasonMode && segment.revenue > 0}
+                    data-draggable={reasonMode && segment.revenue > 0 ? "true" : undefined}
                     onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, segment.percentage) : undefined}
                     onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
                     className={`transition-all duration-300 ${
