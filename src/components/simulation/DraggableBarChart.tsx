@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+/* v2 */ import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { EvidenceHandle } from '@/components/reasoning/EvidenceHandle';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
