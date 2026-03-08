@@ -233,14 +233,14 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                 <div
                   key={segment.id}
                   className={`flex items-center justify-between p-2 bg-secondary/30 rounded-lg transition-all ${
-                    reasonMode && segment.revenue > 0
+                    reasonMode
                       ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'
                       : ''
                   }`}
-                  draggable={reasonMode && segment.revenue > 0}
+                  draggable={reasonMode}
                   onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, percentage) : undefined}
                   onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
-                  title={reasonMode && segment.revenue > 0 ? `Drag ${segment.label} to Reasoning Board` : undefined}
+                  title={reasonMode ? `Drag ${segment.label} to Reasoning Board` : undefined}
                 >
                   <div className="flex items-center gap-2">
                     <div

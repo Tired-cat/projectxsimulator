@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { isDuplicateChip } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId, ReasoningBoardState } from '@/types/evidenceChip';
 
 interface ReasoningBoardContextValue {
@@ -31,10 +32,13 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     setReasonMode(prev => !prev);
   }, []);
   const addChip = useCallback((blockId: ReasoningBlockId, chip: EvidenceChip) => {
-    setBoard(prev => ({
-      ...prev,
-      [blockId]: [...prev[blockId], chip],
-    }));
+    setBoard(prev => {
+      if (isDuplicateChip(prev[blockId], chip)) return prev;
+      return {
+        ...prev,
+        [blockId]: [...prev[blockId], chip],
+      };
+    });
   }, []);
 
   const removeChip = useCallback((blockId: ReasoningBlockId, chipId: string) => {
@@ -48,9 +52,16 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     setBoard(prev => {
       const chip = prev[fromBlock].find(c => c.id === chipId);
       if (!chip || fromBlock === toBlock) return prev;
+      const fromList = prev[fromBlock].filter(c => c.id !== chipId);
+      if (isDuplicateChip(prev[toBlock], chip)) {
+        return {
+          ...prev,
+          [fromBlock]: fromList,
+        };
+      }
       return {
         ...prev,
-        [fromBlock]: prev[fromBlock].filter(c => c.id !== chipId),
+        [fromBlock]: fromList,
         [toBlock]: [...prev[toBlock], chip],
       };
     });

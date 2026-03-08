@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { QUADRANT_CONNECTORS } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
-import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 function seededRandom(seed: string): number {
   let hash = 0;
@@ -240,22 +240,21 @@ function generateStorySentence(chips: EvidenceChip[], blockId: ReasoningBlockId)
 
 // ── Layout ──
 
-const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
+const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
 
-const BLOCK_COLORS: Record<ReasoningBlockId, { text: string; bg: string; border: string; label: string }> = {
-  descriptive: { text: 'text-muted-foreground', bg: 'bg-muted/40', border: 'border-border', label: 'Descriptive' },
-  diagnostic: { text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/8', border: 'border-amber-500/30', label: 'Diagnostic' },
-  prescriptive: { text: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/8', border: 'border-emerald-500/30', label: 'Prescriptive' },
-  predictive: { text: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-500/8', border: 'border-violet-500/30', label: 'Predictive' },
+const BLOCK_STYLE: Record<ReasoningBlockId, { label: string; accent: string; tint: string }> = {
+  descriptive: { label: 'Descriptive', accent: '#D4A017', tint: 'rgba(212, 160, 23, 0.09)' },
+  diagnostic: { label: 'Diagnostic', accent: '#C4622D', tint: 'rgba(196, 98, 45, 0.09)' },
+  predictive: { label: 'Predictive', accent: '#6B4F8A', tint: 'rgba(107, 79, 138, 0.09)' },
+  prescriptive: { label: 'Prescriptive', accent: '#4A7C59', tint: 'rgba(74, 124, 89, 0.09)' },
 };
 
 export function ReasoningNarrative() {
   const { board } = useReasoningBoard();
-  const totalChips = BLOCK_ORDER.reduce((s, id) => s + board[id].length, 0);
 
   // At a Glance: data-referenced sentences
   const glanceSentences = useMemo(() => {
-    const result: Record<ReasoningBlockId, string> = { descriptive: '', diagnostic: '', prescriptive: '', predictive: '' };
+    const result: Record<ReasoningBlockId, string> = { descriptive: '', diagnostic: '', predictive: '', prescriptive: '' };
     for (const id of BLOCK_ORDER) {
       if (board[id].length > 0) result[id] = generateGlanceSentence(board[id], id);
     }
@@ -277,41 +276,57 @@ export function ReasoningNarrative() {
     return sentences;
   }, [board]);
 
-  if (totalChips === 0) return null;
-
   return (
-    <div className="flex-shrink-0 border-t border-border">
+    <div className="flex-shrink-0 border-t border-border/60">
       {/* At a Glance */}
-      <div className="p-3 pb-2">
-        <h3 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
-          At a Glance
+      <div className="px-3 pt-3">
+        <div className="h-px bg-border/80" />
+      </div>
+      <div className="px-3 py-3">
+        <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground mb-3">
+          AT A GLANCE
         </h3>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {BLOCK_ORDER.map((blockId) => {
-            const colors = BLOCK_COLORS[blockId];
+            const style = BLOCK_STYLE[blockId];
             const chips = board[blockId];
             const isEmpty = chips.length === 0;
 
             return (
               <div
                 key={blockId}
-                className={`rounded-lg border p-2 text-[10px] transition-all ${
-                  isEmpty ? 'border-border/40 bg-muted/20' : `${colors.border} ${colors.bg}`
-                }`}
+                className={cn(
+                  'rounded-xl border border-border/40 border-l-4 p-3 transition-all',
+                  isEmpty ? 'bg-muted/25 text-muted-foreground/70' : ''
+                )}
+                style={{
+                  borderLeftColor: isEmpty ? '#9CA3AF' : style.accent,
+                  backgroundColor: isEmpty ? '#F4F4F5' : style.tint,
+                }}
               >
-                <div className={`font-bold mb-1 ${isEmpty ? 'text-muted-foreground/50' : colors.text}`}>
-                  {colors.label}
+                <div
+                  className={cn(
+                    'text-sm font-bold mb-2',
+                    isEmpty ? 'text-muted-foreground/60' : 'text-foreground'
+                  )}
+                  style={!isEmpty ? { color: style.accent } : undefined}
+                >
+                  {style.label}
                 </div>
                 {isEmpty ? (
-                  <p className="text-muted-foreground/40 italic">Nothing added yet</p>
+                  <p className="text-xs italic text-muted-foreground/60">Nothing added yet</p>
                 ) : (
                   <>
-                    <div className="space-y-0.5 mb-1.5">
-                      {chips.map((chip) => (
-                        <div key={chip.id} className="flex items-center gap-1">
-                          <span className="w-1 h-1 rounded-full bg-current opacity-40 flex-shrink-0" />
-                          <span className="truncate text-foreground/80">
-                            {chip.label}: <strong>{chip.value}</strong>
+                    <div className="space-y-1.5">
+                      {chips.map((chip, index) => (
+                        <div key={`${chip.id}-${index}`} className="flex items-start gap-2">
+                          <span
+                            className="mt-1.5 h-2 w-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: style.accent }}
+                          />
+                          <span className="text-[13px] text-foreground/90 leading-snug">
+                            <span className="font-medium">{chip.label}:</span>{' '}
+                            <strong className="font-bold">{chip.value}</strong>
                             {chip.contextChip && (
                               <span className="text-muted-foreground ml-1">+ {chip.contextChip.label}</span>
                             )}
@@ -320,7 +335,10 @@ export function ReasoningNarrative() {
                       ))}
                     </div>
                     {glanceSentences[blockId] && (
-                      <div className={`leading-relaxed ${colors.text} opacity-80`}>
+                      <div
+                        className="mt-3 pt-2 border-t border-black/10 text-[12px] italic leading-relaxed"
+                        style={{ color: style.accent }}
+                      >
                         {glanceSentences[blockId]}
                       </div>
                     )}
@@ -332,21 +350,37 @@ export function ReasoningNarrative() {
         </div>
       </div>
 
-      <div className="px-3"><Separator /></div>
-
       {/* Full Reasoning Story */}
-      <div className="p-3 pt-2">
-        <h3 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
-          My Full Reasoning Story
-        </h3>
-        <div className="max-h-[120px] overflow-y-auto pr-1">
-          <p className="text-[11px] leading-relaxed">
-            {storySentences.map((entry, i) => (
-              <span key={i} className={BLOCK_COLORS[entry.blockId].text}>
-                {entry.text}{' '}
-              </span>
-            ))}
-          </p>
+      <div className="px-3 pb-4">
+        <div className="relative rounded-2xl border border-[#E7DCC7] bg-[#FBF6EB] shadow-sm px-5 py-4">
+          <span
+            aria-hidden="true"
+            className="absolute left-3 top-1 text-[62px] leading-none font-serif text-[#C8B79E]/55 pointer-events-none select-none"
+          >
+            "
+          </span>
+          <div className="relative flex items-center gap-2 mb-3">
+            <span className="h-2 w-2 rounded-full bg-[#C4622D]" />
+            <h3 className="text-lg font-bold tracking-wide text-[#3A3025]">MY FULL REASONING STORY</h3>
+          </div>
+          <div className="relative pr-1">
+            {storySentences.length === 0 ? (
+              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#4B4136]/70 italic">
+                Your reasoning story will appear here once you begin adding evidence.
+              </p>
+            ) : (
+              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#2E2A24]">
+                {storySentences.map((entry, index) => (
+                  <span
+                    key={`${entry.blockId}-${index}`}
+                    style={{ color: BLOCK_STYLE[entry.blockId].accent }}
+                  >
+                    {entry.text}{' '}
+                  </span>
+                ))}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
