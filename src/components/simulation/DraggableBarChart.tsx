@@ -719,7 +719,7 @@ export function DraggableBarChart({
                   <div
                     key={channelId}
                     className={`flex-1 flex flex-col items-center h-full justify-end relative ${
-                      isSnapshot || reasonMode ? 'cursor-default' : 'cursor-ns-resize'
+                      reasonMode ? 'cursor-grab' : isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
                     }`}
                     onPointerDown={reasonMode ? undefined : (e) => handleColumnPointerDown(channelId, e)}
                     onPointerMove={reasonMode ? undefined : handleColumnPointerMove}
@@ -727,11 +727,13 @@ export function DraggableBarChart({
                     onPointerCancel={reasonMode ? undefined : handleColumnPointerUp}
                     style={{ touchAction: reasonMode ? 'auto' : 'none' }}
                   >
-                    {/* Invisible full-height hit area for dragging from empty space */}
-                    <div 
-                      className="absolute inset-0 z-0" 
-                      style={{ pointerEvents: (isSnapshot || reasonMode) ? 'none' : 'auto' }}
-                    />
+                    {/* Invisible full-height hit area for spend dragging from empty space */}
+                    {!reasonMode && (
+                      <div 
+                        className="absolute inset-0 z-0" 
+                        style={{ pointerEvents: isSnapshot ? 'none' : 'auto' }}
+                      />
+                    )}
                     
                     {/* Metric values label */}
                     <div className="z-10 mb-0.5 pointer-events-none">
