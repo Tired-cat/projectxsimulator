@@ -14,16 +14,166 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      reasoning_board_state: {
+        Row: {
+          adjustments_made: number
+          cards: Json
+          id: string
+          last_saved_at: string
+          session_id: string
+          user_id: string
+          written_diagnosis: string | null
+        }
+        Insert: {
+          adjustments_made?: number
+          cards?: Json
+          id?: string
+          last_saved_at?: string
+          session_id: string
+          user_id: string
+          written_diagnosis?: string | null
+        }
+        Update: {
+          adjustments_made?: number
+          cards?: Json
+          id?: string
+          last_saved_at?: string
+          session_id?: string
+          user_id?: string
+          written_diagnosis?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reasoning_board_state_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          completed_at: string | null
+          id: string
+          is_completed: boolean
+          scenario_id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          is_completed?: boolean
+          scenario_id?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          is_completed?: boolean
+          scenario_id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          cards_on_board_count: number
+          final_decision: string
+          id: string
+          session_id: string
+          submitted_at: string
+          time_elapsed_seconds: number
+          user_id: string
+        }
+        Insert: {
+          cards_on_board_count?: number
+          final_decision: string
+          id?: string
+          session_id: string
+          submitted_at?: string
+          time_elapsed_seconds?: number
+          user_id: string
+        }
+        Update: {
+          cards_on_board_count?: number
+          final_decision?: string
+          id?: string
+          session_id?: string
+          submitted_at?: string
+          time_elapsed_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "student" | "professor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +300,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["student", "professor"],
+    },
   },
 } as const
