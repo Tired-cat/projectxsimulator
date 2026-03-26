@@ -664,12 +664,12 @@ export function DraggableBarChart({
           <div
             data-tutorial="chart-area"
             ref={chartRef}
-            className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} select-none`}
+            className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} ${reasonMode ? '' : 'select-none'}`}
             style={{ 
               height: fillContainer ? '100%' : '350px', 
               minHeight: fillContainer ? undefined : '350px', 
               maxHeight: fillContainer ? undefined : '350px',
-              touchAction: 'none',
+              touchAction: reasonMode ? 'auto' : 'none',
               // Contain this specific area during drag
               contain: isDragging ? 'strict' : 'layout',
             }}
