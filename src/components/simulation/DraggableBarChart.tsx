@@ -664,12 +664,12 @@ export function DraggableBarChart({
           <div
             data-tutorial="chart-area"
             ref={chartRef}
-            className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} ${reasonMode ? '' : 'select-none'}`}
+            className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} select-none`}
             style={{ 
               height: fillContainer ? '100%' : '350px', 
               minHeight: fillContainer ? undefined : '350px', 
               maxHeight: fillContainer ? undefined : '350px',
-              touchAction: reasonMode ? 'auto' : 'none',
+              touchAction: 'none',
               // Contain this specific area during drag
               contain: isDragging ? 'strict' : 'layout',
             }}
@@ -719,7 +719,7 @@ export function DraggableBarChart({
                   <div
                     key={channelId}
                     className={`flex-1 flex flex-col items-center h-full justify-end relative ${
-                      reasonMode ? 'cursor-grab' : isSnapshot ? 'cursor-default' : 'cursor-ns-resize'
+                      isSnapshot || reasonMode ? 'cursor-default' : 'cursor-ns-resize'
                     }`}
                     onPointerDown={reasonMode ? undefined : (e) => handleColumnPointerDown(channelId, e)}
                     onPointerMove={reasonMode ? undefined : handleColumnPointerMove}
@@ -727,13 +727,11 @@ export function DraggableBarChart({
                     onPointerCancel={reasonMode ? undefined : handleColumnPointerUp}
                     style={{ touchAction: reasonMode ? 'auto' : 'none' }}
                   >
-                    {/* Invisible full-height hit area for spend dragging from empty space */}
-                    {!reasonMode && (
-                      <div 
-                        className="absolute inset-0 z-0" 
-                        style={{ pointerEvents: isSnapshot ? 'none' : 'auto' }}
-                      />
-                    )}
+                    {/* Invisible full-height hit area for dragging from empty space */}
+                    <div 
+                      className="absolute inset-0 z-0" 
+                      style={{ pointerEvents: (isSnapshot || reasonMode) ? 'none' : 'auto' }}
+                    />
                     
                     {/* Metric values label */}
                     <div className="z-10 mb-0.5 pointer-events-none">

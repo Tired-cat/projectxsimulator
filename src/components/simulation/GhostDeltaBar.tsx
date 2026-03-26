@@ -198,7 +198,7 @@ export function GhostDeltaBar({
   return (
     // Bar container - uses flexbox for proper stacking, pointer events pass through to column for drag
     <div 
-      className={`relative w-full max-w-[80px] h-full flex flex-col items-stretch justify-end ${reasonMode ? 'pointer-events-auto' : 'pointer-events-none'}`}
+      className="relative w-full max-w-[80px] h-full flex flex-col items-stretch justify-end pointer-events-none"
       style={{ overflow: 'visible' }}
     >
       {/* Ghost Baseline Bar - faint shadow showing the original state */}
