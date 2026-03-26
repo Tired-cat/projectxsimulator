@@ -13,6 +13,7 @@ interface SimulationShellProps {
   homeContent: ReactNode;
   decisionsContent: ReactNode;
   renderPanelContent: (panelId: PanelId) => ReactNode;
+  statusBarExtra?: ReactNode;
 }
 
 /**
