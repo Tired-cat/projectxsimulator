@@ -25,6 +25,7 @@ export function SimulationShell({
   homeContent,
   decisionsContent,
   renderPanelContent,
+  statusBarExtra,
 }: SimulationShellProps) {
   const { tabs, activeTabId, split } = useTabs();
   const { reasonMode, toggleReasonMode } = useReasoningBoard();
