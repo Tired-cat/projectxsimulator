@@ -31,13 +31,13 @@ export function useAutoSave({ sessionId, userId, board, writtenDiagnosis, isComp
 
     // Convert board to a flat array of cards for storage
     const allCards = Object.entries(board).flatMap(([blockId, chips]) =>
-      chips.map(chip => ({ ...chip, blockId }))
+      chips.map(chip => ({ ...JSON.parse(JSON.stringify(chip)), blockId }))
     );
 
     const { error } = await supabase
       .from('reasoning_board_state')
       .update({
-        cards: allCards,
+        cards: allCards as any,
         written_diagnosis: writtenDiagnosis || null,
         adjustments_made: adjustmentsMade + 1,
         last_saved_at: new Date().toISOString(),
