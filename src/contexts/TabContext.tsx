@@ -69,9 +69,8 @@ const DEFAULT_TABS: Tab[] = [
   { id: 'reasoning', title: 'Reasoning Board', kind: 'reasoning', pinned: true, closable: false },
 ];
 
-let tabIdCounter = 0;
 function generateTabId(): string {
-  return `panel-${++tabIdCounter}-${Date.now()}`;
+  return `panel-${crypto.randomUUID()}`;
 }
 
 export function TabProvider({ children }: { children: ReactNode }) {

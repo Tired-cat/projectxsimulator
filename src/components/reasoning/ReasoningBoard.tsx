@@ -294,7 +294,7 @@ export function ReasoningBoard() {
                       <>
                         {chips.map((chip, index) => (
                           <ChipCard
-                            key={`${chip.id}-${index}`}
+                            key={chip.id}
                             chip={chip}
                             blockId={block.id}
                             blockColor={block.color}
