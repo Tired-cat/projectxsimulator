@@ -7,7 +7,7 @@ import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import { Eye, DollarSign, TrendingUp, LayoutGrid, FlaskConical } from 'lucide-react';
 import { GhostDeltaBar } from './GhostDeltaBar';
 import type { ReasoningToken } from '@/types/reasoningToken';
-import { createEvidenceChip } from '@/types/evidenceChip';
+
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { Button } from '@/components/ui/button';
 
@@ -59,7 +59,7 @@ export function DraggableBarChart({
   onTokenDrag,
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
-  const { setDraggingChip, reasonMode, toggleReasonMode } = useReasoningBoard();
+  const { reasonMode, toggleReasonMode } = useReasoningBoard();
   
   // Snapshot mode: draggable for reasoning but NOT adjustable
   // Live mode: adjustable but NOT draggable (for now)
