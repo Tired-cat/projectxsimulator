@@ -12,6 +12,9 @@ interface ReasoningBoardContextValue {
   setDraggingChip: (chip: EvidenceChip | null) => void;
   reasonMode: boolean;
   toggleReasonMode: () => void;
+  writtenDiagnosis: string;
+  setWrittenDiagnosis: (val: string) => void;
+  loadBoard: (state: ReasoningBoardState, diagnosis: string) => void;
 }
 
 const ReasoningBoardContext = createContext<ReasoningBoardContextValue | null>(null);
