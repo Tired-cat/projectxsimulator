@@ -1,12 +1,12 @@
 /**
  * EvidenceHandle — wraps any displayed value and makes it draggable as an evidence chip.
- * Uses the HTML5 Drag & Drop API. On drag start it serializes an EvidenceChip to
- * dataTransfer so any ReasoningBlock drop zone can consume it.
+ * Uses @dnd-kit/core for reliable cross-browser drag interactions.
  */
-import { useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
-import { createEvidenceChip } from '@/types/evidenceChip';
-import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
+import { getExternalChipDragId } from '@/lib/evidenceDnd';
 import { cn } from '@/lib/utils';
 
 interface EvidenceHandleProps {
@@ -30,30 +30,38 @@ export function EvidenceHandle({
   children,
   className,
 }: EvidenceHandleProps) {
-  const { setDraggingChip } = useReasoningBoard();
-  const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleDragStart = useCallback((e: React.DragEvent) => {
-    const chip = createEvidenceChip(label, value, context, sourceId);
-    const serialized = JSON.stringify(chip);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', serialized);
-    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
-    setDraggingChip(chip);
-    setIsDragging(true);
-  }, [label, value, context, sourceId, setDraggingChip]);
+  const payload = useMemo(() => ({
+    label,
+    value,
+    context,
+    sourceId,
+  }), [label, value, context, sourceId]);
 
-  const handleDragEnd = useCallback(() => {
-    setDraggingChip(null);
-    setIsDragging(false);
-  }, [setDraggingChip]);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: getExternalChipDragId(sourceId, label),
+    data: {
+      kind: 'external-chip',
+      payload,
+    },
+  });
+
+  const draggableStyle = transform
+    ? { transform: CSS.Translate.toString(transform) }
+    : undefined;
 
   return (
     <div
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
@@ -62,6 +70,7 @@ export function EvidenceHandle({
         isHovered && !isDragging && 'ring-1 ring-primary/30 bg-primary/5',
         className
       )}
+      style={draggableStyle}
       title={`Drag "${label}: ${value}" to Reasoning Board`}
     >
       {/* Subtle grab indicator — only visible on hover */}
