@@ -30,9 +30,15 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   const [board, setBoard] = useState<ReasoningBoardState>(EMPTY_BOARD);
   const [draggingChip, setDraggingChip] = useState<EvidenceChip | null>(null);
   const [reasonMode, setReasonMode] = useState(false);
+  const [writtenDiagnosis, setWrittenDiagnosis] = useState('');
 
   const toggleReasonMode = useCallback(() => {
     setReasonMode(prev => !prev);
+  }, []);
+
+  const loadBoard = useCallback((state: ReasoningBoardState, diagnosis: string) => {
+    setBoard(state);
+    setWrittenDiagnosis(diagnosis);
   }, []);
   const addChip = useCallback((blockId: ReasoningBlockId, chip: EvidenceChip) => {
     setBoard(prev => {
