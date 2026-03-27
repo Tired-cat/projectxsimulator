@@ -216,40 +216,16 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           <div className="space-y-3">
             {segments.map((segment) => {
               const percentage = totalRevenue > 0 ? ((segment.revenue / totalRevenue) * 100) : 0;
+              const channelLabel = selectedChannel === 'all' ? 'All Channels' : CHANNELS[selectedChannel]?.name || selectedChannel;
               return (
-                <div
+                <DraggableLegendRow
                   key={segment.id}
-                  className={`flex items-center justify-between p-2 bg-secondary/30 rounded-lg transition-all ${
-                    reasonMode
-                      ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'
-                      : ''
-                  }`}
-                  draggable={reasonMode}
-                  onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, percentage) : undefined}
-                  onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
-                  title={reasonMode ? `Drag ${segment.label} to Reasoning Board` : undefined}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-4 h-4 rounded"
-                      style={{ backgroundColor: segment.color }}
-                    />
-                    <div>
-                      <span className="text-sm font-medium">{segment.label}</span>
-                      <div className="text-xs text-muted-foreground">
-                        {segment.units.toLocaleString()} sold
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold" style={{ color: segment.color }}>
-                      ${segment.revenue.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {percentage.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
+                  segment={segment}
+                  percentage={percentage}
+                  channelLabel={channelLabel}
+                  selectedChannel={selectedChannel}
+                  reasonMode={reasonMode}
+                />
               );
             })}
           </div>
@@ -265,14 +241,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                     fill={segment.color}
                     stroke="hsl(var(--background))"
                     strokeWidth="2"
-                    data-draggable={reasonMode && segment.revenue > 0 ? "true" : undefined}
-                    onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, segment.percentage) : undefined}
-                    onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
-                    className={`transition-all duration-300 ${
-                      reasonMode && segment.revenue > 0
-                        ? 'cursor-grab hover:opacity-70'
-                        : 'hover:opacity-80'
-                    }`}
+                    className={`transition-all duration-300 hover:opacity-80`}
                   />
                 ))
               ) : (
