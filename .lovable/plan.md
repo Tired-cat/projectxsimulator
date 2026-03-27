@@ -1,148 +1,66 @@
 
-# LumbarPro Marketing Simulator - Comprehensive Fix Plan
 
-## Problem Summary
+## Fix: Runtime crashes + full @dnd-kit cleanup
 
-The simulation currently has several consistency issues that break the learning experience:
+### Problem
 
-1. **User starts above goal** - The math model generates ~$109k revenue at start, but the Excel shows only $43k
-2. **Scenario text doesn't match numbers** - Claims "70% on TikTok" but actual spend doesn't reflect this
-3. **Chart units are mixed** - Y-axis shows dollars but "Views" mode shows click counts
-4. **Channel naming inconsistent** - "Newspaper/Email" in some places, "Newspaper" in others
-5. **Missing Revenue filter** - Only Views, Profit, Show All available
-6. **Available Budget shown** - Excel totals $17,500, not $20k, but we show remaining budget
+Two runtime errors are causing a blank screen:
 
----
+1. **`useDndMonitor must be used within a children of <DndContext>`** — `ReasoningBoard` calls `useDndMonitor` but no `<DndContext>` exists anywhere in the component tree. All `useDraggable` / `useDroppable` hooks also silently fail without it.
 
-## Implementation Plan
+2. **`Function components cannot be given refs` (DialogContent warning)** — Minor React warning from Radix Dialog, not a crash blocker but worth fixing.
 
-### Phase 1: Fix Conversion Rates to Match Excel Revenue
+Additionally, `ProductMixChart` and `DraggableBarChart` still use native HTML5 drag (`draggable`, `onDragStart`, `e.dataTransfer`) instead of @dnd-kit, creating an inconsistent system where drops never reach the @dnd-kit `onDragEnd` handler.
 
-The current conversion rates produce wrong revenue. We need to calibrate them to match the Excel's actual revenue figures.
+### Plan
 
-**Excel Baseline (at current spend):**
-| Channel | Spend | Clicks (at CPC) | Revenue | Implied Conv Rate |
-|---------|-------|-----------------|---------|-------------------|
-| TikTok | $9,000 | 18,000 | $1,200 | ~0.67% overall |
-| Instagram | $5,000 | 6,667 | $4,800 | ~0.72% overall |
-| Facebook | $3,000 | 3,000 | $15,000 | ~5% overall |
-| Newspaper | $500 | 200 | $22,000 | Implied high-ticket focus |
+#### 1. Add `<DndContext>` provider wrapper
 
-**Changes to `marketingConstants.ts`:**
-- Recalibrate conversion rates so the Excel starting state produces approximately $43,000 total revenue
-- Adjust chair conversion rates significantly downward for TikTok/Instagram
-- Keep Newspaper as the "hidden gem" with strong chair conversions
+Wrap the simulation content tree in a `<DndContext>` from `@dnd-kit/core`. The best place is in `src/pages/Index.tsx`, wrapping `<SimulationContent />` inside `<ReasoningBoardProvider>`. This single provider will serve all draggable sources and droppable targets across the app.
 
-### Phase 2: Fix Starting State & Scenario Text
+The `onDragEnd` handler will be a thin dispatcher that delegates to the existing `addChip`, `moveChip`, and `contextualiseChip` functions — effectively moving the logic currently in `ReasoningBoard`'s `useDndMonitor` up to the provider level.
 
-**Update `useMarketingSimulation.ts` and `Index.tsx`:**
-- Keep Excel's exact starting allocation: TikTok $9k, Instagram $5k, Facebook $3k, Newspaper $500
-- Update scenario text to match: "Current allocation: 51% on TikTok ($9k), only 3% on Newspaper ($500)"
-- Or: Change starting state to match the "70% TikTok" claim: TikTok $14k, Instagram $3k, Facebook $2k, Newspaper $1k
+**File**: `src/pages/Index.tsx`
+- Import `DndContext` and `DragOverlay` from `@dnd-kit/core`
+- Wrap the content in `<DndContext onDragEnd={handleDragEnd}>` inside the existing provider tree
+- Move the drag-end logic (currently in `ReasoningBoard.tsx`'s `useDndMonitor`) here
 
-**Recommendation:** Match the Excel exactly and update the scenario text accordingly.
+#### 2. Remove `useDndMonitor` from ReasoningBoard
 
-### Phase 3: Fix the Chart Filter System
+Since the `DndContext` with `onDragEnd` is now at the top level, remove the `useDndMonitor` call from `ReasoningBoard.tsx`. Keep all `useDroppable` and `useDraggable` hooks in place — they'll work correctly now that they're inside a `DndContext`.
 
-**Update `DraggableBarChart.tsx`:**
-- Add **Revenue** as a filter option (currently missing)
-- New filter options: `Views | Revenue | Profit | Show All`
-- Fix Y-axis to match selected metric:
-  - Views mode: Y-axis shows count (0, 10k, 20k, 30k, 40k, 50k)
-  - Revenue/Profit mode: Y-axis shows dollars ($0, $10k, $20k, $30k)
-- Bar height represents the selected metric, NOT spend
-- Spend shown only as a label below each bar
+**File**: `src/components/reasoning/ReasoningBoard.tsx`
+- Remove the `useDndMonitor` import and call (lines 2, 56-98)
+- Keep `activeDrag` state but drive it from the parent `DndContext` via context or keep it local with `useDndMonitor` replaced by a simpler approach
 
-### Phase 4: Consistent Channel Naming
+#### 3. Convert ProductMixChart to @dnd-kit
 
-**Update across all files:**
-- Rename "Newspaper/Email" to "Newspaper" everywhere
-- Update `CHANNELS` object in `marketingConstants.ts`
-- Update filter chips in `ProductMixChart.tsx`
+Replace native `draggable` / `onDragStart` / `onDragEnd` with `useDraggable` hooks for each legend row and pie segment.
 
-### Phase 5: Remove "Available Budget" When Fully Allocated
+**File**: `src/components/simulation/ProductMixChart.tsx`
+- Remove `handleSegmentDragStart` / `handleSegmentDragEnd` and native drag attributes
+- Create a small `DraggableLegendRow` sub-component using `useDraggable` with `ExternalEvidencePayload` data
+- Remove direct `setDraggingChip` calls (the DndContext handler manages state)
 
-**Update `DraggableBarChart.tsx`:**
-- If Excel scenario uses $17,500 of $20k, show "Available: $2,500"
-- Or: Increase total spend to use full $20k budget
-- **Recommendation:** Update INITIAL_SPEND to total exactly $20,000 to eliminate confusion
+#### 4. Convert DraggableBarChart main bar drag to @dnd-kit
 
-### Phase 6: Improve Product Mix with Units Sold
+The main bar in `DraggableBarChart` still uses native HTML5 drag for reason mode. Convert it to use `useDraggable`.
 
-**Update `ProductMixChart.tsx`:**
-- Show both revenue AND units sold per product
-- Add profit per product calculation
-- Add dynamic insight sentences based on selected channel:
-  - TikTok: "TikTok drives high volume (X views) but mostly low-ticket items ($Y avg)"
-  - Newspaper: "Newspaper drives fewer views but X high-ticket chair sales"
+**File**: `src/components/simulation/DraggableBarChart.tsx`
+- Remove `handleBarDragStart` / `handleBarDragEnd` native drag handlers (lines 704-715)
+- The `GhostDeltaBar` component already uses `useDraggable` correctly — just remove the native drag fallback path from the parent
 
-### Phase 7: Add Collapsible Assumptions Panel
+#### 5. Fix DialogContent ref warning (minor)
 
-**Create new component or add to `Index.tsx`:**
-- Collapsible accordion with simulation assumptions
-- Product prices: $10 Bottle, $50 Cushion, $500 Pro Chair
-- Channel characteristics: CPC rates, audience tendencies
-- Short, educational format
+The warning about `DialogContent` giving refs to function components is a known shadcn/Radix issue. It's cosmetic but can be silenced.
 
-### Phase 8: Goal Tracker Logic Fix
+**File**: `src/components/ui/dialog.tsx`  
+- This is a shadcn component — the warning is harmless and won't cause crashes. Skip unless specifically requested.
 
-**Update `Index.tsx`:**
-- Hide congratulations message on first load
-- Only show success after user makes changes AND reaches goal
-- Track if user has made any modifications to the starting allocation
+### Technical details
 
----
+- `DndContext` needs to be inside `ReasoningBoardProvider` so the `onDragEnd` handler can access `addChip`, `moveChip`, `contextualiseChip` via the context hook
+- All existing `useDraggable` calls in `EvidenceHandle`, `GhostDeltaBar`, and `ReasoningBoard` (ChipCard) will automatically work once wrapped in `DndContext`
+- The `activeDrag` state for visual highlighting of drop zones can be driven by `DndContext`'s `onDragStart` / `onDragCancel` callbacks passed as props
+- No backend, session, or auto-save code is touched
 
-## Technical Details
-
-### File Changes
-
-**`src/lib/marketingConstants.ts`:**
-- Recalibrate conversion rates to produce ~$43k revenue at Excel starting spend
-- Update channel name from "Newspaper/Email" to "Newspaper"
-- Update INITIAL_SPEND to total $20,000 (or keep at $17,500 with scenario text update)
-
-**`src/hooks/useMarketingSimulation.ts`:**
-- Add `hasUserModified` state to track if user changed anything
-- Update initial state to match constants
-
-**`src/components/simulation/DraggableBarChart.tsx`:**
-- Add "Revenue" to filter options
-- Fix Y-axis labels to match selected metric (count vs dollars)
-- Update bar height logic to show metric value, not spend
-- Conditionally show "Available Budget" only if budget is unallocated
-
-**`src/components/simulation/ProductMixChart.tsx`:**
-- Show units sold alongside revenue
-- Add dynamic insight text based on channel metrics
-- Fix channel filter label consistency
-
-**`src/pages/Index.tsx`:**
-- Update scenario text to match actual starting percentages
-- Add collapsible Assumptions accordion
-- Fix goal tracker to only congratulate after user action
-
----
-
-## Expected Outcome
-
-After implementation:
-1. User starts at ~$43k-$60k revenue (below $100k goal)
-2. Scenario text matches actual allocation percentages
-3. Charts show correct units for selected metric
-4. "Newspaper" naming is consistent everywhere
-5. Product Mix shows both revenue and units sold
-6. Congratulations only appears after user achieves the goal
-7. Learning loop is preserved: user must discover the "trap" and reallocate
-
----
-
-## Validation Checklist
-
-- [ ] Starting revenue is between $40k-$85k (below goal)
-- [ ] Starting spend totals exactly $20,000
-- [ ] Scenario text percentages match starting spend
-- [ ] Views mode shows count axis, Revenue/Profit shows dollar axis
-- [ ] Channel names consistent across all panels
-- [ ] Congratulations hidden until goal reached through user action
-- [ ] Product Mix shows units sold per product
