@@ -30,41 +30,49 @@ export function useSession() {
     }
 
     const init = async () => {
-      // Check for existing session
-      const { data: existing } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('scenario_id', SCENARIO_ID)
-        .maybeSingle();
-
-      if (existing) {
-        setData({
-          sessionId: existing.id,
-          isCompleted: existing.is_completed,
-          startedAt: existing.started_at,
-          completedAt: existing.completed_at,
-          loading: false,
-        });
-      } else {
-        // Create new session
-        const { data: newSession } = await supabase
+      try {
+        // Check for existing session (use limit+order to handle multiple rows gracefully)
+        const { data: rows, error: selectError } = await supabase
           .from('sessions')
-          .insert({ user_id: user.id, scenario_id: SCENARIO_ID })
-          .select()
-          .single();
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('scenario_id', SCENARIO_ID)
+          .order('started_at', { ascending: false })
+          .limit(1);
 
-        if (newSession) {
+        const existing = rows && rows.length > 0 ? rows[0] : null;
+
+        if (existing) {
           setData({
-            sessionId: newSession.id,
-            isCompleted: false,
-            startedAt: newSession.started_at,
-            completedAt: null,
+            sessionId: existing.id,
+            isCompleted: existing.is_completed,
+            startedAt: existing.started_at,
+            completedAt: existing.completed_at,
             loading: false,
           });
         } else {
-          setData(prev => ({ ...prev, loading: false }));
+          // Create new session
+          const { data: newSession } = await supabase
+            .from('sessions')
+            .insert({ user_id: user.id, scenario_id: SCENARIO_ID })
+            .select()
+            .single();
+
+          if (newSession) {
+            setData({
+              sessionId: newSession.id,
+              isCompleted: false,
+              startedAt: newSession.started_at,
+              completedAt: null,
+              loading: false,
+            });
+          } else {
+            setData(prev => ({ ...prev, loading: false }));
+          }
         }
+      } catch (err) {
+        console.error('Session init error:', err);
+        setData(prev => ({ ...prev, loading: false }));
       }
     };
 
