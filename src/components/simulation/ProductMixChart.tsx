@@ -1,11 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, PRODUCTS } from '@/lib/marketingConstants';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { FlaskConical } from 'lucide-react';
-import { createEvidenceChip } from '@/types/evidenceChip';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { Button } from '@/components/ui/button';
+import type { ExternalEvidencePayload } from '@/lib/evidenceDnd';
+import { getExternalChipDragId } from '@/lib/evidenceDnd';
 
 interface ProductMixChartProps {
   channelMetrics: Record<string, ReturnType<typeof calculateMixedRevenue>>;
