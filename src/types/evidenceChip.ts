@@ -193,6 +193,7 @@ export function getSmartInsight(chip: EvidenceChip, blockId: ReasoningBlockId): 
   }
 }
 
+let chipCounter = 0;
 export function createEvidenceChip(
   label: string,
   value: string,
@@ -201,7 +202,7 @@ export function createEvidenceChip(
   extra?: Partial<Pick<EvidenceChip, 'chipKind' | 'channelName' | 'metricName' | 'deltaValue'>>
 ): EvidenceChip {
   return {
-    id: `chip-${crypto.randomUUID()}`,
+    id: `chip-${++chipCounter}-${Date.now()}`,
     label,
     value,
     context,

@@ -12,9 +12,6 @@ interface ReasoningBoardContextValue {
   setDraggingChip: (chip: EvidenceChip | null) => void;
   reasonMode: boolean;
   toggleReasonMode: () => void;
-  writtenDiagnosis: string;
-  setWrittenDiagnosis: (text: string) => void;
-  loadBoard: (state: ReasoningBoardState) => void;
 }
 
 const ReasoningBoardContext = createContext<ReasoningBoardContextValue | null>(null);
@@ -30,16 +27,10 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   const [board, setBoard] = useState<ReasoningBoardState>(EMPTY_BOARD);
   const [draggingChip, setDraggingChip] = useState<EvidenceChip | null>(null);
   const [reasonMode, setReasonMode] = useState(false);
-  const [writtenDiagnosis, setWrittenDiagnosis] = useState('');
 
   const toggleReasonMode = useCallback(() => {
     setReasonMode(prev => !prev);
   }, []);
-
-  const loadBoard = useCallback((state: ReasoningBoardState) => {
-    setBoard(state);
-  }, []);
-
   const addChip = useCallback((blockId: ReasoningBlockId, chip: EvidenceChip) => {
     setBoard(prev => {
       if (isDuplicateChip(prev[blockId], chip)) return prev;
@@ -96,9 +87,6 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       setDraggingChip,
       reasonMode,
       toggleReasonMode,
-      writtenDiagnosis,
-      setWrittenDiagnosis,
-      loadBoard,
     }}>
       {children}
     </ReasoningBoardContext.Provider>

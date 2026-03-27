@@ -13,7 +13,6 @@ interface SimulationShellProps {
   homeContent: ReactNode;
   decisionsContent: ReactNode;
   renderPanelContent: (panelId: PanelId) => ReactNode;
-  statusBarExtra?: ReactNode;
 }
 
 /**
@@ -25,7 +24,6 @@ export function SimulationShell({
   homeContent,
   decisionsContent,
   renderPanelContent,
-  statusBarExtra,
 }: SimulationShellProps) {
   const { tabs, activeTabId, split } = useTabs();
   const { reasonMode, toggleReasonMode } = useReasoningBoard();
@@ -109,12 +107,11 @@ export function SimulationShell({
       <div className="flex-shrink-0 bg-muted border-t border-border px-4 py-1">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>LumbarPro Marketing Simulator</span>
-          <span className="flex items-center gap-3">
-            {statusBarExtra}
+          <span className="flex items-center gap-2">
             {split.enabled && (
               <span className="text-primary font-medium flex items-center gap-1"><span className="w-2 h-2 bg-primary rounded-full" /> Split View</span>
             )}
-            <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+            <span className="w-2 h-2 bg-green-500 rounded-full" />
             Ready
           </span>
         </div>
