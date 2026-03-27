@@ -25,36 +25,42 @@ export function useAutoSave({ sessionId, board, writtenDiagnosis, isCompleted }:
     if (!sessionId || !user) return;
 
     const load = async () => {
-      const { data } = await supabase
-        .from('reasoning_board_state')
-        .select('*')
-        .eq('session_id', sessionId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (data) {
-        setBoardStateId(data.id);
-        changeCountRef.current = data.adjustments_made;
-        initialLoadDone.current = true;
-        return data;
-      } else {
-        // Create initial record
-        const { data: newRow } = await supabase
+      try {
+        const { data } = await supabase
           .from('reasoning_board_state')
-          .insert({
-            session_id: sessionId,
-            user_id: user.id,
-            cards: JSON.parse(JSON.stringify(board)),
-            written_diagnosis: writtenDiagnosis || null,
-          })
-          .select()
-          .single();
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        if (newRow) {
-          setBoardStateId(newRow.id);
+        if (data) {
+          setBoardStateId(data.id);
+          changeCountRef.current = data.adjustments_made;
           initialLoadDone.current = true;
+          return data;
+        } else {
+          // Create initial record
+          const { data: newRow } = await supabase
+            .from('reasoning_board_state')
+            .insert({
+              session_id: sessionId,
+              user_id: user.id,
+              cards: JSON.parse(JSON.stringify(board)),
+              written_diagnosis: writtenDiagnosis || null,
+            })
+            .select()
+            .single();
+
+          if (newRow) {
+            setBoardStateId(newRow.id);
+          }
+          initialLoadDone.current = true;
+          return newRow;
         }
-        return newRow;
+      } catch (err) {
+        console.error('AutoSave load error:', err);
+        initialLoadDone.current = true; // Allow saving even if initial load fails
+        return null;
       }
     };
 
