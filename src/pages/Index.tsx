@@ -1,5 +1,5 @@
-import { useCallback, useState, ReactNode } from 'react';
-import { BarChart3, AlertCircle, PieChart, Settings } from 'lucide-react';
+import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
+import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
 import { SimulationShell } from '@/components/simulation/SimulationShell';
 import { SimulationHome } from '@/components/simulation/SimulationHome';
@@ -7,24 +7,43 @@ import { SimulationDecisions } from '@/components/simulation/SimulationDecisions
 import { SplitViewBarCharts } from '@/components/simulation/SplitViewBarCharts';
 import { ProductMixChart } from '@/components/simulation/ProductMixChart';
 import { TabProvider, useTabs } from '@/contexts/TabContext';
-import { ReasoningBoardProvider } from '@/contexts/ReasoningBoardContext';
+import { ReasoningBoardProvider, useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { TutorialProvider } from '@/contexts/TutorialContext';
 import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
+import { SaveIndicator } from '@/components/SaveIndicator';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/hooks/useSession';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useSubmission } from '@/hooks/useSubmission';
+import { supabase } from '@/integrations/supabase/client';
+import Auth from '@/pages/Auth';
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
+import type { ReasoningBoardState } from '@/types/evidenceChip';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 
 function SimulationContent() {
   const { openTab } = useTabs();
-  
+  const { user, signOut, role } = useAuth();
+  const { board, writtenDiagnosis, loadBoard } = useReasoningBoard();
+
   const {
     channelSpend,
     updateChannelSpend,
@@ -36,7 +55,71 @@ function SimulationContent() {
     hasUserModified,
   } = useMarketingSimulation();
 
-  // Compare-mode state for the shell's panel renderer (used in tab/split views)
+  const { sessionId, isCompleted, startedAt, completedAt, loading: sessionLoading, completeSession } = useSession();
+
+  // Load saved board state when session is ready
+  useEffect(() => {
+    if (!sessionId || !user) return;
+
+    const loadSaved = async () => {
+      const { data } = await supabase
+        .from('reasoning_board_state')
+        .select('cards, written_diagnosis')
+        .eq('session_id', sessionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (data && data.cards) {
+        try {
+          const cards = data.cards as unknown as ReasoningBoardState;
+          // Only load if it has the right shape
+          if (cards.descriptive && cards.diagnostic && cards.predictive && cards.prescriptive) {
+            loadBoard(cards, data.written_diagnosis || '');
+          }
+        } catch {
+          // Invalid shape, start fresh
+        }
+      }
+    };
+
+    loadSaved();
+  }, [sessionId, user, loadBoard]);
+
+  // Auto-save
+  const totalChips = useMemo(() => Object.values(board).reduce((s, arr) => s + arr.length, 0), [board]);
+
+  const { saveStatus, forceSave } = useAutoSave({
+    sessionId,
+    board,
+    writtenDiagnosis,
+    isCompleted,
+  });
+
+  // Submit
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [submitted, setSubmitted] = useState(isCompleted);
+
+  useEffect(() => {
+    setSubmitted(isCompleted);
+  }, [isCompleted]);
+
+  const { submit } = useSubmission({
+    sessionId,
+    startedAt,
+    finalDecision: writtenDiagnosis,
+    cardsOnBoardCount: totalChips,
+    forceSave,
+    completeSession,
+  });
+
+  const handleSubmit = useCallback(async () => {
+    setShowSubmitDialog(false);
+    await submit();
+    setSubmitted(true);
+    toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
+  }, [submit]);
+
+  // Compare-mode state
   const [shellCompareActive, setShellCompareActive] = useState(false);
   const [shellSnapshotSpend, setShellSnapshotSpend] = useState<ChannelSpend | null>(null);
   const [shellBaselineSpend, setShellBaselineSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND } as ChannelSpend);
@@ -57,14 +140,13 @@ function SimulationContent() {
     openTab('decisions');
   }, [openTab]);
 
-  // Centralized panel content renderer for the shell
   const renderPanelContent = useCallback((panelId: PanelId): ReactNode => {
     switch (panelId) {
       case 'channel-performance':
         return (
           <SplitViewBarCharts
             channelSpend={channelSpend}
-            onSpendChange={updateChannelSpend}
+            onSpendChange={submitted ? () => {} : updateChannelSpend}
             channelMetrics={channelMetrics}
             totals={totals}
             remainingBudget={remainingBudget}
@@ -121,13 +203,47 @@ function SimulationContent() {
       default:
         return null;
     }
-  }, [channelSpend, updateChannelSpend, channelMetrics, totals, remainingBudget, hasUserModified, shellCompareActive, shellSnapshotSpend, shellBaselineSpend, handleShellActivateCompare, handleShellCloseCompare]);
+  }, [channelSpend, updateChannelSpend, channelMetrics, totals, remainingBudget, submitted, shellCompareActive, shellSnapshotSpend, shellBaselineSpend, handleShellActivateCompare, handleShellCloseCompare]);
+
+  if (sessionLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Loading your session…</p>
+      </div>
+    );
+  }
 
   return (
     <>
+      {/* Submitted banner */}
+      {submitted && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-success/10 border-b border-success/30 px-4 py-2 text-center text-sm font-medium text-success">
+          ✅ Your work has been submitted. The simulation is now locked.
+        </div>
+      )}
+
+      {/* Top bar with user info */}
+      <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
+        {!submitted && totalChips > 0 && (
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => setShowSubmitDialog(true)}
+            className="gap-1.5"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Submit
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
+          <LogOut className="h-3.5 w-3.5" />
+          Sign Out
+        </Button>
+      </div>
+
       <SimulationShell
         homeContent={
-          <SimulationHome 
+          <SimulationHome
             onStartDecisions={handleStartDecisions}
             currentRevenue={totals.totalRevenue}
           />
@@ -135,23 +251,71 @@ function SimulationContent() {
         decisionsContent={
           <SimulationDecisions
             channelSpend={channelSpend}
-            updateChannelSpend={updateChannelSpend}
+            updateChannelSpend={submitted ? (() => {}) as any : updateChannelSpend}
             channelMetrics={channelMetrics}
             totals={totals}
             remainingBudget={remainingBudget}
             hasUserModified={hasUserModified}
             totalSpent={totalSpent}
-            onReset={resetSimulation}
+            onReset={submitted ? () => {} : resetSimulation}
           />
         }
         renderPanelContent={renderPanelContent}
       />
+
       <TutorialOverlay />
+      <SaveIndicator status={saveStatus} />
+
+      {/* Submit confirmation dialog */}
+      <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Submit your work?</DialogTitle>
+            <DialogDescription>
+              Once submitted, the simulation will be locked and you won't be able to make further changes.
+              Make sure you're happy with your reasoning board and budget allocation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-3 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Evidence cards placed:</span>
+              <span className="font-medium">{totalChips}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total revenue:</span>
+              <span className="font-medium">${totals.totalRevenue.toLocaleString()}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit}>
+              <Send className="h-4 w-4 mr-2" />
+              Confirm Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
 const Index = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
   return (
     <TabProvider>
       <ReasoningBoardProvider>
