@@ -96,6 +96,9 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       setDraggingChip,
       reasonMode,
       toggleReasonMode,
+      writtenDiagnosis,
+      setWrittenDiagnosis,
+      loadBoard,
     }}>
       {children}
     </ReasoningBoardContext.Provider>
