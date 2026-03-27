@@ -42,27 +42,42 @@ export type Database = {
         Row: {
           adjustments_made: number
           cards: Json
+          current_step: number
           id: string
+          last_active_at: string
           last_saved_at: string
           session_id: string
+          step_1_completed: boolean
+          step_2_completed: boolean
+          step_3_completed: boolean
           user_id: string
           written_diagnosis: string | null
         }
         Insert: {
           adjustments_made?: number
           cards?: Json
+          current_step?: number
           id?: string
+          last_active_at?: string
           last_saved_at?: string
           session_id: string
+          step_1_completed?: boolean
+          step_2_completed?: boolean
+          step_3_completed?: boolean
           user_id: string
           written_diagnosis?: string | null
         }
         Update: {
           adjustments_made?: number
           cards?: Json
+          current_step?: number
           id?: string
+          last_active_at?: string
           last_saved_at?: string
           session_id?: string
+          step_1_completed?: boolean
+          step_2_completed?: boolean
+          step_3_completed?: boolean
           user_id?: string
           written_diagnosis?: string | null
         }
@@ -109,6 +124,9 @@ export type Database = {
           final_decision: string
           id: string
           session_id: string
+          step_1_text: string | null
+          step_2_chips: Json | null
+          step_3_reflection: string | null
           submitted_at: string
           time_elapsed_seconds: number
           user_id: string
@@ -118,6 +136,9 @@ export type Database = {
           final_decision: string
           id?: string
           session_id: string
+          step_1_text?: string | null
+          step_2_chips?: Json | null
+          step_3_reflection?: string | null
           submitted_at?: string
           time_elapsed_seconds?: number
           user_id: string
@@ -127,6 +148,9 @@ export type Database = {
           final_decision?: string
           id?: string
           session_id?: string
+          step_1_text?: string | null
+          step_2_chips?: Json | null
+          step_3_reflection?: string | null
           submitted_at?: string
           time_elapsed_seconds?: number
           user_id?: string
