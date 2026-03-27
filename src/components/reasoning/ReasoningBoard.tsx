@@ -1,14 +1,22 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { X, GripVertical, FlaskConical, Check, Lock, AlertTriangle, CircleCheck } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   REASONING_BLOCKS,
   BLOCK_PREREQUISITE,
+  createEvidenceChip,
   getSmartInsight,
-  parseEvidenceChip,
   validateReasoningBoard,
 } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
+import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from '@/lib/evidenceDnd';
+import {
+  getBlockDropId,
+  getBoardChipDragId,
+  getContextDropId,
+} from '@/lib/evidenceDnd';
 import { cn } from '@/lib/utils';
 import { ReasoningNarrative } from './ReasoningNarrative';
 
@@ -20,12 +28,8 @@ const BLOCK_TITLE_MAP: Record<ReasoningBlockId, string> = {
 };
 
 export function ReasoningBoard() {
-  const { board, addChip, removeChip, moveChip, contextualiseChip, draggingChip } = useReasoningBoard();
-  const [hoveredBlock, setHoveredBlock] = useState<ReasoningBlockId | null>(null);
-  const [internalDrag, setInternalDrag] = useState<{
-    chip: EvidenceChip;
-    fromBlock: ReasoningBlockId;
-  } | null>(null);
+  const { board, addChip, removeChip, moveChip, contextualiseChip } = useReasoningBoard();
+  const [activeDrag, setActiveDrag] = useState<EvidenceDragData | null>(null);
   const [validationDismissed, setValidationDismissed] = useState(false);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
 
@@ -44,92 +48,54 @@ export function ReasoningBoard() {
     return `Complete ${BLOCK_TITLE_MAP[prerequisite]} first.`;
   }, []);
 
-  const getChipFromDragEvent = useCallback((e: React.DragEvent): EvidenceChip | null => {
-    const rawCustom = e.dataTransfer.getData('application/evidence-chip');
-    if (rawCustom) {
-      const parsed = parseEvidenceChip(rawCustom);
-      if (parsed) return parsed;
-    }
-
-    const rawText = e.dataTransfer.getData('text/plain');
-    if (rawText) {
-      const normalized = rawText.startsWith('__evidence_chip__:')
-        ? rawText.slice('__evidence_chip__:'.length)
-        : rawText;
-      const parsed = parseEvidenceChip(normalized);
-      if (parsed) return parsed;
-    }
-
-    return draggingChip;
-  }, [draggingChip]);
-
-  const handleBlockDragOver = useCallback((e: React.DragEvent, blockId: ReasoningBlockId) => {
-    if (!isBlockUnlocked(blockId)) {
-      setHoveredBlock(null);
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = internalDrag ? 'move' : 'copy';
-    setHoveredBlock(blockId);
-  }, [isBlockUnlocked, internalDrag]);
-
-  const handleBlockDragLeave = useCallback(() => {
-    setHoveredBlock(null);
+  const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
+    const { label, value, context, sourceId, ...rest } = payload;
+    return createEvidenceChip(label, value, context, sourceId, rest);
   }, []);
 
-  const handleBlockDrop = useCallback((e: React.DragEvent, blockId: ReasoningBlockId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setHoveredBlock(null);
+  useDndMonitor({
+    onDragStart: ({ active }) => {
+      const dragData = active.data.current as EvidenceDragData | undefined;
+      setActiveDrag(dragData ?? null);
+    },
+    onDragCancel: () => {
+      setActiveDrag(null);
+    },
+    onDragEnd: ({ active, over }) => {
+      const dragData = active.data.current as EvidenceDragData | undefined;
+      const dropData = over?.data.current as EvidenceDropData | undefined;
 
-    if (!isBlockUnlocked(blockId)) return;
+      if (!dragData || !dropData) {
+        setActiveDrag(null);
+        return;
+      }
 
-    if (internalDrag) {
-      moveChip(internalDrag.fromBlock, blockId, internalDrag.chip.id);
-      setInternalDrag(null);
-      return;
-    }
+      if (dropData.kind === 'reasoning-block') {
+        if (!isBlockUnlocked(dropData.blockId)) {
+          setActiveDrag(null);
+          return;
+        }
 
-    const chip = getChipFromDragEvent(e);
-    if (chip) {
-      addChip(blockId, chip);
-    }
-  }, [internalDrag, addChip, moveChip, isBlockUnlocked, getChipFromDragEvent]);
+        if (dragData.kind === 'board-chip') {
+          moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
+        } else {
+          addChip(dropData.blockId, chipFromPayload(dragData.payload));
+        }
+        setActiveDrag(null);
+        return;
+      }
 
-  const handleChipDragStart = useCallback((
-    e: React.DragEvent,
-    chip: EvidenceChip,
-    fromBlock: ReasoningBlockId
-  ) => {
-    setInternalDrag({ chip, fromBlock });
-    e.dataTransfer.effectAllowed = 'move';
-    const serialized = JSON.stringify(chip);
-    e.dataTransfer.setData('application/evidence-chip', serialized);
-    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
-  }, []);
+      if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
+        contextualiseChip(
+          dropData.blockId,
+          dropData.targetChipId,
+          chipFromPayload(dragData.payload)
+        );
+      }
 
-  const handleChipDragEnd = useCallback(() => {
-    setInternalDrag(null);
-  }, []);
-
-  // Handle contextualise drop on a chip card
-  const handleContextualiseDrop = useCallback((
-    e: React.DragEvent,
-    blockId: ReasoningBlockId,
-    targetChipId: string
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // If it's an internal drag (moving a chip between blocks), don't contextualise
-    if (internalDrag) return;
-
-    const chip = getChipFromDragEvent(e);
-    if (chip) {
-      contextualiseChip(blockId, targetChipId, chip);
-    }
-  }, [internalDrag, contextualiseChip, getChipFromDragEvent]);
+      setActiveDrag(null);
+    },
+  });
 
   return (
     <div className="h-full flex flex-col overflow-hidden" data-tutorial="reasoning-board">
@@ -236,26 +202,27 @@ export function ReasoningBoard() {
               const chips = board[block.id];
               const isUnlocked = isBlockUnlocked(block.id);
               const lockMessage = getLockMessage(block.id);
-              const isHovered = isUnlocked && hoveredBlock === block.id && (draggingChip !== null || internalDrag !== null);
 
               return (
-                <div
-                  key={block.id}
-                  className={cn(
-                    'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[140px]',
-                    isHovered
-                      ? 'border-dashed scale-[1.01] shadow-lg'
-                      : 'border-border/60',
-                    !isUnlocked && chips.length === 0 && 'opacity-75'
-                  )}
-                  style={{
-                    backgroundColor: isHovered ? block.bgColor : 'hsl(var(--card))',
-                    borderColor: isHovered ? block.color : undefined,
-                  }}
-                  onDragOver={(e) => handleBlockDragOver(e, block.id)}
-                  onDragLeave={handleBlockDragLeave}
-                  onDrop={(e) => handleBlockDrop(e, block.id)}
-                >
+                <BlockDropContainer key={block.id} blockId={block.id}>
+                  {({ setNodeRef, isOver }) => {
+                    const isHovered = isUnlocked && isOver && !!activeDrag;
+
+                    return (
+                      <div
+                        ref={setNodeRef}
+                        className={cn(
+                          'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[140px]',
+                          isHovered
+                            ? 'border-dashed scale-[1.01] shadow-lg'
+                            : 'border-border/60',
+                          !isUnlocked && chips.length === 0 && 'opacity-75'
+                        )}
+                        style={{
+                          backgroundColor: isHovered ? block.bgColor : 'hsl(var(--card))',
+                          borderColor: isHovered ? block.color : undefined,
+                        }}
+                      >
                   {/* Block header */}
                   <div
                     className="flex-shrink-0 px-3 pt-2 pb-1.5 rounded-t-xl border-b border-border/40"
@@ -320,9 +287,6 @@ export function ReasoningBoard() {
                             blockId={block.id}
                             blockColor={block.color}
                             onRemove={() => removeChip(block.id, chip.id)}
-                            onDragStart={(e) => handleChipDragStart(e, chip, block.id)}
-                            onDragEnd={handleChipDragEnd}
-                            onContextualiseDrop={(e) => handleContextualiseDrop(e, block.id, chip.id)}
                           />
                         ))}
                         <div className="text-[9px] text-muted-foreground/40 italic text-center pt-0.5">
@@ -331,7 +295,10 @@ export function ReasoningBoard() {
                       </>
                     )}
                   </div>
-                </div>
+                      </div>
+                    );
+                  }}
+                </BlockDropContainer>
               );
             })}
           </div>
@@ -346,37 +313,78 @@ export function ReasoningBoard() {
   );
 }
 
+function BlockDropContainer({
+  blockId,
+  children,
+}: {
+  blockId: ReasoningBlockId;
+  children: (props: { setNodeRef: (element: HTMLElement | null) => void; isOver: boolean }) => React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: getBlockDropId(blockId),
+    data: {
+      kind: 'reasoning-block',
+      blockId,
+    } satisfies EvidenceDropData,
+  });
+
+  return <>{children({ setNodeRef, isOver })}</>;
+}
+
 // Individual chip card inside the board
 function ChipCard({
   chip,
   blockId,
   blockColor,
   onRemove,
-  onDragStart,
-  onDragEnd,
-  onContextualiseDrop,
 }: {
   chip: EvidenceChip;
   blockId: ReasoningBlockId;
   blockColor: string;
   onRemove: () => void;
-  onDragStart: (e: React.DragEvent) => void;
-  onDragEnd: () => void;
-  onContextualiseDrop: (e: React.DragEvent) => void;
 }) {
-  const [contextHover, setContextHover] = useState(false);
   const insight = getSmartInsight(chip, blockId);
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
   const hasContext = !!chip.contextChip;
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: getBoardChipDragId(blockId, chip.id),
+    data: {
+      kind: 'board-chip',
+      chip,
+      fromBlock: blockId,
+    } satisfies EvidenceDragData,
+  });
+
+  const { setNodeRef: setContextDropRef, isOver: isContextOver } = useDroppable({
+    id: getContextDropId(blockId, chip.id),
+    data: {
+      kind: 'context-target',
+      blockId,
+      targetChipId: chip.id,
+    } satisfies EvidenceDropData,
+  });
+
+  const dragStyle = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
+
   return (
     <div
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      className="group flex flex-col bg-background rounded-lg border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-grab active:cursor-grabbing select-none"
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'group flex flex-col bg-background rounded-lg border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-grab active:cursor-grabbing select-none',
+        isDragging && 'opacity-60 ring-2 ring-primary/40'
+      )}
+      style={dragStyle}
     >
       <div className="flex items-start gap-2 p-2.5">
         {/* Drag handle */}
@@ -386,7 +394,7 @@ function ChipCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {isDelta && (
-              <span className={`text-xs ${isIncrease ? 'text-green-600' : 'text-red-500'}`}>
+              <span className={`text-xs ${isIncrease ? 'text-emerald-600' : 'text-destructive'}`}>
                 {isIncrease ? '▲' : '▼'}
               </span>
             )}
@@ -399,8 +407,8 @@ function ChipCard({
           {/* Smart insight */}
           {insight && (
             <div className={`mt-1.5 px-2 py-1 rounded text-[10px] font-medium ${
-              isIncrease ? 'bg-green-500/10 text-green-700 dark:text-green-400' :
-              isDecrease ? 'bg-red-500/10 text-red-700 dark:text-red-400' :
+              isIncrease ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
+              isDecrease ? 'bg-destructive/10 text-destructive' :
               'bg-primary/10 text-primary'
             }`}>
               {insight}
@@ -420,24 +428,15 @@ function ChipCard({
       {/* Contextualise zone */}
       {!hasContext ? (
         <div
+          ref={setContextDropRef}
           className={cn(
             'mx-2.5 mb-2 px-2 py-1.5 rounded border border-dashed text-[10px] text-center transition-all',
-            contextHover
+            isContextOver
               ? 'border-primary bg-primary/5 text-primary'
               : 'border-border/50 text-muted-foreground/60'
           )}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setContextHover(true);
-          }}
-          onDragLeave={() => setContextHover(false)}
-          onDrop={(e) => {
-            setContextHover(false);
-            onContextualiseDrop(e);
-          }}
         >
-          {contextHover
+          {isContextOver
             ? 'Drop to contextualise'
             : 'Contextualise this - drag another bar here to support or explain this observation.'}
         </div>
