@@ -1,9 +1,20 @@
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 
+export interface ExternalEvidencePayload {
+  label: string;
+  value: string;
+  context: string;
+  sourceId: string;
+  chipKind?: EvidenceChip['chipKind'];
+  channelName?: string;
+  metricName?: string;
+  deltaValue?: number;
+}
+
 export type EvidenceDragData =
   | {
       kind: 'external-chip';
-      chip: EvidenceChip;
+      payload: ExternalEvidencePayload;
     }
   | {
       kind: 'board-chip';
