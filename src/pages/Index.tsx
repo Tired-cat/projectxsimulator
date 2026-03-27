@@ -345,7 +345,7 @@ function SimulationContent() {
 }
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, role } = useAuth();
 
   if (loading) {
     return (
@@ -357,6 +357,20 @@ const Index = () => {
 
   if (!user) {
     return <Auth />;
+  }
+
+  // Professors see a link to dashboard instead of the simulation
+  if (role === 'professor') {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <p className="text-lg font-medium">Welcome, Professor!</p>
+          <a href="/dashboard" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity">
+            📊 Go to Dashboard
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
