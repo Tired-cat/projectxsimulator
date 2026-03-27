@@ -44,15 +44,35 @@ export function ReasoningBoard() {
     return `Complete ${BLOCK_TITLE_MAP[prerequisite]} first.`;
   }, []);
 
+  const getChipFromDragEvent = useCallback((e: React.DragEvent): EvidenceChip | null => {
+    const rawCustom = e.dataTransfer.getData('application/evidence-chip');
+    if (rawCustom) {
+      const parsed = parseEvidenceChip(rawCustom);
+      if (parsed) return parsed;
+    }
+
+    const rawText = e.dataTransfer.getData('text/plain');
+    if (rawText) {
+      const normalized = rawText.startsWith('__evidence_chip__:')
+        ? rawText.slice('__evidence_chip__:'.length)
+        : rawText;
+      const parsed = parseEvidenceChip(normalized);
+      if (parsed) return parsed;
+    }
+
+    return draggingChip;
+  }, [draggingChip]);
+
   const handleBlockDragOver = useCallback((e: React.DragEvent, blockId: ReasoningBlockId) => {
     if (!isBlockUnlocked(blockId)) {
       setHoveredBlock(null);
       return;
     }
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = internalDrag ? 'move' : 'copy';
     setHoveredBlock(blockId);
-  }, [isBlockUnlocked]);
+  }, [isBlockUnlocked, internalDrag]);
 
   const handleBlockDragLeave = useCallback(() => {
     setHoveredBlock(null);
@@ -60,6 +80,7 @@ export function ReasoningBoard() {
 
   const handleBlockDrop = useCallback((e: React.DragEvent, blockId: ReasoningBlockId) => {
     e.preventDefault();
+    e.stopPropagation();
     setHoveredBlock(null);
 
     if (!isBlockUnlocked(blockId)) return;
@@ -70,12 +91,11 @@ export function ReasoningBoard() {
       return;
     }
 
-    const raw = e.dataTransfer.getData('application/evidence-chip');
-    const chip = parseEvidenceChip(raw);
+    const chip = getChipFromDragEvent(e);
     if (chip) {
       addChip(blockId, chip);
     }
-  }, [internalDrag, addChip, moveChip, isBlockUnlocked]);
+  }, [internalDrag, addChip, moveChip, isBlockUnlocked, getChipFromDragEvent]);
 
   const handleChipDragStart = useCallback((
     e: React.DragEvent,
@@ -84,7 +104,9 @@ export function ReasoningBoard() {
   ) => {
     setInternalDrag({ chip, fromBlock });
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    const serialized = JSON.stringify(chip);
+    e.dataTransfer.setData('application/evidence-chip', serialized);
+    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
   }, []);
 
   const handleChipDragEnd = useCallback(() => {
@@ -103,12 +125,11 @@ export function ReasoningBoard() {
     // If it's an internal drag (moving a chip between blocks), don't contextualise
     if (internalDrag) return;
 
-    const raw = e.dataTransfer.getData('application/evidence-chip');
-    const chip = parseEvidenceChip(raw);
+    const chip = getChipFromDragEvent(e);
     if (chip) {
       contextualiseChip(blockId, targetChipId, chip);
     }
-  }, [internalDrag, contextualiseChip]);
+  }, [internalDrag, contextualiseChip, getChipFromDragEvent]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden" data-tutorial="reasoning-board">

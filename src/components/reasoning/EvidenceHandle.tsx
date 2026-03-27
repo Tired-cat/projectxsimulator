@@ -36,8 +36,10 @@ export function EvidenceHandle({
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
     const chip = createEvidenceChip(label, value, context, sourceId);
+    const serialized = JSON.stringify(chip);
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    e.dataTransfer.setData('application/evidence-chip', serialized);
+    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
     setDraggingChip(chip);
     setIsDragging(true);
   }, [label, value, context, sourceId, setDraggingChip]);

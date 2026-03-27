@@ -77,8 +77,10 @@ export function GhostDeltaBar({
         deltaValue: delta,
       }
     );
+    const serialized = JSON.stringify(chip);
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    e.dataTransfer.setData('application/evidence-chip', serialized);
+    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
     onChipDragStart?.(chip);
     setIsDraggingDelta(true);
   }, [channelId, channel.name, delta, viewMode, metricLabel, onChipDragStart]);
@@ -101,8 +103,10 @@ export function GhostDeltaBar({
         metricName: metricLabel.toLowerCase(),
       }
     );
+    const serialized = JSON.stringify(chip);
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    e.dataTransfer.setData('application/evidence-chip', serialized);
+    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
     onChipDragStart?.(chip);
     setIsDraggingGhost(true);
   }, [channelId, channel.name, baselineValue, viewMode, metricLabel, onChipDragStart]);
@@ -172,8 +176,10 @@ export function GhostDeltaBar({
         metricName: metricLabel.toLowerCase(),
       }
     );
+    const serialized = JSON.stringify(chip);
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    e.dataTransfer.setData('application/evidence-chip', serialized);
+    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
     onChipDragStart?.(chip);
     setIsDraggingMainBar(true);
   }, [channelId, channel.name, currentValue, viewMode, metricLabel, onChipDragStart, formatValue]);

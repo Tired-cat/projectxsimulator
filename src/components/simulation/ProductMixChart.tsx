@@ -124,8 +124,10 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
       `Product Mix • ${channelLabel}`,
       `product-mix-${segment.id}-${selectedChannel}`
     );
+    const serialized = JSON.stringify(chip);
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
+    e.dataTransfer.setData('application/evidence-chip', serialized);
+    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
     setDraggingChip(chip);
   }, [selectedChannel, setDraggingChip]);
 
