@@ -7,7 +7,7 @@ import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 import { Eye, DollarSign, TrendingUp, LayoutGrid, FlaskConical } from 'lucide-react';
 import { GhostDeltaBar } from './GhostDeltaBar';
 import type { ReasoningToken } from '@/types/reasoningToken';
-import { createEvidenceChip } from '@/types/evidenceChip';
+
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { Button } from '@/components/ui/button';
 
@@ -59,7 +59,7 @@ export function DraggableBarChart({
   onTokenDrag,
 }: DraggableBarChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('clicks');
-  const { setDraggingChip, reasonMode, toggleReasonMode } = useReasoningBoard();
+  const { reasonMode, toggleReasonMode } = useReasoningBoard();
   
   // Snapshot mode: draggable for reasoning but NOT adjustable
   // Live mode: adjustable but NOT draggable (for now)
@@ -699,20 +699,8 @@ export function DraggableBarChart({
                 const isNegative = viewMode === 'profit' && metricValue < 0;
                 const barHeightPct = Math.max((Math.abs(metricValue) / maxScale) * 100, 2);
 
-                // Reason-mode bar drag handlers (HTML5 drag API → evidence chip)
+                // Reason-mode bar drag is handled by GhostDeltaBar's @dnd-kit useDraggable
                 const metricLabel = viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
-                const handleBarDragStart = (e: React.DragEvent) => {
-                  const chip = createEvidenceChip(
-                    `${channel.name} ${metricLabel}`,
-                    formatValue(metricValue),
-                    `${metricLabel} • Channel Performance`,
-                    `${channelId}-bar-${viewMode}`
-                  );
-                  e.dataTransfer.effectAllowed = 'copy';
-                  e.dataTransfer.setData('application/evidence-chip', JSON.stringify(chip));
-                  setDraggingChip(chip);
-                };
-                const handleBarDragEnd = () => setDraggingChip(null);
 
                 return (
                   // ENTIRE COLUMN is the drag surface - prevents dead zones

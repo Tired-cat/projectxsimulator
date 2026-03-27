@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
+import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
 import { SimulationShell } from '@/components/simulation/SimulationShell';
 import { SimulationHome } from '@/components/simulation/SimulationHome';
@@ -20,7 +21,9 @@ import Auth from '@/pages/Auth';
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
+import { createEvidenceChip } from '@/types/evidenceChip';
 import type { ReasoningBoardState } from '@/types/evidenceChip';
+import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from '@/lib/evidenceDnd';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -42,7 +45,44 @@ import {
 function SimulationContent() {
   const { openTab } = useTabs();
   const { user, signOut, role } = useAuth();
-  const { board, writtenDiagnosis, loadBoard } = useReasoningBoard();
+  const { board, addChip, moveChip, contextualiseChip, writtenDiagnosis, loadBoard } = useReasoningBoard();
+
+  // --- @dnd-kit onDragEnd handler (central dispatcher) ---
+  const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
+    const { label, value, context, sourceId, ...rest } = payload;
+    return createEvidenceChip(label, value, context, sourceId, rest);
+  }, []);
+
+  const isBlockUnlocked = useCallback((blockId: import('@/types/evidenceChip').ReasoningBlockId) => {
+    const PREREQ: Record<string, string | null> = {
+      descriptive: null, diagnostic: 'descriptive', predictive: 'diagnostic', prescriptive: 'predictive',
+    };
+    const prereq = PREREQ[blockId];
+    if (!prereq) return true;
+    return board[prereq as import('@/types/evidenceChip').ReasoningBlockId].length > 0;
+  }, [board]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    const dragData = active.data.current as EvidenceDragData | undefined;
+    const dropData = over?.data.current as EvidenceDropData | undefined;
+
+    if (!dragData || !dropData) return;
+
+    if (dropData.kind === 'reasoning-block') {
+      if (!isBlockUnlocked(dropData.blockId)) return;
+      if (dragData.kind === 'board-chip') {
+        moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
+      } else {
+        addChip(dropData.blockId, chipFromPayload(dragData.payload));
+      }
+      return;
+    }
+
+    if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
+      contextualiseChip(dropData.blockId, dropData.targetChipId, chipFromPayload(dragData.payload));
+    }
+  }, [addChip, moveChip, contextualiseChip, chipFromPayload, isBlockUnlocked]);
 
   const {
     channelSpend,
@@ -241,6 +281,7 @@ function SimulationContent() {
         </Button>
       </div>
 
+      <DndContext onDragEnd={handleDragEnd}>
       <SimulationShell
         homeContent={
           <SimulationHome
@@ -262,6 +303,8 @@ function SimulationContent() {
         }
         renderPanelContent={renderPanelContent}
       />
+
+      </DndContext>
 
       <TutorialOverlay />
       <SaveIndicator status={saveStatus} />

@@ -1,11 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, PRODUCTS } from '@/lib/marketingConstants';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { FlaskConical } from 'lucide-react';
-import { createEvidenceChip } from '@/types/evidenceChip';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { Button } from '@/components/ui/button';
+import type { ExternalEvidencePayload } from '@/lib/evidenceDnd';
+import { getExternalChipDragId } from '@/lib/evidenceDnd';
 
 interface ProductMixChartProps {
   channelMetrics: Record<string, ReturnType<typeof calculateMixedRevenue>>;
@@ -21,7 +24,7 @@ const channelOptions = [
 
 export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const { setDraggingChip, reasonMode, toggleReasonMode } = useReasoningBoard();
+  const { reasonMode, toggleReasonMode } = useReasoningBoard();
 
   const productData = useMemo(() => {
     if (selectedChannel === 'all') {
@@ -115,25 +118,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
     return `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
   };
 
-  // Reason-mode: drag a pie segment as evidence chip
-  const handleSegmentDragStart = useCallback((e: React.DragEvent, segment: typeof segments[0], percentage: number) => {
-    const channelLabel = selectedChannel === 'all' ? 'All Channels' : CHANNELS[selectedChannel]?.name || selectedChannel;
-    const chip = createEvidenceChip(
-      `${channelLabel} — ${segment.label}`,
-      `$${segment.revenue.toLocaleString()} revenue, ${segment.units.toLocaleString()} sold`,
-      `Product Mix • ${channelLabel}`,
-      `product-mix-${segment.id}-${selectedChannel}`
-    );
-    const serialized = JSON.stringify(chip);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', serialized);
-    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
-    setDraggingChip(chip);
-  }, [selectedChannel, setDraggingChip]);
-
-  const handleSegmentDragEnd = useCallback(() => {
-    setDraggingChip(null);
-  }, [setDraggingChip]);
+  // No more native drag handlers — legend rows use DraggableLegendRow with @dnd-kit
 
   // Generate dynamic insight based on selected channel
   const getInsight = () => {
@@ -231,40 +216,16 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
           <div className="space-y-3">
             {segments.map((segment) => {
               const percentage = totalRevenue > 0 ? ((segment.revenue / totalRevenue) * 100) : 0;
+              const channelLabel = selectedChannel === 'all' ? 'All Channels' : CHANNELS[selectedChannel]?.name || selectedChannel;
               return (
-                <div
+                <DraggableLegendRow
                   key={segment.id}
-                  className={`flex items-center justify-between p-2 bg-secondary/30 rounded-lg transition-all ${
-                    reasonMode
-                      ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'
-                      : ''
-                  }`}
-                  draggable={reasonMode}
-                  onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, percentage) : undefined}
-                  onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
-                  title={reasonMode ? `Drag ${segment.label} to Reasoning Board` : undefined}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-4 h-4 rounded"
-                      style={{ backgroundColor: segment.color }}
-                    />
-                    <div>
-                      <span className="text-sm font-medium">{segment.label}</span>
-                      <div className="text-xs text-muted-foreground">
-                        {segment.units.toLocaleString()} sold
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold" style={{ color: segment.color }}>
-                      ${segment.revenue.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {percentage.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
+                  segment={segment}
+                  percentage={percentage}
+                  channelLabel={channelLabel}
+                  selectedChannel={selectedChannel}
+                  reasonMode={reasonMode}
+                />
               );
             })}
           </div>
@@ -280,14 +241,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
                     fill={segment.color}
                     stroke="hsl(var(--background))"
                     strokeWidth="2"
-                    data-draggable={reasonMode && segment.revenue > 0 ? "true" : undefined}
-                    onDragStart={reasonMode ? (e) => handleSegmentDragStart(e, segment, segment.percentage) : undefined}
-                    onDragEnd={reasonMode ? handleSegmentDragEnd : undefined}
-                    className={`transition-all duration-300 ${
-                      reasonMode && segment.revenue > 0
-                        ? 'cursor-grab hover:opacity-70'
-                        : 'hover:opacity-80'
-                    }`}
+                    className={`transition-all duration-300 hover:opacity-80`}
                   />
                 ))
               ) : (
@@ -362,5 +316,68 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// @dnd-kit draggable legend row
+function DraggableLegendRow({
+  segment,
+  percentage,
+  channelLabel,
+  selectedChannel,
+  reasonMode,
+}: {
+  segment: { id: string; label: string; revenue: number; units: number; color: string };
+  percentage: number;
+  channelLabel: string;
+  selectedChannel: string;
+  reasonMode: boolean;
+}) {
+  const payload = useMemo<ExternalEvidencePayload>(() => ({
+    label: `${channelLabel} — ${segment.label}`,
+    value: `$${segment.revenue.toLocaleString()} revenue, ${segment.units.toLocaleString()} sold`,
+    context: `Product Mix • ${channelLabel}`,
+    sourceId: `product-mix-${segment.id}-${selectedChannel}`,
+    chipKind: 'product' as const,
+  }), [channelLabel, segment, selectedChannel]);
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: getExternalChipDragId(payload.sourceId, payload.label),
+    data: { kind: 'external-chip', payload },
+    disabled: !reasonMode,
+  });
+
+  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...(reasonMode ? { ...attributes, ...listeners } : {})}
+      className={`flex items-center justify-between p-2 bg-secondary/30 rounded-lg transition-all ${
+        reasonMode
+          ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'
+          : ''
+      } ${isDragging ? 'opacity-50 ring-2 ring-primary/50' : ''}`}
+      style={style}
+      title={reasonMode ? `Drag ${segment.label} to Reasoning Board` : undefined}
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 rounded" style={{ backgroundColor: segment.color }} />
+        <div>
+          <span className="text-sm font-medium">{segment.label}</span>
+          <div className="text-xs text-muted-foreground">
+            {segment.units.toLocaleString()} sold
+          </div>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="font-bold" style={{ color: segment.color }}>
+          ${segment.revenue.toLocaleString()}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {percentage.toFixed(1)}%
+        </div>
+      </div>
+    </div>
   );
 }

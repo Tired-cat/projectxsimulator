@@ -1,17 +1,16 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useDraggable, useDroppable, useDndMonitor } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { X, GripVertical, FlaskConical, Check, Lock, AlertTriangle, CircleCheck } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   REASONING_BLOCKS,
   BLOCK_PREREQUISITE,
-  createEvidenceChip,
   getSmartInsight,
   validateReasoningBoard,
 } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
-import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from '@/lib/evidenceDnd';
+import type { EvidenceDragData, EvidenceDropData } from '@/lib/evidenceDnd';
 import {
   getBlockDropId,
   getBoardChipDragId,
@@ -28,7 +27,7 @@ const BLOCK_TITLE_MAP: Record<ReasoningBlockId, string> = {
 };
 
 export function ReasoningBoard() {
-  const { board, addChip, removeChip, moveChip, contextualiseChip } = useReasoningBoard();
+  const { board, removeChip } = useReasoningBoard();
   const [activeDrag, setActiveDrag] = useState<EvidenceDragData | null>(null);
   const [validationDismissed, setValidationDismissed] = useState(false);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
@@ -48,54 +47,9 @@ export function ReasoningBoard() {
     return `Complete ${BLOCK_TITLE_MAP[prerequisite]} first.`;
   }, []);
 
-  const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
-    const { label, value, context, sourceId, ...rest } = payload;
-    return createEvidenceChip(label, value, context, sourceId, rest);
-  }, []);
-
-  useDndMonitor({
-    onDragStart: ({ active }) => {
-      const dragData = active.data.current as EvidenceDragData | undefined;
-      setActiveDrag(dragData ?? null);
-    },
-    onDragCancel: () => {
-      setActiveDrag(null);
-    },
-    onDragEnd: ({ active, over }) => {
-      const dragData = active.data.current as EvidenceDragData | undefined;
-      const dropData = over?.data.current as EvidenceDropData | undefined;
-
-      if (!dragData || !dropData) {
-        setActiveDrag(null);
-        return;
-      }
-
-      if (dropData.kind === 'reasoning-block') {
-        if (!isBlockUnlocked(dropData.blockId)) {
-          setActiveDrag(null);
-          return;
-        }
-
-        if (dragData.kind === 'board-chip') {
-          moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
-        } else {
-          addChip(dropData.blockId, chipFromPayload(dragData.payload));
-        }
-        setActiveDrag(null);
-        return;
-      }
-
-      if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
-        contextualiseChip(
-          dropData.blockId,
-          dropData.targetChipId,
-          chipFromPayload(dragData.payload)
-        );
-      }
-
-      setActiveDrag(null);
-    },
-  });
+  // activeDrag is no longer driven by useDndMonitor — 
+  // the DndContext onDragEnd in Index.tsx handles all dispatch.
+  // We keep activeDrag for visual hover highlighting only.
 
   return (
     <div className="h-full flex flex-col overflow-hidden" data-tutorial="reasoning-board">
