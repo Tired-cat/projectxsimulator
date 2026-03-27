@@ -6,6 +6,7 @@ import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   REASONING_BLOCKS,
   BLOCK_PREREQUISITE,
+  getSmartInsight,
   validateReasoningBoard,
 } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';

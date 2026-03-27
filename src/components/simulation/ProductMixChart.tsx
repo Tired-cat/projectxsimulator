@@ -24,7 +24,7 @@ const channelOptions = [
 
 export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const { setDraggingChip, reasonMode, toggleReasonMode } = useReasoningBoard();
+  const { reasonMode, toggleReasonMode } = useReasoningBoard();
 
   const productData = useMemo(() => {
     if (selectedChannel === 'all') {
@@ -118,25 +118,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
     return `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
   };
 
-  // Reason-mode: drag a pie segment as evidence chip
-  const handleSegmentDragStart = useCallback((e: React.DragEvent, segment: typeof segments[0], percentage: number) => {
-    const channelLabel = selectedChannel === 'all' ? 'All Channels' : CHANNELS[selectedChannel]?.name || selectedChannel;
-    const chip = createEvidenceChip(
-      `${channelLabel} — ${segment.label}`,
-      `$${segment.revenue.toLocaleString()} revenue, ${segment.units.toLocaleString()} sold`,
-      `Product Mix • ${channelLabel}`,
-      `product-mix-${segment.id}-${selectedChannel}`
-    );
-    const serialized = JSON.stringify(chip);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', serialized);
-    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
-    setDraggingChip(chip);
-  }, [selectedChannel, setDraggingChip]);
-
-  const handleSegmentDragEnd = useCallback(() => {
-    setDraggingChip(null);
-  }, [setDraggingChip]);
+  // No more native drag handlers — legend rows use DraggableLegendRow with @dnd-kit
 
   // Generate dynamic insight based on selected channel
   const getInsight = () => {
