@@ -771,8 +771,6 @@ export function DraggableBarChart({
                       isSnapshot={isSnapshot}
                       onTokenDrag={onTokenDrag}
                       reasonMode={reasonMode}
-                      onChipDragStart={setDraggingChip}
-                      onChipDragEnd={() => setDraggingChip(null)}
                       formatValue={formatValue}
                     />
 
