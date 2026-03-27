@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import type { ChannelConfig } from '@/lib/marketingConstants';
 import type { ReasoningToken } from '@/types/reasoningToken';
 import { createBaselineToken, createDeltaToken } from '@/types/reasoningToken';
-import { createEvidenceChip } from '@/types/evidenceChip';
-import type { EvidenceChip } from '@/types/evidenceChip';
+import type { ExternalEvidencePayload } from '@/lib/evidenceDnd';
 
 interface GhostDeltaBarProps {
   channelId: string;
@@ -20,9 +20,6 @@ interface GhostDeltaBarProps {
   onTokenDrag?: (token: ReasoningToken) => void;
   /** When true, delta/ghost segments use HTML5 drag to create evidence chips */
   reasonMode?: boolean;
-  /** Callback to set the dragging chip in ReasoningBoardContext */
-  onChipDragStart?: (chip: EvidenceChip) => void;
-  onChipDragEnd?: () => void;
   formatValue?: (value: number) => string;
 }
 
@@ -39,13 +36,10 @@ export function GhostDeltaBar({
   isSnapshot,
   onTokenDrag,
   reasonMode = false,
-  onChipDragStart,
-  onChipDragEnd,
   formatValue,
 }: GhostDeltaBarProps) {
   const [isDraggingGhost, setIsDraggingGhost] = useState(false);
   const [isDraggingDelta, setIsDraggingDelta] = useState(false);
-  const [isDraggingMainBar, setIsDraggingMainBar] = useState(false);
 
   const hasBaseline = baselineValue !== null && !isSnapshot;
   const delta = hasBaseline ? currentValue - baselineValue : 0;
@@ -61,60 +55,69 @@ export function GhostDeltaBar({
 
   const metricLabel = viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
 
-  // HTML5 drag handlers for reason mode (evidence chips)
-  const handleDeltaHtml5DragStart = useCallback((e: React.DragEvent) => {
-    e.stopPropagation();
+  const mainPayload = useMemo<ExternalEvidencePayload>(() => {
+    const displayValue = formatValue ? formatValue(currentValue) : currentValue.toLocaleString();
+    return {
+      label: `${channel.name} ${metricLabel}`,
+      value: displayValue,
+      context: `${metricLabel} • Channel Performance`,
+      sourceId: `${channelId}-bar-${viewMode}`,
+      chipKind: 'metric',
+      channelName: channel.name,
+      metricName: metricLabel.toLowerCase(),
+    };
+  }, [channel.name, channelId, currentValue, formatValue, metricLabel, viewMode]);
+
+  const baselinePayload = useMemo<ExternalEvidencePayload>(() => ({
+    label: `${channel.name} Baseline ${metricLabel}`,
+    value: baselineValue?.toLocaleString() ?? '0',
+    context: `Baseline ${metricLabel} • Channel Performance`,
+    sourceId: `${channelId}-baseline-${viewMode}`,
+    chipKind: 'baseline',
+    channelName: channel.name,
+    metricName: metricLabel.toLowerCase(),
+  }), [channel.name, channelId, baselineValue, metricLabel, viewMode]);
+
+  const deltaPayload = useMemo<ExternalEvidencePayload>(() => {
     const isInc = delta > 0;
-    const chip = createEvidenceChip(
-      `${channel.name} ${metricLabel}`,
-      `${isInc ? '+' : ''}${delta.toLocaleString()}`,
-      `${isInc ? 'Increased' : 'Decreased'} ${metricLabel} • Channel Performance`,
-      `${channelId}-delta-${viewMode}`,
-      {
-        chipKind: isInc ? 'delta-increase' : 'delta-decrease',
-        channelName: channel.name,
-        metricName: metricLabel.toLowerCase(),
-        deltaValue: delta,
-      }
-    );
-    const serialized = JSON.stringify(chip);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', serialized);
-    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
-    onChipDragStart?.(chip);
-    setIsDraggingDelta(true);
-  }, [channelId, channel.name, delta, viewMode, metricLabel, onChipDragStart]);
+    return {
+      label: `${channel.name} ${metricLabel}`,
+      value: `${isInc ? '+' : ''}${delta.toLocaleString()}`,
+      context: `${isInc ? 'Increased' : 'Decreased'} ${metricLabel} • Channel Performance`,
+      sourceId: `${channelId}-delta-${viewMode}`,
+      chipKind: isInc ? 'delta-increase' : 'delta-decrease',
+      channelName: channel.name,
+      metricName: metricLabel.toLowerCase(),
+      deltaValue: delta,
+    };
+  }, [channel.name, channelId, delta, metricLabel, viewMode]);
 
-  const handleDeltaHtml5DragEnd = useCallback(() => {
-    setIsDraggingDelta(false);
-    onChipDragEnd?.();
-  }, [onChipDragEnd]);
+  const mainDraggable = useDraggable({
+    id: `evidence-main-${channelId}-${viewMode}-${isSnapshot ? 'snapshot' : 'live'}`,
+    data: {
+      kind: 'external-chip',
+      payload: mainPayload,
+    },
+    disabled: !reasonMode,
+  });
 
-  const handleGhostHtml5DragStart = useCallback((e: React.DragEvent) => {
-    e.stopPropagation();
-    const chip = createEvidenceChip(
-      `${channel.name} Baseline ${metricLabel}`,
-      baselineValue?.toLocaleString() ?? '0',
-      `Baseline ${metricLabel} • Channel Performance`,
-      `${channelId}-baseline-${viewMode}`,
-      {
-        chipKind: 'baseline',
-        channelName: channel.name,
-        metricName: metricLabel.toLowerCase(),
-      }
-    );
-    const serialized = JSON.stringify(chip);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', serialized);
-    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
-    onChipDragStart?.(chip);
-    setIsDraggingGhost(true);
-  }, [channelId, channel.name, baselineValue, viewMode, metricLabel, onChipDragStart]);
+  const baselineDraggable = useDraggable({
+    id: `evidence-baseline-${channelId}-${viewMode}-${isSnapshot ? 'snapshot' : 'live'}`,
+    data: {
+      kind: 'external-chip',
+      payload: baselinePayload,
+    },
+    disabled: !reasonMode || !hasBaseline,
+  });
 
-  const handleGhostHtml5DragEnd = useCallback(() => {
-    setIsDraggingGhost(false);
-    onChipDragEnd?.();
-  }, [onChipDragEnd]);
+  const deltaDraggable = useDraggable({
+    id: `evidence-delta-${channelId}-${viewMode}-${isSnapshot ? 'snapshot' : 'live'}`,
+    data: {
+      kind: 'external-chip',
+      payload: deltaPayload,
+    },
+    disabled: !reasonMode || !hasDelta,
+  });
 
   // Ghost bar drag handlers (original mouse-based for token drag)
   const handleGhostDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -161,33 +164,9 @@ export function GhostDeltaBar({
     setIsDraggingDelta(false);
   }, []);
 
-  // Main bar drag handler for reason mode (creates a metric chip for the current value)
-  const handleMainBarHtml5DragStart = useCallback((e: React.DragEvent) => {
-    e.stopPropagation();
-    const displayValue = formatValue ? formatValue(currentValue) : currentValue.toLocaleString();
-    const chip = createEvidenceChip(
-      `${channel.name} ${metricLabel}`,
-      displayValue,
-      `${metricLabel} • Channel Performance`,
-      `${channelId}-bar-${viewMode}`,
-      {
-        chipKind: 'metric',
-        channelName: channel.name,
-        metricName: metricLabel.toLowerCase(),
-      }
-    );
-    const serialized = JSON.stringify(chip);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/evidence-chip', serialized);
-    e.dataTransfer.setData('text/plain', `__evidence_chip__:${serialized}`);
-    onChipDragStart?.(chip);
-    setIsDraggingMainBar(true);
-  }, [channelId, channel.name, currentValue, viewMode, metricLabel, onChipDragStart, formatValue]);
-
-  const handleMainBarHtml5DragEnd = useCallback(() => {
-    setIsDraggingMainBar(false);
-    onChipDragEnd?.();
-  }, [onChipDragEnd]);
+  const ghostDragging = reasonMode ? baselineDraggable.isDragging : isDraggingGhost;
+  const deltaDragging = reasonMode ? deltaDraggable.isDragging : isDraggingDelta;
+  const mainDragging = reasonMode ? mainDraggable.isDragging : false;
 
   // Colors for delta
   const deltaDecreaseColor = 'hsl(0, 84%, 60%)'; // Red
@@ -210,14 +189,14 @@ export function GhostDeltaBar({
       {/* Ghost Baseline Bar - faint shadow showing the original state */}
       {hasBaseline && (
         <div
-          draggable={reasonMode}
-          onDragStart={reasonMode ? handleGhostHtml5DragStart : undefined}
-          onDragEnd={reasonMode ? handleGhostHtml5DragEnd : undefined}
+          ref={baselineDraggable.setNodeRef}
+          {...baselineDraggable.attributes}
+          {...baselineDraggable.listeners}
           onMouseDown={reasonMode ? undefined : handleGhostDragStart}
           onMouseUp={reasonMode ? undefined : handleGhostDragEnd}
           onMouseLeave={reasonMode ? undefined : handleGhostDragEnd}
           className={`absolute bottom-0 left-0 right-0 rounded-t-lg pointer-events-auto transition-transform ${
-            isDraggingGhost ? 'cursor-grabbing z-5 scale-105' : 'cursor-grab z-5'
+            ghostDragging ? 'cursor-grabbing z-5 scale-105' : 'cursor-grab z-5'
           }`}
           style={{
             backgroundColor: ghostColor,
@@ -229,7 +208,7 @@ export function GhostDeltaBar({
           <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-50">
             <div className="w-6 h-1 bg-muted-foreground/40 rounded-full" />
           </div>
-          {isDraggingGhost && (
+          {ghostDragging && (
             <div className="absolute inset-0 rounded-t-lg ring-2 ring-primary ring-offset-1 ring-offset-background" />
           )}
         </div>
@@ -250,12 +229,12 @@ export function GhostDeltaBar({
         >
           {/* Baseline Portion - bottom of stack, draggable in reason mode */}
           <motion.div
-            draggable={reasonMode}
-            onDragStart={reasonMode ? handleMainBarHtml5DragStart as any : undefined}
-            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd as any : undefined}
+            ref={mainDraggable.setNodeRef as any}
+            {...mainDraggable.attributes}
+            {...mainDraggable.listeners}
             className={`w-full shrink-0 ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : ''
-            } ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
+            } ${mainDragging ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
             style={{
               backgroundColor: channel.color,
               // Explicit height based on proportion of baseline within total current
@@ -283,14 +262,14 @@ export function GhostDeltaBar({
 
           {/* Delta Increase Segment - top of stack, GREEN for increase */}
           <div
-            draggable={reasonMode}
-            onDragStart={reasonMode ? handleDeltaHtml5DragStart : undefined}
-            onDragEnd={reasonMode ? handleDeltaHtml5DragEnd : undefined}
+            ref={deltaDraggable.setNodeRef}
+            {...deltaDraggable.attributes}
+            {...deltaDraggable.listeners}
             onMouseDown={reasonMode ? undefined : handleDeltaDragStart}
             onMouseUp={reasonMode ? undefined : handleDeltaDragEnd}
             onMouseLeave={reasonMode ? undefined : handleDeltaDragEnd}
             className={`w-full shrink-0 pointer-events-auto rounded-t-lg transition-transform ${
-              isDraggingDelta ? 'cursor-grabbing z-40 scale-[1.04]' : 'cursor-grab z-35'
+              deltaDragging ? 'cursor-grabbing z-40 scale-[1.04]' : 'cursor-grab z-35'
             }`}
             style={{
               backgroundColor: 'hsl(142, 71%, 45%)',
@@ -299,8 +278,8 @@ export function GhostDeltaBar({
                 : '0%',
               minHeight: deltaHeight > 0 ? '32px' : '0px',
               borderBottom: '2px solid hsl(142, 71%, 35%)',
-              borderTop: isDraggingDelta ? '2px solid white' : 'none',
-              boxShadow: isDraggingDelta 
+              borderTop: deltaDragging ? '2px solid white' : 'none',
+              boxShadow: deltaDragging 
                 ? '0 0 12px hsl(142, 71%, 45%)' 
                 : 'none',
             }}
@@ -316,7 +295,7 @@ export function GhostDeltaBar({
                 </div>
               </div>
             )}
-            {isDraggingDelta && (
+            {deltaDragging && (
               <div 
                 className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background rounded-t-lg"
               />
@@ -328,12 +307,12 @@ export function GhostDeltaBar({
         <>
           {/* Single bar - draggable in reason mode */}
           <motion.div
-            draggable={reasonMode}
-            onDragStart={reasonMode ? handleMainBarHtml5DragStart as any : undefined}
-            onDragEnd={reasonMode ? handleMainBarHtml5DragEnd as any : undefined}
+            ref={mainDraggable.setNodeRef as any}
+            {...mainDraggable.attributes}
+            {...mainDraggable.listeners}
             className={`relative w-full rounded-t-lg ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
-            } ${isDraggingMainBar ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
+            } ${mainDragging ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
             style={{
               backgroundColor: isNegative 
                 ? 'hsl(var(--destructive))' 
@@ -366,21 +345,21 @@ export function GhostDeltaBar({
           {/* Delta Decrease Segment - visible gap between ghost and current, draggable for reasoning */}
           {hasDelta && hasBaseline && !isIncrease && (
             <div
-              draggable={reasonMode}
-              onDragStart={reasonMode ? handleDeltaHtml5DragStart : undefined}
-              onDragEnd={reasonMode ? handleDeltaHtml5DragEnd : undefined}
+              ref={deltaDraggable.setNodeRef}
+              {...deltaDraggable.attributes}
+              {...deltaDraggable.listeners}
               onMouseDown={reasonMode ? undefined : handleDeltaDragStart}
               onMouseUp={reasonMode ? undefined : handleDeltaDragEnd}
               onMouseLeave={reasonMode ? undefined : handleDeltaDragEnd}
               className={`absolute left-0 right-0 pointer-events-auto transition-transform ${
-                isDraggingDelta ? 'cursor-grabbing z-40 scale-[1.08]' : 'cursor-grab z-35'
+                deltaDragging ? 'cursor-grabbing z-40 scale-[1.08]' : 'cursor-grab z-35'
               }`}
               style={{
                 bottom: `${currentHeightPercent}%`,
                 height: `${deltaHeight}%`,
                 backgroundColor: deltaDecreaseColor,
                 borderRadius: '0 0 0.5rem 0.5rem',
-                boxShadow: isDraggingDelta 
+                boxShadow: deltaDragging 
                   ? `0 0 20px ${deltaDecreaseColor}` 
                   : 'none',
               }}
@@ -391,7 +370,7 @@ export function GhostDeltaBar({
                   {reasonMode ? '🧪' : '▼'} {Math.abs(delta).toLocaleString()}
                 </div>
               </div>
-              {isDraggingDelta && (
+              {deltaDragging && (
                 <div 
                   className="absolute inset-0 ring-2 ring-white ring-offset-1 ring-offset-background"
                   style={{ borderRadius: '0 0 0.5rem 0.5rem' }}
