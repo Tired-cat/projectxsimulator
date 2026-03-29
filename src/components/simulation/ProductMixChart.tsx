@@ -349,7 +349,9 @@ function DraggableLegendRow({
   return (
     <div
       ref={setNodeRef}
-      {...(reasonMode ? { ...attributes, ...listeners } : {})}
+      {...attributes}
+      {...listeners}
+      style={{ touchAction: reasonMode ? 'none' : 'auto' }}
       className={`flex items-center justify-between p-2 bg-secondary/30 rounded-lg transition-all ${
         reasonMode
           ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'

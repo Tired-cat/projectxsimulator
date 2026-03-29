@@ -60,7 +60,6 @@ const GLANCE_OPENERS: Record<ReasoningBlockId, string[]> = {
 
 function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
   if (chips.length === 0) return '';
-  // Revenue/profit chips lead the at-a-glance sentence
   const ranked = rankChips(chips);
   let phrase: string;
   if (ranked.length === 1) {
@@ -79,7 +78,6 @@ function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId
 
 // ── Full Reasoning Story: value-derived, relationship-focused, no raw data ──
 
-/** Extract a numeric value from a chip's value string or deltaValue */
 function extractNumeric(chip: EvidenceChip): number | null {
   if (chip.deltaValue != null) return chip.deltaValue;
   const cleaned = chip.value.replace(/[$£€,%\s]/g, '');
@@ -87,7 +85,6 @@ function extractNumeric(chip: EvidenceChip): number | null {
   return isNaN(num) ? null : num;
 }
 
-/** Analyse the actual numeric relationship between two chips */
 function analyseRelationship(a: EvidenceChip, b: EvidenceChip): {
   isContrast: boolean;
   magnitude: 'similar' | 'moderate' | 'considerable' | 'vast';
@@ -97,7 +94,6 @@ function analyseRelationship(a: EvidenceChip, b: EvidenceChip): {
   const numB = extractNumeric(b);
 
   if (numA == null || numB == null) {
-    // Fallback: use chipKind if numbers unavailable
     const isContrast =
       (a.chipKind === 'delta-increase' && b.chipKind === 'delta-decrease') ||
       (a.chipKind === 'delta-decrease' && b.chipKind === 'delta-increase');
@@ -109,7 +105,6 @@ function analyseRelationship(a: EvidenceChip, b: EvidenceChip): {
   const max = Math.max(absA, absB);
   const ratio = max === 0 ? 1 : Math.abs(absA - absB) / max;
 
-  // Direction analysis: are they moving the same way?
   const sameDirection = (numA >= 0 && numB >= 0) || (numA < 0 && numB < 0);
   const isContrast = !sameDirection || ratio > 0.4;
 
@@ -177,6 +172,15 @@ function describeChipAlone(chip: EvidenceChip): string {
   const val = chip.value;
   const m = (chip.metricName ?? chip.label).toLowerCase();
 
+  // Product mix chip — qualitative / behavioural
+  if (chip.chipKind === 'product') {
+    const parts = chip.label.split('—');
+    const channel = parts[0]?.trim() || ch;
+    const product = parts[1]?.trim() || chip.label;
+    return `${channel} primarily selling ${product} (${val}), pointing to an audience that favours this product tier`;
+  }
+
+
   if (m.includes('revenue') || m.includes('profit')) {
     if (chip.chipKind === 'delta-increase') return `${ch} generating stronger revenue than expected`;
     if (chip.chipKind === 'delta-decrease') return `${ch} underperforming on revenue`;
@@ -212,7 +216,6 @@ function describeRelationship(chip: EvidenceChip, ctx: EvidenceChip, seed: strin
   const chB = channelOf(ctx);
   const mA = metricOf(chip);
   const mB = metricOf(ctx);
-  // Use the higher-priority chip for the conclusion phrasing
   const primaryChip = metricRank(chip) <= metricRank(ctx) ? chip : ctx;
 
   if (rel.isContrast) {
@@ -255,6 +258,7 @@ function describePairRelationship(a: EvidenceChip, b: EvidenceChip, seed: string
   }
 }
 
+// ── Block-specific story openers that frame each stage distinctly ──
 const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
   descriptive: [
     'The data showed me [insight].',
@@ -262,9 +266,9 @@ const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
     'What stood out immediately was [insight].',
   ],
   diagnostic: [
-    '[insight] was the root cause.',
-    'The underlying driver here was [insight].',
     'I traced this back to [insight].',
+    'The root cause was [insight].',
+    '[insight] explained why I was seeing this pattern.',
   ],
   prescriptive: [
     '[insight] drove my decision to act.',
@@ -272,37 +276,65 @@ const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
     'Acting on [insight], I shifted my budget allocation.',
   ],
   predictive: [
-    'With these changes in place, [insight] points to what comes next.',
-    'The likely outcome, based on [insight], is a shift in performance.',
+    'With these changes in place, I expect [insight].',
+    'The likely outcome is [insight].',
     'Looking ahead, [insight] shapes my expectation of results.',
   ],
 };
 
-function generateStorySentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
+// ── Product-mix aware openers for diagnostic block ──
+const DIAGNOSTIC_PRODUCT_OPENERS = [
+  'The product mix revealed that [insight], explaining the revenue pattern I observed.',
+  '[insight] showed why certain channels generate disproportionate revenue per click.',
+  'Looking at what was actually being sold, [insight] clarified the underlying dynamic.',
+];
+
+function generateStorySentence(
+  chips: EvidenceChip[],
+  blockId: ReasoningBlockId,
+  priorChannels: Set<string>
+): string {
   if (chips.length === 0) return '';
 
-  // Revenue/profit chips anchor the narrative; views/impressions are supporting context
   const ranked = rankChips(chips);
+  const hasProductChip = ranked.some(c => c.chipKind === 'product');
 
   let insight: string;
   if (ranked.length === 1) {
     const chip = ranked[0];
     const ctx = chip.contextChip;
-    // Fix ISSUE-03: ignore self-referential contextualisation
     if (ctx && ctx.sourceId !== chip.sourceId) {
       insight = describeRelationship(chip, ctx, chip.id + 'ctx');
     } else {
       insight = describeChipAlone(chip);
     }
   } else {
-    const parts: string[] = [describeChipAlone(ranked[0])];
-    for (let i = 1; i < ranked.length; i++) {
-      parts.push(describePairRelationship(ranked[i - 1], ranked[i], ranked[i - 1].id + ranked[i].id));
+    // Build a combined insight — avoid repeating channel already used in prior block with same metric
+    const primaryChip = ranked[0];
+    const primaryCh = channelOf(primaryChip);
+    const primaryMetricKey = `${primaryCh}|${metricOf(primaryChip)}`;
+
+    if (priorChannels.has(primaryMetricKey) && ranked.length >= 2) {
+      // Pivot to the second chip to avoid repetition
+      const bridgeChip = ranked[1];
+      insight = `${describeChipAlone(bridgeChip)}, which connects to the earlier observation about ${primaryCh}`;
+    } else {
+      const parts: string[] = [describeChipAlone(ranked[0])];
+      for (let i = 1; i < ranked.length; i++) {
+        parts.push(describePairRelationship(ranked[i - 1], ranked[i], ranked[i - 1].id + ranked[i].id));
+      }
+      insight = parts.join(', ');
     }
-    insight = parts.join(', ');
   }
 
-  const templates = STORY_OPENERS[blockId];
+  // Pick template — use product-aware opener for diagnostic if product chip present
+  let templates: string[];
+  if (blockId === 'diagnostic' && hasProductChip) {
+    templates = DIAGNOSTIC_PRODUCT_OPENERS;
+  } else {
+    templates = STORY_OPENERS[blockId];
+  }
+
   const idx = Math.floor(seededRandom(ranked.map(c => c.id).join('-') + blockId + 'story') * templates.length);
   return templates[idx].replace('[insight]', insight);
 }
@@ -331,12 +363,22 @@ export function ReasoningNarrative() {
     return result;
   }, [board]);
 
-  // Full Story: relationship-focused sentences
+  // Full Story: relationship-focused, cross-block deduplication
   const storySentences = useMemo(() => {
     const sentences: { text: string; blockId: ReasoningBlockId }[] = [];
+    // Track channel+metric combos used in prior blocks to avoid circularity
+    const priorChannels = new Set<string>();
+
     for (const blockId of BLOCK_ORDER) {
-      const sentence = generateStorySentence(board[blockId], blockId);
+      const chips = board[blockId];
+      const sentence = generateStorySentence(chips, blockId, priorChannels);
       if (!sentence) continue;
+
+      // Register channels used in this block for dedup in later blocks
+      for (const chip of chips) {
+        priorChannels.add(`${channelOf(chip)}|${metricOf(chip)}`);
+      }
+
       const connector = QUADRANT_CONNECTORS[blockId];
       const text = connector
         ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
@@ -397,9 +439,9 @@ export function ReasoningNarrative() {
                           <span className="text-[13px] text-foreground/90 leading-snug">
                             <span className="font-medium">{chip.label}:</span>{' '}
                             <strong className="font-bold">{chip.value}</strong>
-                            {chip.contextChip && (
-                              <span className="text-muted-foreground ml-1">+ {chip.contextChip.label}</span>
-                            )}
+                            {(chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : [])).map((ctx, ci) => (
+                              <span key={`ctx-${ci}`} className="text-muted-foreground ml-1">+ {ctx.label}</span>
+                            ))}
                           </span>
                         </div>
                       ))}

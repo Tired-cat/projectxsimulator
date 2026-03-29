@@ -11,8 +11,10 @@ export interface EvidenceChip {
   channelName?: string;
   metricName?: string;
   deltaValue?: number;
-  // Contextualisation - a second chip attached as supporting evidence
+  // Contextualisation - supporting evidence chips attached to this chip
+  // contextChip is kept for backward compat (= contextChips[0])
   contextChip?: EvidenceChip | null;
+  contextChips?: EvidenceChip[];
 }
 
 export type ReasoningBlockId = 'descriptive' | 'diagnostic' | 'predictive' | 'prescriptive';
@@ -22,15 +24,15 @@ export type ReasoningBoardState = Record<ReasoningBlockId, EvidenceChip[]>;
 export const REASONING_SEQUENCE: ReasoningBlockId[] = [
   'descriptive',
   'diagnostic',
-  'predictive',
   'prescriptive',
+  'predictive',
 ];
 
 export const BLOCK_PREREQUISITE: Record<ReasoningBlockId, ReasoningBlockId | null> = {
   descriptive: null,
   diagnostic: 'descriptive',
-  predictive: 'diagnostic',
-  prescriptive: 'predictive',
+  prescriptive: 'diagnostic',
+  predictive: 'prescriptive',
 };
 
 export const REASONING_BLOCKS: {
@@ -55,18 +57,18 @@ export const REASONING_BLOCKS: {
     bgColor: 'hsl(38 92% 50% / 0.08)',
   },
   {
-    id: 'predictive',
-    title: 'Predictive',
-    question: 'What happens after your decision?',
-    color: 'hsl(271 81% 56%)',
-    bgColor: 'hsl(271 81% 56% / 0.08)',
-  },
-  {
     id: 'prescriptive',
     title: 'Prescriptive',
     question: 'What should we do?',
     color: 'hsl(142 71% 45%)',
     bgColor: 'hsl(142 71% 45% / 0.08)',
+  },
+  {
+    id: 'predictive',
+    title: 'Predictive',
+    question: 'What happens after your decision?',
+    color: 'hsl(271 81% 56%)',
+    bgColor: 'hsl(271 81% 56% / 0.08)',
   },
 ];
 
