@@ -120,7 +120,7 @@ export default function ProfessorDashboard() {
       supabase.from('profiles').select('id, display_name, email').eq('role', 'student'),
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
-      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection'),
+      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
     if (sRes.data) setSessions(sRes.data as SessionRow[]);
@@ -171,6 +171,7 @@ export default function ProfessorDashboard() {
         adjustments: board?.adjustments_made ?? 0,
         finalDecision: submission?.final_decision ?? null,
         submittedAt: submission?.submitted_at ?? null,
+        reasoningScore: submission?.reasoning_score ?? 0,
         writtenDiagnosis: board?.written_diagnosis ?? null,
         step1Text: submission?.step_1_text ?? null,
         step2Chips: submission?.step_2_chips ?? null,
