@@ -3,7 +3,6 @@ import { CHANNELS, PRODUCTS } from '@/lib/marketingConstants';
 import type { calculateMixedRevenue } from '@/lib/marketingConstants';
 import { useState, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { FlaskConical } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import { Button } from '@/components/ui/button';
@@ -341,13 +340,11 @@ function DraggableLegendRow({
     chipKind: 'product' as const,
   }), [channelLabel, segment, selectedChannel]);
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: getExternalChipDragId(payload.sourceId, payload.label),
     data: { kind: 'external-chip', payload },
     disabled: !reasonMode,
   });
-
-  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
 
   return (
     <div
@@ -357,8 +354,7 @@ function DraggableLegendRow({
         reasonMode
           ? 'cursor-grab hover:ring-2 hover:ring-primary/40 active:opacity-60 select-none'
           : ''
-      } ${isDragging ? 'opacity-50 ring-2 ring-primary/50' : ''}`}
-      style={style}
+      } ${isDragging ? 'opacity-30' : ''}`}
       title={reasonMode ? `Drag ${segment.label} to Reasoning Board` : undefined}
     >
       <div className="flex items-center gap-2">
