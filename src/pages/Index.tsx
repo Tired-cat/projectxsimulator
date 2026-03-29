@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
-import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send, MessageCircle } from 'lucide-react';
+import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
 import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent, DragOverlay } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
 import { SimulationShell } from '@/components/simulation/SimulationShell';
@@ -26,7 +26,7 @@ import type { ReasoningBoardState } from '@/types/evidenceChip';
 import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from '@/lib/evidenceDnd';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { AiChatModal } from '@/components/simulation/AiChatModal';
+import { FeedbackPage } from '@/components/simulation/FeedbackPage';
 import {
   Accordion,
   AccordionContent,
@@ -50,12 +50,7 @@ function SimulationContent() {
   const [activeDragHtml, setActiveDragHtml] = useState<string | null>(null);
   const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(null);
   const [usedAi, setUsedAi] = useState(false);
-  const [aiChatOpen, setAiChatOpen] = useState(false);
-
-  const handleChatWithAi = useCallback(() => {
-    setUsedAi(true);
-    setAiChatOpen(true);
-  }, []);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
@@ -181,6 +176,15 @@ function SimulationContent() {
     toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
   }, [submit]);
 
+  const handleShowFeedback = useCallback(() => {
+    setUsedAi(true);
+    setShowFeedback(true);
+  }, []);
+
+  const handleReturnFromFeedback = useCallback(() => {
+    setShowFeedback(false);
+  }, []);
+
   // Compare-mode state
   const [shellCompareActive, setShellCompareActive] = useState(false);
   const [shellSnapshotSpend, setShellSnapshotSpend] = useState<ChannelSpend | null>(null);
@@ -286,22 +290,11 @@ function SimulationContent() {
 
       {/* Top bar with user info */}
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
-        {!submitted && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleChatWithAi}
-            className="gap-1.5"
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-            💬 Chat with AI Assistant
-          </Button>
-        )}
         {!submitted && totalChips > 0 && (
           <Button
             size="sm"
             variant="default"
-            onClick={() => setShowSubmitDialog(true)}
+            onClick={handleShowFeedback}
             className="gap-1.5"
           >
             <Send className="h-3.5 w-3.5" />
@@ -388,16 +381,16 @@ function SimulationContent() {
         </DialogContent>
       </Dialog>
 
-      <AiChatModal
-        open={aiChatOpen}
-        onOpenChange={setAiChatOpen}
-        context={{
-          board,
-          channelSpend,
-          totals,
-          writtenDiagnosis,
-        }}
-      />
+      {/* Feedback page overlay */}
+      {showFeedback && (
+        <div className="fixed inset-0 z-50 bg-background overflow-auto">
+          <FeedbackPage
+            context={{ board, channelSpend, totals, writtenDiagnosis }}
+            onReturnAndAdjust={handleReturnFromFeedback}
+            onSubmitFinal={handleSubmit}
+          />
+        </div>
+      )}
     </>
   );
 }
