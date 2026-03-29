@@ -191,6 +191,11 @@ export function ReasoningBoard() {
                       >
                         <span>Drop evidence here</span>
                         <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
+                        {block.id === 'predictive' && (
+                          <span className="text-muted-foreground/50 italic text-[9px] text-center mt-0.5">
+                            Fill Prescriptive first — predicts what happens after your action
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <>

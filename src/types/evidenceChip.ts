@@ -57,7 +57,7 @@ export const REASONING_BLOCKS: {
   {
     id: 'predictive',
     title: 'Predictive',
-    question: 'What will happen next if...?',
+    question: 'What happens after your decision?',
     color: 'hsl(271 81% 56%)',
     bgColor: 'hsl(271 81% 56% / 0.08)',
   },

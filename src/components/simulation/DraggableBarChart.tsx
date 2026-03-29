@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CHANNELS, GLOBAL_BUDGET, calculateMixedRevenue } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
-import { Eye, DollarSign, TrendingUp, LayoutGrid, FlaskConical } from 'lucide-react';
+import { Eye, DollarSign, TrendingUp, LayoutGrid, FlaskConical, Wallet, Lock } from 'lucide-react';
 import { GhostDeltaBar } from './GhostDeltaBar';
 import type { ReasoningToken } from '@/types/reasoningToken';
 
@@ -34,13 +34,22 @@ interface DraggableBarChartProps {
   onTokenDrag?: (token: ReasoningToken) => void;
 }
 
-type ViewMode = 'clicks' | 'revenue' | 'profit' | 'all';
+type ViewMode = 'budget' | 'clicks' | 'revenue' | 'profit' | 'all';
 
 const filterOptions = [
-  { id: 'clicks' as ViewMode, label: 'Views', icon: Eye },
-  { id: 'revenue' as ViewMode, label: 'Revenue', icon: DollarSign },
-  { id: 'profit' as ViewMode, label: 'Profit', icon: TrendingUp },
-  { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid },
+  { id: 'budget' as ViewMode, label: 'Budget', icon: Wallet, readOnly: false },
+  { id: 'clicks' as ViewMode, label: 'Views', icon: Eye, readOnly: true },
+  { id: 'revenue' as ViewMode, label: 'Revenue', icon: DollarSign, readOnly: true },
+  { id: 'profit' as ViewMode, label: 'Profit', icon: TrendingUp, readOnly: true },
+  { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid, readOnly: true },
+];
+
+// Causal flow steps matching the filter tabs (budget excluded — it's the input)
+const CAUSAL_STEPS: { id: ViewMode; label: string; icon: typeof Eye }[] = [
+  { id: 'budget', label: 'Budget', icon: Wallet },
+  { id: 'clicks', label: 'Views', icon: Eye },
+  { id: 'revenue', label: 'Revenue', icon: DollarSign },
+  { id: 'profit', label: 'Profit', icon: TrendingUp },
 ];
 
 // Fixed height for the entire component to prevent layout shift (used in single view)
@@ -58,7 +67,7 @@ export function DraggableBarChart({
   baselineMetrics = null,
   onTokenDrag,
 }: DraggableBarChartProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('clicks');
+  const [viewMode, setViewMode] = useState<ViewMode>('budget');
   const { reasonMode, toggleReasonMode } = useReasoningBoard();
   
   // Snapshot mode: draggable for reasoning but NOT adjustable
@@ -112,6 +121,13 @@ export function DraggableBarChart({
     const allValues: number[] = [];
     
     Object.keys(CHANNELS).forEach((channelId) => {
+      if (viewMode === 'budget') {
+        allValues.push(Math.abs(displaySpend[channelId as keyof ChannelSpend]));
+        if (baselineSpend?.[channelId as keyof ChannelSpend] != null) {
+          allValues.push(Math.abs(baselineSpend[channelId as keyof ChannelSpend]));
+        }
+        return;
+      }
       const metrics = displayMetrics[channelId];
       if (metrics) {
         switch (viewMode) {
@@ -190,7 +206,7 @@ export function DraggableBarChart({
 
   // Y-axis labels based on view mode - generate 5 clean ticks
   const getYAxisLabels = useCallback(() => {
-    const isDollar = viewMode === 'revenue' || viewMode === 'profit';
+    const isDollar = viewMode === 'revenue' || viewMode === 'profit' || viewMode === 'budget';
     const prefix = isDollar ? '$' : '';
     
     // Format large numbers compactly
@@ -212,9 +228,12 @@ export function DraggableBarChart({
 
   // Get bar value based on view mode
   const getBarValue = useCallback((channelId: string) => {
+    if (viewMode === 'budget') {
+      return { primary: displaySpend[channelId as keyof ChannelSpend], secondary: null };
+    }
     const metrics = displayMetrics[channelId];
     if (!metrics) return { primary: 0, secondary: null };
-    
+
     switch (viewMode) {
       case 'clicks':
         return { primary: metrics.clicks, secondary: null };
@@ -227,14 +246,17 @@ export function DraggableBarChart({
       default:
         return { primary: 0, secondary: null };
     }
-  }, [viewMode, displayMetrics]);
+  }, [viewMode, displayMetrics, displaySpend]);
 
   // Get baseline value based on view mode
   const getBaselineValue = useCallback((channelId: string): number | null => {
+    if (viewMode === 'budget') {
+      return baselineSpend?.[channelId as keyof ChannelSpend] ?? null;
+    }
     if (!baselineMetrics) return null;
     const metrics = baselineMetrics[channelId];
     if (!metrics) return null;
-    
+
     switch (viewMode) {
       case 'clicks':
         return metrics.clicks;
@@ -433,6 +455,8 @@ export function DraggableBarChart({
     return `$${value.toLocaleString()}`;
   };
 
+  const isBudgetTab = viewMode === 'budget';
+
   const isDragging = draggingChannel !== null;
 
   // Get tooltip data for current drag (includes real-time budget info)
@@ -498,7 +522,7 @@ export function DraggableBarChart({
     const valueAtCursor = Math.round(percentage * maxScale);
     
     // Format based on view mode
-    const isDollar = viewMode === 'revenue' || viewMode === 'profit';
+    const isDollar = viewMode === 'revenue' || viewMode === 'profit' || viewMode === 'budget';
     const prefix = isDollar ? '$' : '';
     const formattedValue = valueAtCursor >= 1000 
       ? `${prefix}${(valueAtCursor / 1000).toFixed(1)}k`
@@ -538,23 +562,50 @@ export function DraggableBarChart({
               Channel Performance
             </CardTitle>
             
-            {/* Filter Metrics Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-              {/* Reason Mode Toggle */}
-              {reasonMode && !isSnapshot && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
-                  <FlaskConical className={fillContainer ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
-                  Reason mode — drag bars to Reasoning Board
-                </div>
-              )}
+            {/* Reason Mode badge */}
+            {reasonMode && !isSnapshot && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
+                <FlaskConical className={fillContainer ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
+                Reason mode — drag bars to Reasoning Board
+              </div>
+            )}
+          </div>
 
-              <span className={`${fillContainer ? 'text-xs' : 'text-sm'} text-muted-foreground flex items-center gap-1`}>
-                <svg className={`${fillContainer ? 'w-3 h-3' : 'w-4 h-4'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
-                </svg>
-                {!fillContainer && 'Filter metrics:'}
-              </span>
-              <div className="flex gap-1">
+          {/* Causal flow banner + filter tabs */}
+          {!isSnapshot && (
+            <div className={`${fillContainer ? 'mt-1.5' : 'mt-3'} space-y-2`}>
+              {/* Causal flow banner */}
+              <div className={`flex items-center gap-1 ${fillContainer ? 'text-[9px]' : 'text-[10px]'} text-muted-foreground`}>
+                {CAUSAL_STEPS.map((step, i) => {
+                  const Icon = step.icon;
+                  const isActive = viewMode === step.id;
+                  return (
+                    <span key={step.id} className="flex items-center gap-1">
+                      {i > 0 && <span className="text-muted-foreground/40 mx-0.5">→</span>}
+                      <button
+                        onClick={() => setViewMode(step.id)}
+                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded transition-all ${
+                          isActive
+                            ? 'bg-foreground/10 text-foreground font-semibold'
+                            : 'hover:bg-secondary text-muted-foreground'
+                        }`}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {step.label}
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+
+              {/* Filter tabs */}
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className={`${fillContainer ? 'text-xs' : 'text-sm'} text-muted-foreground flex items-center gap-1`}>
+                  <svg className={`${fillContainer ? 'w-3 h-3' : 'w-4 h-4'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+                  </svg>
+                  {!fillContainer && 'View:'}
+                </span>
                 {filterOptions.map((option) => {
                   const Icon = option.icon;
                   const isActive = viewMode === option.id;
@@ -570,12 +621,15 @@ export function DraggableBarChart({
                     >
                       <Icon className={`${fillContainer ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} />
                       {option.label}
+                      {option.readOnly && !isActive && (
+                        <Lock className={`${fillContainer ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-muted-foreground/50`} />
+                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
-          </div>
+          )}
           
           {/* Remaining Budget Counter - Hidden in fillContainer (split) mode for space */}
           {!fillContainer && (
@@ -700,25 +754,27 @@ export function DraggableBarChart({
                 const barHeightPct = Math.max((Math.abs(metricValue) / maxScale) * 100, 2);
 
                 // Reason-mode bar drag is handled by GhostDeltaBar's @dnd-kit useDraggable
-                const metricLabel = viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
+                const metricLabel = viewMode === 'budget' ? 'Budget' : viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
+                // Only the Budget tab allows dragging to change spend; all others are read-only outcome views
+                const isReadOnlyTab = !isBudgetTab;
 
                 return (
                   // ENTIRE COLUMN is the drag surface - prevents dead zones
                   <div
                     key={channelId}
                     className={`flex-1 flex flex-col items-center h-full justify-end relative ${
-                      isSnapshot || reasonMode ? 'cursor-default' : 'cursor-ns-resize'
+                      isSnapshot || reasonMode || isReadOnlyTab ? 'cursor-default' : 'cursor-ns-resize'
                     }`}
-                    onPointerDown={reasonMode ? undefined : (e) => handleColumnPointerDown(channelId, e)}
-                    onPointerMove={reasonMode ? undefined : handleColumnPointerMove}
-                    onPointerUp={reasonMode ? undefined : handleColumnPointerUp}
-                    onPointerCancel={reasonMode ? undefined : handleColumnPointerUp}
-                    style={{ touchAction: reasonMode ? 'auto' : 'none' }}
+                    onPointerDown={(isReadOnlyTab || reasonMode) ? undefined : (e) => handleColumnPointerDown(channelId, e)}
+                    onPointerMove={(isReadOnlyTab || reasonMode) ? undefined : handleColumnPointerMove}
+                    onPointerUp={(isReadOnlyTab || reasonMode) ? undefined : handleColumnPointerUp}
+                    onPointerCancel={(isReadOnlyTab || reasonMode) ? undefined : handleColumnPointerUp}
+                    style={{ touchAction: (isReadOnlyTab || reasonMode) ? 'auto' : 'none' }}
                   >
                     {/* Invisible full-height hit area for dragging from empty space */}
-                    <div 
-                      className="absolute inset-0 z-0" 
-                      style={{ pointerEvents: (isSnapshot || reasonMode) ? 'none' : 'auto' }}
+                    <div
+                      className="absolute inset-0 z-0"
+                      style={{ pointerEvents: (isSnapshot || reasonMode || isReadOnlyTab) ? 'none' : 'auto' }}
                     />
                     
                     {/* Metric values label */}
@@ -738,12 +794,14 @@ export function DraggableBarChart({
                       </div>
                     </div>
 
-                    {/* Spend label */}
-                    <div className={`z-10 ${fillContainer ? 'mb-0.5' : 'mb-2'} pointer-events-none`}>
-                      <div className={`${fillContainer ? 'text-[9px]' : 'text-xs'} text-muted-foreground px-0.5 text-center`}>
-                        ${spend.toLocaleString()}{!fillContainer && ' spent'}
+                    {/* Spend label — hidden on Budget tab since the metric value IS the spend */}
+                    {!isBudgetTab && (
+                      <div className={`z-10 ${fillContainer ? 'mb-0.5' : 'mb-2'} pointer-events-none`}>
+                        <div className={`${fillContainer ? 'text-[9px]' : 'text-xs'} text-muted-foreground px-0.5 text-center`}>
+                          ${spend.toLocaleString()}{!fillContainer && ' spent'}
+                        </div>
                       </div>
-                    </div>
+                    )}
                     
                     {/* GhostDeltaBar - renders bar, ghost baseline, and delta segments */}
                     <GhostDeltaBar
