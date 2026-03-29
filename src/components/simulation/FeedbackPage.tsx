@@ -26,11 +26,12 @@ interface FeedbackPageProps {
   userId: string | null;
   onReturnAndAdjust: () => void;
   onSubmitFinal: () => void;
+  onFeedbackReady?: () => void;
 }
 
 const FEEDBACK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
-export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, onSubmitFinal }: FeedbackPageProps) {
+export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, onSubmitFinal, onFeedbackReady }: FeedbackPageProps) {
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
