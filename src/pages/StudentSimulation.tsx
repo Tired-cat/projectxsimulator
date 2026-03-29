@@ -176,7 +176,7 @@ export default function StudentSimulation() {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('student_responses')
+        .from('student_responses' as any)
         .insert({
           simulation_id: simulation.id,
           class_id: classInfo.id,
