@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      classes: {
+        Row: {
+          created_at: string
+          id: string
+          instructor_id: string
+          name: string
+          section_code: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructor_id: string
+          name: string
+          section_code: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructor_id?: string
+          name?: string
+          section_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -120,6 +152,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      simulations: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          results_json: Json | null
+          status: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          results_json?: Json | null
+          status?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          results_json?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulations_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       submissions: {
         Row: {
