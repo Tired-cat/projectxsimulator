@@ -347,23 +347,52 @@ export default function ProfessorDashboard() {
           </Card>
         </div>
 
-        {/* ─── Simulation Launcher ────────────────────────────── */}
-        {selectedClassId && (
-          <Card>
-            <CardContent className="pt-4 pb-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium">
-                  Managing: <strong>{classes.find(c => c.id === selectedClassId)?.name}</strong>
-                  {' — '}{classes.find(c => c.id === selectedClassId)?.section_code}
-                </p>
-                <p className="text-xs text-muted-foreground">{activeSimsForClass} active simulation(s)</p>
-              </div>
-              <Button onClick={triggerSimulation} className="gap-1.5">
-                <Zap className="h-4 w-4" /> Trigger Simulation
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* ─── Simulation Launcher + Class Code ─────────────── */}
+        {selectedClassId && (() => {
+          const selectedClass = classes.find(c => c.id === selectedClassId);
+          return (
+            <Card>
+              <CardContent className="pt-4 pb-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      Managing: <strong>{selectedClass?.name}</strong>
+                      {' — '}{selectedClass?.section_code}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{activeSimsForClass} active simulation(s)</p>
+                  </div>
+                  <Button onClick={triggerSimulation} className="gap-1.5">
+                    <Zap className="h-4 w-4" /> Trigger Simulation
+                  </Button>
+                </div>
+                {/* Class Code */}
+                <div className="flex items-center justify-center gap-3 py-3 rounded-lg bg-muted/50 border border-border">
+                  <span className="text-sm text-muted-foreground">Class Code:</span>
+                  <span className="text-3xl font-mono font-bold tracking-[0.3em] text-primary">
+                    {(selectedClass as any)?.class_code ?? '—'}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1"
+                    onClick={async () => {
+                      const code = (selectedClass as any)?.class_code;
+                      if (code) {
+                        await navigator.clipboard.writeText(code);
+                        setCodeCopied(true);
+                        toast.success('Class code copied!');
+                        setTimeout(() => setCodeCopied(false), 2000);
+                      }
+                    }}
+                  >
+                    {codeCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {codeCopied ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* ─── Student Table ──────────────────────────────────── */}
         <Card>
