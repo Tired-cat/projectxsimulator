@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 // ⚠️ Change this to your admin email address
-const ADMIN_EMAIL = 'admin@projectx.edu';
+const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
 
 interface ProfessorProfile {
   id: string;

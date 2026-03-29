@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { GraduationCap, BookOpen, Shield } from 'lucide-react';
 
-const ADMIN_EMAIL = 'admin@projectx.edu';
+const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
