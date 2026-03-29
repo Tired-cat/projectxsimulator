@@ -15,6 +15,10 @@ import { Separator } from '@/components/ui/separator';
 import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Json } from '@/integrations/supabase/types';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer, ScatterChart, Scatter, Cell, ZAxis,
+} from 'recharts';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Profile {
