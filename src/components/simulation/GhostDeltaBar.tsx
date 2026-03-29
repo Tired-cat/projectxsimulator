@@ -92,13 +92,17 @@ export function GhostDeltaBar({
     };
   }, [channel.name, channelId, delta, metricLabel, viewMode]);
 
+  // Budget tab: only allow evidence drag in reason mode (otherwise column handles spend-adjustment drag).
+  // All other tabs (views/revenue/profit): always draggable — no spend adjustment to conflict with.
+  const evidenceDragDisabled = viewMode === 'budget' && !reasonMode;
+
   const mainDraggable = useDraggable({
     id: `evidence-main-${channelId}-${viewMode}-${isSnapshot ? 'snapshot' : 'live'}`,
     data: {
       kind: 'external-chip',
       payload: mainPayload,
     },
-    disabled: !reasonMode,
+    disabled: evidenceDragDisabled,
   });
 
   const baselineDraggable = useDraggable({
@@ -107,7 +111,7 @@ export function GhostDeltaBar({
       kind: 'external-chip',
       payload: baselinePayload,
     },
-    disabled: !reasonMode || !hasBaseline,
+    disabled: evidenceDragDisabled || !hasBaseline,
   });
 
   const deltaDraggable = useDraggable({
@@ -116,12 +120,12 @@ export function GhostDeltaBar({
       kind: 'external-chip',
       payload: deltaPayload,
     },
-    disabled: !reasonMode || !hasDelta,
+    disabled: evidenceDragDisabled || !hasDelta,
   });
 
-  // Ghost bar drag handlers (original mouse-based for token drag)
+  // Ghost bar drag handlers (original mouse-based for token drag — only used on budget tab without reason mode)
   const handleGhostDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (reasonMode) return; // Use HTML5 drag in reason mode
+    if (reasonMode || viewMode !== 'budget') return; // dnd-kit handles drag on all other cases
     e.stopPropagation();
     setIsDraggingGhost(true);
     
@@ -141,9 +145,9 @@ export function GhostDeltaBar({
     setIsDraggingGhost(false);
   }, []);
 
-  // Delta segment drag handlers (original mouse-based for token drag)
+  // Delta segment drag handlers (original mouse-based for token drag — only used on budget tab without reason mode)
   const handleDeltaDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (reasonMode) return; // Use HTML5 drag in reason mode
+    if (reasonMode || viewMode !== 'budget') return; // dnd-kit handles drag on all other cases
     e.stopPropagation();
     setIsDraggingDelta(true);
     
@@ -164,9 +168,10 @@ export function GhostDeltaBar({
     setIsDraggingDelta(false);
   }, []);
 
-  const ghostDragging = reasonMode ? baselineDraggable.isDragging : isDraggingGhost;
-  const deltaDragging = reasonMode ? deltaDraggable.isDragging : isDraggingDelta;
-  const mainDragging = reasonMode ? mainDraggable.isDragging : false;
+  // evidenceDragDisabled=false means dnd-kit is active, so use its isDragging state
+  const ghostDragging = !evidenceDragDisabled ? baselineDraggable.isDragging : isDraggingGhost;
+  const deltaDragging = !evidenceDragDisabled ? deltaDraggable.isDragging : isDraggingDelta;
+  const mainDragging = !evidenceDragDisabled ? mainDraggable.isDragging : false;
 
   // Colors for delta
   const deltaDecreaseColor = 'hsl(0, 84%, 60%)'; // Red
@@ -192,9 +197,9 @@ export function GhostDeltaBar({
           ref={baselineDraggable.setNodeRef}
           {...baselineDraggable.attributes}
           {...baselineDraggable.listeners}
-          onMouseDown={reasonMode ? undefined : handleGhostDragStart}
-          onMouseUp={reasonMode ? undefined : handleGhostDragEnd}
-          onMouseLeave={reasonMode ? undefined : handleGhostDragEnd}
+          onMouseDown={evidenceDragDisabled ? handleGhostDragStart : undefined}
+          onMouseUp={evidenceDragDisabled ? handleGhostDragEnd : undefined}
+          onMouseLeave={evidenceDragDisabled ? handleGhostDragEnd : undefined}
           className={`absolute bottom-0 left-0 right-0 rounded-t-lg pointer-events-auto transition-transform ${
             ghostDragging ? 'cursor-grabbing z-5 scale-105' : 'cursor-grab z-5'
           }`}
@@ -227,27 +232,28 @@ export function GhostDeltaBar({
             minHeight: '4px',
           }}
         >
-          {/* Baseline Portion - bottom of stack, draggable in reason mode */}
+          {/* Baseline Portion - bottom of stack, draggable when evidence drag is enabled */}
           <motion.div
             ref={mainDraggable.setNodeRef as any}
             {...mainDraggable.attributes}
             {...mainDraggable.listeners}
-            className={`w-full shrink-0 ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
+            className={`w-full shrink-0 ${!evidenceDragDisabled ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : ''
             } ${mainDragging ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
             style={{
               backgroundColor: channel.color,
               // Explicit height based on proportion of baseline within total current
-              height: baselineHeightPercent > 0 
-                ? `${(baselineHeightPercent / currentHeightPercent) * 100}%` 
+              height: baselineHeightPercent > 0
+                ? `${(baselineHeightPercent / currentHeightPercent) * 100}%`
                 : '0%',
               minHeight: baselineHeightPercent > 0 ? '2px' : '0px',
-              boxShadow: isThisBarDragging 
-                ? `0 0 30px ${channel.color}` 
+              boxShadow: isThisBarDragging
+                ? `0 0 30px ${channel.color}`
                 : `0 4px 12px ${channel.color}40`,
               willChange: isDraggingSpend ? 'height' : 'auto',
               opacity: isSnapshot ? 0.85 : 1,
               filter: isSnapshot ? 'saturate(0.8)' : 'none',
+              touchAction: !evidenceDragDisabled ? 'none' : 'auto',
             }}
             initial={false}
             animate={{ 
@@ -265,9 +271,9 @@ export function GhostDeltaBar({
             ref={deltaDraggable.setNodeRef}
             {...deltaDraggable.attributes}
             {...deltaDraggable.listeners}
-            onMouseDown={reasonMode ? undefined : handleDeltaDragStart}
-            onMouseUp={reasonMode ? undefined : handleDeltaDragEnd}
-            onMouseLeave={reasonMode ? undefined : handleDeltaDragEnd}
+            onMouseDown={evidenceDragDisabled ? handleDeltaDragStart : undefined}
+            onMouseUp={evidenceDragDisabled ? handleDeltaDragEnd : undefined}
+            onMouseLeave={evidenceDragDisabled ? handleDeltaDragEnd : undefined}
             className={`w-full shrink-0 pointer-events-auto rounded-t-lg transition-transform ${
               deltaDragging ? 'cursor-grabbing z-40 scale-[1.04]' : 'cursor-grab z-35'
             }`}
@@ -305,24 +311,25 @@ export function GhostDeltaBar({
       ) : (
         // SINGLE BAR: No increase delta, render full current bar
         <>
-          {/* Single bar - draggable in reason mode */}
+          {/* Single bar - draggable when evidence drag is enabled */}
           <motion.div
             ref={mainDraggable.setNodeRef as any}
             {...mainDraggable.attributes}
             {...mainDraggable.listeners}
-            className={`relative w-full rounded-t-lg ${reasonMode ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
+            className={`relative w-full rounded-t-lg ${!evidenceDragDisabled ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''} ${
               isThisBarDragging ? 'ring-2 ring-white ring-offset-2 ring-offset-background z-30' : 'z-10'
             } ${mainDragging ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
             style={{
-              backgroundColor: isNegative 
-                ? 'hsl(var(--destructive))' 
+              backgroundColor: isNegative
+                ? 'hsl(var(--destructive))'
                 : channel.color,
-              boxShadow: isThisBarDragging 
-                ? `0 0 30px ${channel.color}` 
+              boxShadow: isThisBarDragging
+                ? `0 0 30px ${channel.color}`
                 : `0 4px 12px ${channel.color}40`,
               willChange: isDraggingSpend ? 'height, transform' : 'auto',
               opacity: isSnapshot ? 0.85 : 1,
               filter: isSnapshot ? 'saturate(0.8)' : 'none',
+              touchAction: !evidenceDragDisabled ? 'none' : 'auto',
             }}
             initial={false}
             animate={{ 
@@ -348,9 +355,9 @@ export function GhostDeltaBar({
               ref={deltaDraggable.setNodeRef}
               {...deltaDraggable.attributes}
               {...deltaDraggable.listeners}
-              onMouseDown={reasonMode ? undefined : handleDeltaDragStart}
-              onMouseUp={reasonMode ? undefined : handleDeltaDragEnd}
-              onMouseLeave={reasonMode ? undefined : handleDeltaDragEnd}
+              onMouseDown={evidenceDragDisabled ? handleDeltaDragStart : undefined}
+              onMouseUp={evidenceDragDisabled ? handleDeltaDragEnd : undefined}
+              onMouseLeave={evidenceDragDisabled ? handleDeltaDragEnd : undefined}
               className={`absolute left-0 right-0 pointer-events-auto transition-transform ${
                 deltaDragging ? 'cursor-grabbing z-40 scale-[1.08]' : 'cursor-grab z-35'
               }`}

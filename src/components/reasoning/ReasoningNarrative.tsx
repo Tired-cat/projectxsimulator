@@ -138,6 +138,7 @@ const METRIC_PRIORITY: Array<[string, number]> = [
   ['revenue', 0], ['profit', 0], ['net profit', 0],
   ['click', 1], ['conversion', 1],
   ['view', 2], ['impression', 2],
+  ['budget', 3],
 ];
 
 function metricRank(chip: EvidenceChip): number {
@@ -155,16 +156,18 @@ function rankChips(chips: EvidenceChip[]): EvidenceChip[] {
 // ── Metric-aware conclusion phrases ──
 function getContrastConclusion(chip: EvidenceChip): string {
   const m = (chip.metricName ?? chip.label).toLowerCase();
-  if (m.includes('revenue') || m.includes('profit')) return 'suggesting the budget weight between them needs rebalancing';
+  if (m.includes('revenue') || m.includes('profit')) return 'suggesting the spend distribution between them needs rebalancing';
   if (m.includes('view') || m.includes('impression')) return 'indicating a reach imbalance that may not reflect revenue potential';
   if (m.includes('click') || m.includes('conversion')) return 'pointing to an engagement gap worth investigating';
+  if (m.includes('budget')) return 'raising the question of whether this split is the best use of the total budget';
   return 'suggesting the allocation between them deserves closer review';
 }
 
 function getReinforceConclusion(chip: EvidenceChip): string {
   const m = (chip.metricName ?? chip.label).toLowerCase();
-  if (m.includes('revenue') || m.includes('profit')) return 'reinforcing their combined revenue contribution';
+  if (m.includes('revenue') || m.includes('profit')) return 'reinforcing their combined contribution to total revenue';
   if (m.includes('view') || m.includes('impression')) return 'confirming consistent audience reach across both';
+  if (m.includes('budget')) return 'showing a deliberate, proportional investment in both channels';
   return 'confirming a consistent pattern across both channels';
 }
 
@@ -188,6 +191,12 @@ function describeChipAlone(chip: EvidenceChip): string {
     if (chip.chipKind === 'delta-increase') return `${ch} driving more engaged traffic`;
     if (chip.chipKind === 'delta-decrease') return `${ch} seeing reduced click-through`;
     return `${ch} producing ${val} clicks`;
+  }
+  if (m.includes('budget')) {
+    if (chip.chipKind === 'delta-increase') return `${ch} receiving a larger share of the budget`;
+    if (chip.chipKind === 'delta-decrease') return `${ch}'s allocation trimmed back`;
+    if (chip.chipKind === 'baseline') return `${ch}'s original allocation of ${val}`;
+    return `${ch} allocated ${val}`;
   }
   // fallback
   if (chip.chipKind === 'delta-increase') return `strong ${metricOf(chip)} growth in ${ch}`;
