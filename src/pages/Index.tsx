@@ -387,6 +387,17 @@ function SimulationContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AiChatModal
+        open={aiChatOpen}
+        onOpenChange={setAiChatOpen}
+        context={{
+          board,
+          channelSpend,
+          totals,
+          writtenDiagnosis,
+        }}
+      />
     </>
   );
 }
