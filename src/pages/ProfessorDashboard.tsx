@@ -342,6 +342,110 @@ export default function ProfessorDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* ─── Analytics Charts ───────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Chart 1 — Slider Adjustments Frequency */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Slider Adjustments Frequency</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const buckets = [
+                  { label: '1–2 (Guessing)', min: 1, max: 2 },
+                  { label: '3–5 (Basic Testing)', min: 3, max: 5 },
+                  { label: '6–10 (Active Exploration)', min: 6, max: 10 },
+                  { label: '11+ (Deep Analysis)', min: 11, max: Infinity },
+                ];
+                const data = buckets.map((b) => ({
+                  name: b.label,
+                  students: students.filter(
+                    (s) => s.adjustments >= b.min && s.adjustments <= b.max,
+                  ).length,
+                }));
+                return (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={data} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis type="number" label={{ value: 'No. of students', position: 'insideBottom', offset: -2, style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 11 }} />
+                      <RechartsTooltip
+                        contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                      />
+                      <Bar dataKey="students" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Chart 2 — Completion Time vs Reasoning Score */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Completion Time vs. Reasoning Score</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const scatterData = students
+                  .filter((s) => s.status === 'Submitted' && s.timeSpent > 0)
+                  .map((s) => ({
+                    name: s.name,
+                    time: Math.round((s.timeSpent / 60) * 10) / 10,
+                    score: s.reasoningScore,
+                  }));
+                if (scatterData.length === 0) {
+                  return <p className="text-sm text-muted-foreground italic py-8 text-center">No submissions yet.</p>;
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <ScatterChart margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        type="number"
+                        dataKey="time"
+                        name="Time"
+                        unit=" min"
+                        label={{ value: 'Time (minutes)', position: 'insideBottom', offset: -2, style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="score"
+                        name="Score"
+                        domain={[0, 100]}
+                        label={{ value: 'Reasoning Score', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <ZAxis range={[60, 60]} />
+                      <RechartsTooltip
+                        cursor={{ strokeDasharray: '3 3' }}
+                        contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                        formatter={(value: number, name: string) => {
+                          if (name === 'Time') return [`${value} min`, 'Time'];
+                          if (name === 'Score') return [value, 'Score'];
+                          return [value, name];
+                        }}
+                        labelFormatter={(_, payload) => {
+                          if (payload && payload.length > 0) {
+                            return (payload[0].payload as { name: string }).name;
+                          }
+                          return '';
+                        }}
+                      />
+                      <Scatter data={scatterData} fill="hsl(var(--primary))">
+                        {scatterData.map((_, i) => (
+                          <Cell key={i} fill="hsl(var(--primary))" />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
       </main>
 
       {/* ─── Student Detail Dialog ────────────────────────────── */}
