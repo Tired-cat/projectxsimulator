@@ -85,7 +85,6 @@ function SimulationContent() {
       contextualiseChip(dropData.blockId, dropData.targetChipId, incoming);
     }
   }, [addChip, moveChip, contextualiseChip, chipFromPayload]);
-
   const handleDragStart = useCallback((event: DragStartEvent) => {
     let node = (event.activatorEvent as PointerEvent)?.target as HTMLElement | null;
     if (node) {

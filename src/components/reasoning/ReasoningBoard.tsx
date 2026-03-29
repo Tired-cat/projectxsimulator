@@ -1,11 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check, AlertTriangle, CircleCheck } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Check } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   REASONING_BLOCKS,
   getSmartInsight,
-  validateReasoningBoard,
 } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import type { EvidenceDragData, EvidenceDropData } from '@/lib/evidenceDnd';
@@ -21,11 +20,8 @@ import { ReasoningNarrative } from './ReasoningNarrative';
 export function ReasoningBoard() {
   const { board, removeChip } = useReasoningBoard();
   const [activeDrag, setActiveDrag] = useState<EvidenceDragData | null>(null);
-  const [validationDismissed, setValidationDismissed] = useState(false);
-  const [showValidationDetails, setShowValidationDetails] = useState(false);
 
   const totalChips = Object.values(board).reduce((s, arr) => s + arr.length, 0);
-  const validation = useMemo(() => validateReasoningBoard(board), [board]);
 
   // activeDrag is no longer driven by useDndMonitor —
   // the DndContext onDragEnd in Index.tsx handles all dispatch.
@@ -63,77 +59,15 @@ export function ReasoningBoard() {
           </div>
         )}
 
-        {totalChips > 0 && !validationDismissed && (
-          <div
-            data-testid="reasoning-validation"
-            className={cn(
-              'mt-3 px-2.5 py-1.5 rounded-md border text-[10px]',
-              validation.isValid
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-            )}
-          >
-            <div className="flex items-center gap-1.5">
-              {validation.isValid ? (
-                <CircleCheck className="h-3.5 w-3.5 flex-shrink-0" />
-              ) : (
-                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-              )}
-              <span className="font-semibold">
-                {validation.isValid ? 'Reasoning chain complete' : 'Reasoning chain needs fixes'}
-              </span>
-              <button
-                onClick={() => setShowValidationDetails(prev => !prev)}
-                className="ml-auto underline underline-offset-2 hover:opacity-80"
-              >
-                {showValidationDetails ? 'Hide checks' : 'View checks'}
-              </button>
-              <button
-                onClick={() => setValidationDismissed(true)}
-                className="hover:opacity-80"
-                title="Dismiss validation banner"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-            {showValidationDetails && (
-              <div className="mt-1 space-y-0.5">
-                {validation.errors.slice(0, 2).map((error, index) => (
-                  <p key={`error-${index}`}>- {error}</p>
-                ))}
-                {validation.warnings.slice(0, 2).map((warning, index) => (
-                  <p key={`warning-${index}`}>- {warning}</p>
-                ))}
-                {(validation.errors.length > 2 || validation.warnings.length > 2) && (
-                  <p>+ additional checks hidden</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {totalChips > 0 && validationDismissed && (
-          <button
-            onClick={() => setValidationDismissed(false)}
-            className={cn(
-              'mt-3 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-semibold',
-              validation.isValid
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-            )}
-          >
-            {validation.isValid ? <CircleCheck className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-            Show reasoning checks
-          </button>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-4">
           {/* 4 reasoning blocks */}
           <div className="grid grid-cols-2 gap-3 content-start">
-            {REASONING_BLOCKS.map((block) => {
+            {REASONING_BLOCKS.map((block, blockIndex) => {
               const chips = board[block.id];
+              const stepNumber = blockIndex + 1;
 
               return (
                 <BlockDropContainer key={block.id} blockId={block.id}>
@@ -160,17 +94,25 @@ export function ReasoningBoard() {
                     style={{ backgroundColor: block.bgColor }}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold" style={{ color: block.color }}>
-                          {block.title}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground italic truncate">
-                          {block.question}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="flex-shrink-0 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+                          style={{ backgroundColor: block.color }}
+                        >
+                          {stepNumber}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold" style={{ color: block.color }}>
+                            {block.title}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground italic truncate">
+                            {block.question}
+                          </div>
                         </div>
                       </div>
                       {chips.length > 0 ? (
                         <div
-                          className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                          className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: block.color + '20', color: block.color }}
                         >
                           {chips.length}
@@ -266,7 +208,8 @@ function ChipCard({
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
-  const hasContext = !!chip.contextChip;
+  const contextItems = chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : []);
+  const hasContext = contextItems.length > 0;
 
   const {
     attributes,
@@ -341,12 +284,20 @@ function ChipCard({
         </button>
       </div>
 
-      {/* Contextualise zone */}
-      {!hasContext ? (
+      {/* Contextualise zone — supports multiple context chips */}
+      <div className="mx-2.5 mb-2 space-y-1">
+        {contextItems.map((ctx, i) => (
+          <div key={`${ctx.id}-${i}`} className="px-2 py-1.5 rounded border border-border bg-muted/30 text-[10px] flex items-center gap-1.5">
+            <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+            <span className="text-foreground/70 truncate">
+              Contextualised with <strong>{ctx.label}</strong>
+            </span>
+          </div>
+        ))}
         <div
           ref={setContextDropRef}
           className={cn(
-            'mx-2.5 mb-2 px-2 py-1.5 rounded border border-dashed text-[10px] text-center transition-all',
+            'px-2 py-1.5 rounded border border-dashed text-[10px] text-center transition-all',
             isContextOver
               ? 'border-primary bg-primary/5 text-primary'
               : 'border-border/50 text-muted-foreground/60'
@@ -354,16 +305,11 @@ function ChipCard({
         >
           {isContextOver
             ? 'Drop to contextualise'
-            : 'Contextualise this - drag another bar here to support or explain this observation.'}
+            : hasContext
+              ? '+ Add another supporting piece of evidence'
+              : 'Contextualise this — drag another bar here to support or explain this observation.'}
         </div>
-      ) : (
-        <div className="mx-2.5 mb-2 px-2 py-1.5 rounded border border-border bg-muted/30 text-[10px] flex items-center gap-1.5">
-          <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-          <span className="text-foreground/70 truncate">
-            Contextualised with <strong>{chip.contextChip!.label}</strong>
-          </span>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

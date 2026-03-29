@@ -79,9 +79,14 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   const contextualiseChip = useCallback((blockId: ReasoningBlockId, targetChipId: string, contextChip: EvidenceChip) => {
     setBoard(prev => ({
       ...prev,
-      [blockId]: prev[blockId].map(c =>
-        c.id === targetChipId ? { ...c, contextChip } : c
-      ),
+      [blockId]: prev[blockId].map(c => {
+        if (c.id !== targetChipId) return c;
+        const existing = c.contextChips ?? (c.contextChip ? [c.contextChip] : []);
+        // Prevent duplicate context chips by sourceId
+        if (existing.some(ec => ec.sourceId === contextChip.sourceId)) return c;
+        const updated = [...existing, contextChip];
+        return { ...c, contextChips: updated, contextChip: updated[0] };
+      }),
     }));
   }, []);
 

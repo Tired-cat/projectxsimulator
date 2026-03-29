@@ -37,11 +37,11 @@ interface DraggableBarChartProps {
 type ViewMode = 'budget' | 'clicks' | 'revenue' | 'profit' | 'all';
 
 const filterOptions = [
-  { id: 'budget' as ViewMode, label: 'Budget', icon: Wallet, readOnly: false },
-  { id: 'clicks' as ViewMode, label: 'Views', icon: Eye, readOnly: true },
-  { id: 'revenue' as ViewMode, label: 'Revenue', icon: DollarSign, readOnly: true },
-  { id: 'profit' as ViewMode, label: 'Profit', icon: TrendingUp, readOnly: true },
-  { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid, readOnly: true },
+  { id: 'budget' as ViewMode, label: 'Budget', icon: Wallet, readOnly: false, description: 'Your spend allocation across channels — drag bars to adjust' },
+  { id: 'clicks' as ViewMode, label: 'Views', icon: Eye, readOnly: true, description: 'Estimated impressions/clicks driven by each channel\'s spend' },
+  { id: 'revenue' as ViewMode, label: 'Revenue', icon: DollarSign, readOnly: true, description: 'Gross revenue generated before deducting marketing costs' },
+  { id: 'profit' as ViewMode, label: 'Profit', icon: TrendingUp, readOnly: true, description: 'Net profit = Revenue minus the channel\'s ad spend' },
+  { id: 'all' as ViewMode, label: 'Show All', icon: LayoutGrid, readOnly: true, description: 'Compare views and revenue side by side for all channels' },
 ];
 
 // Causal flow steps matching the filter tabs (budget excluded — it's the input)
@@ -562,11 +562,16 @@ export function DraggableBarChart({
               Channel Performance
             </CardTitle>
             
-            {/* Reason Mode badge */}
-            {reasonMode && !isSnapshot && (
+            {/* Reason Mode badge / drag hint */}
+            {reasonMode && !isSnapshot ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
                 <FlaskConical className={fillContainer ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
                 Reason mode — drag bars to Reasoning Board
+              </div>
+            ) : !reasonMode && !isSnapshot && viewMode !== 'budget' && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/60 border border-dashed border-border text-muted-foreground text-xs">
+                <FlaskConical className="w-3.5 h-3.5 flex-shrink-0" />
+                Enable <span className="font-semibold text-primary mx-0.5">Reason</span> mode on the chart below to drag evidence
               </div>
             )}
           </div>
@@ -613,6 +618,7 @@ export function DraggableBarChart({
                     <button
                       key={option.id}
                       onClick={() => setViewMode(option.id)}
+                      title={option.description}
                       className={`flex items-center gap-1 ${fillContainer ? 'px-1.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'} rounded-full font-medium transition-all ${
                         isActive
                           ? 'bg-foreground text-background shadow-md'

@@ -1,4 +1,4 @@
-import { DragEvent, useState, useRef } from 'react';
+import { DragEvent, useState, useRef, useEffect } from 'react';
 import { X, Home, BarChart3, PieChart, AlertCircle, Settings, FlaskConical, Columns2, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTabs, type Tab, type TabKind } from '@/contexts/TabContext';
@@ -56,6 +56,12 @@ export function BrowserTabStrip() {
     split,
     disableSplit,
   } = useTabs();
+
+  // First-visit discovery hint — pulse on key tabs until user clicks one
+  const [hintSeen, setHintSeen] = useState(() => {
+    try { return localStorage.getItem('tabs-hint-seen') === '1'; } catch { return false; }
+  });
+  const DISCOVERY_TABS: TabKind[] = ['decisions', 'reasoning'];
 
   // Whether the user is hovering over the split-drop zone
   const [splitDropActive, setSplitDropActive] = useState(false);
@@ -171,8 +177,13 @@ export function BrowserTabStrip() {
             key={tab.id}
             draggable
             onClick={() => {
-              if (split.enabled) disableSplit();
+              const isInCurrentSplit = split.leftTabId === tab.id || split.rightTabId === tab.id;
+              if (split.enabled && !isInCurrentSplit) disableSplit();
               setActiveTab(tab.id);
+              if (!hintSeen) {
+                setHintSeen(true);
+                try { localStorage.setItem('tabs-hint-seen', '1'); } catch { /* ignore */ }
+              }
             }}
             onDragStart={(e) => handleTabDragStart(e, tab)}
             onDragEnd={handleTabDragEnd}
@@ -184,6 +195,7 @@ export function BrowserTabStrip() {
               'rounded-t-lg min-w-[100px] max-w-[180px]',
               isDraggingThis && 'opacity-40 scale-95',
               isDropTarget && 'ring-2 ring-primary/60 ring-inset',
+              !hintSeen && DISCOVERY_TABS.includes(tab.kind) && !isActive && !isInSplit && 'ring-2 ring-primary/50 animate-pulse',
               isActive
                 ? 'bg-background text-foreground border-t border-l border-r border-border -mb-px z-10 shadow-sm'
                 : isInSplit

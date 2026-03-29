@@ -1,5 +1,5 @@
 import { ReactNode, memo, useState, useCallback } from 'react';
-import { BarChart3, AlertCircle, PieChart, Settings } from 'lucide-react';
+import { BarChart3, AlertCircle, PieChart, Settings, HelpCircle } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, CHANNEL_IDS, calculateMixedRevenue as calcRevenue } from '@/lib/marketingConstants';
@@ -199,7 +199,15 @@ export function BudgetHeader({ totalSpent, onReset, isSplit, onCloseSplit }: Bud
     <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-800 shadow-sm">
       <div className="flex items-center gap-3 min-w-0">
         <div className="min-w-0">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Budget Used</div>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+            Budget Used
+            <span
+              className="group relative cursor-help"
+              title="You have a fixed $20,000 total budget shared across all 4 channels. Increasing one channel automatically reduces others."
+            >
+              <HelpCircle className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+            </span>
+          </div>
           <div className="text-base font-bold text-foreground truncate">
             ${totalSpent.toLocaleString()} <span className="text-muted-foreground font-normal text-sm">/ ${GLOBAL_BUDGET.toLocaleString()}</span>
           </div>
