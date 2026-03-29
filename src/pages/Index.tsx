@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
-import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent, DragOverlay } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
 import { SimulationShell } from '@/components/simulation/SimulationShell';
 import { SimulationHome } from '@/components/simulation/SimulationHome';
@@ -42,10 +42,23 @@ import {
 } from '@/components/ui/dialog';
 
 
+function DragGhostChip({ label, value, context }: { label: string; value: string; context: string }) {
+  return (
+    <div className="flex flex-col bg-background rounded-lg border border-border shadow-xl ring-2 ring-primary/40 px-3 py-2 max-w-[200px] opacity-95 pointer-events-none">
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs font-semibold text-foreground truncate">{label}:</span>
+        <span className="text-xs font-bold text-primary flex-shrink-0">{value}</span>
+      </div>
+      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{context}</div>
+    </div>
+  );
+}
+
 function SimulationContent() {
   const { openTab } = useTabs();
   const { user, signOut, role } = useAuth();
   const { board, addChip, moveChip, contextualiseChip, writtenDiagnosis, loadBoard } = useReasoningBoard();
+  const [activeDragData, setActiveDragData] = useState<EvidenceDragData | null>(null);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
@@ -62,7 +75,16 @@ function SimulationContent() {
     return board[prereq as import('@/types/evidenceChip').ReasoningBlockId].length > 0;
   }, [board]);
 
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragData(event.active.data.current as EvidenceDragData);
+  }, []);
+
+  const handleDragCancel = useCallback((_event: DragCancelEvent) => {
+    setActiveDragData(null);
+  }, []);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragData(null);
     const { active, over } = event;
     const dragData = active.data.current as EvidenceDragData | undefined;
     const dropData = over?.data.current as EvidenceDropData | undefined;
@@ -281,7 +303,7 @@ function SimulationContent() {
         </Button>
       </div>
 
-      <DndContext onDragEnd={handleDragEnd}>
+      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <SimulationShell
         homeContent={
           <SimulationHome
@@ -304,6 +326,23 @@ function SimulationContent() {
         renderPanelContent={renderPanelContent}
       />
 
+        <DragOverlay dropAnimation={null}>
+          {activeDragData ? (
+            activeDragData.kind === 'external-chip' ? (
+              <DragGhostChip
+                label={activeDragData.payload.label}
+                value={activeDragData.payload.value}
+                context={activeDragData.payload.context}
+              />
+            ) : (
+              <DragGhostChip
+                label={activeDragData.chip.label}
+                value={activeDragData.chip.value}
+                context={activeDragData.chip.context}
+              />
+            )
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       <TutorialOverlay />
