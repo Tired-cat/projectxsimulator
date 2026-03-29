@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       classes: {
         Row: {
+          class_code: string
           created_at: string
           id: string
           instructor_id: string
@@ -23,6 +24,7 @@ export type Database = {
           section_code: string
         }
         Insert: {
+          class_code?: string
           created_at?: string
           id?: string
           instructor_id: string
@@ -30,6 +32,7 @@ export type Database = {
           section_code: string
         }
         Update: {
+          class_code?: string
           created_at?: string
           id?: string
           instructor_id?: string
@@ -181,6 +184,54 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_responses: {
+        Row: {
+          class_id: string
+          created_at: string
+          decisions: Json
+          id: string
+          simulation_id: string
+          student_identifier: string
+          student_name: string
+          submitted_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          decisions?: Json
+          id?: string
+          simulation_id: string
+          student_identifier: string
+          student_name: string
+          submitted_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          decisions?: Json
+          id?: string
+          simulation_id?: string
+          student_identifier?: string
+          student_name?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_responses_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_responses_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "simulations"
             referencedColumns: ["id"]
           },
         ]

@@ -1,0 +1,1 @@
+ALTER TABLE public.classes ADD COLUMN class_code TEXT NOT NULL DEFAULT substr(md5(random()::text), 1, 4) UNIQUE;

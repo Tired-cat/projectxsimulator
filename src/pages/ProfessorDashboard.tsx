@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw, Zap, BookOpen, Shield } from 'lucide-react';
+import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw, Zap, BookOpen, Shield, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Json } from '@/integrations/supabase/types';
 import { ClassSwitcher } from '@/components/dashboard/ClassSwitcher';
@@ -109,6 +109,7 @@ interface ClassRow {
   id: string;
   name: string;
   section_code: string;
+  class_code: string;
 }
 
 interface SimulationRow {
@@ -131,6 +132,7 @@ export default function ProfessorDashboard() {
   const [simulations, setSimulations] = useState<SimulationRow[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -143,7 +145,7 @@ export default function ProfessorDashboard() {
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
       supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score, used_ai'),
-      supabase.from('classes').select('id, name, section_code'),
+      supabase.from('classes').select('id, name, section_code, class_code'),
       supabase.from('simulations').select('id, class_id, status, created_at'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
@@ -345,23 +347,52 @@ export default function ProfessorDashboard() {
           </Card>
         </div>
 
-        {/* ─── Simulation Launcher ────────────────────────────── */}
-        {selectedClassId && (
-          <Card>
-            <CardContent className="pt-4 pb-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium">
-                  Managing: <strong>{classes.find(c => c.id === selectedClassId)?.name}</strong>
-                  {' — '}{classes.find(c => c.id === selectedClassId)?.section_code}
-                </p>
-                <p className="text-xs text-muted-foreground">{activeSimsForClass} active simulation(s)</p>
-              </div>
-              <Button onClick={triggerSimulation} className="gap-1.5">
-                <Zap className="h-4 w-4" /> Trigger Simulation
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* ─── Simulation Launcher + Class Code ─────────────── */}
+        {selectedClassId && (() => {
+          const selectedClass = classes.find(c => c.id === selectedClassId);
+          return (
+            <Card>
+              <CardContent className="pt-4 pb-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      Managing: <strong>{selectedClass?.name}</strong>
+                      {' — '}{selectedClass?.section_code}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{activeSimsForClass} active simulation(s)</p>
+                  </div>
+                  <Button onClick={triggerSimulation} className="gap-1.5">
+                    <Zap className="h-4 w-4" /> Trigger Simulation
+                  </Button>
+                </div>
+                {/* Class Code */}
+                <div className="flex items-center justify-center gap-3 py-3 rounded-lg bg-muted/50 border border-border">
+                  <span className="text-sm text-muted-foreground">Class Code:</span>
+                  <span className="text-3xl font-mono font-bold tracking-[0.3em] text-primary">
+                    {(selectedClass as any)?.class_code ?? '—'}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1"
+                    onClick={async () => {
+                      const code = (selectedClass as any)?.class_code;
+                      if (code) {
+                        await navigator.clipboard.writeText(code);
+                        setCodeCopied(true);
+                        toast.success('Class code copied!');
+                        setTimeout(() => setCodeCopied(false), 2000);
+                      }
+                    }}
+                  >
+                    {codeCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {codeCopied ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* ─── Student Table ──────────────────────────────────── */}
         <Card>
