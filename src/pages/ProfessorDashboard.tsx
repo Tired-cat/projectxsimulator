@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
+import { BarChart, Bar, ScatterChart, Scatter, PieChart, Pie, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, Legend } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,7 @@ interface SubmissionRow {
   step_2_chips: Json | null;
   step_3_reflection: string | null;
   reasoning_score: number;
+  used_ai: boolean;
 }
 
 interface StudentRecord {
@@ -117,7 +118,7 @@ export default function ProfessorDashboard() {
       supabase.from('profiles').select('id, display_name, email').eq('role', 'student'),
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
-      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score'),
+      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score, used_ai'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
     if (sRes.data) setSessions(sRes.data as SessionRow[]);
@@ -370,6 +371,62 @@ export default function ProfessorDashboard() {
                     <Tooltip formatter={(value: number) => [`${value} student${value !== 1 ? 's' : ''}`, 'Count']} />
                     <Bar dataKey="students" radius={[0, 4, 4, 0]} fill="#0d9488" />
                   </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
+          </CardContent>
+        </Card>
+
+        {/* ─── AI Usage Pie Chart ────────────────────────────── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Student AI Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const submitted = students.filter(s => s.status === 'Submitted');
+              if (submitted.length === 0) {
+                return <p className="text-center text-muted-foreground py-8">No submitted students yet.</p>;
+              }
+              const usedAiCount = submissions.filter(s => s.used_ai).length;
+              const didNotCount = submitted.length - usedAiCount;
+              const total = submitted.length;
+              const pieData = [
+                { name: 'Used AI Assistant', value: usedAiCount },
+                { name: 'Did Not Use AI', value: didNotCount },
+              ];
+              const COLORS = ['#0d9488', '#f97316'];
+              return (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value} (${Math.round((value / total) * 100)}%)`}
+                      labelLine
+                    >
+                      {pieData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        `${value} student${value !== 1 ? 's' : ''} (${Math.round((value / total) * 100)}%)`,
+                        name,
+                      ]}
+                    />
+                    <Legend
+                      formatter={(value: string) => {
+                        const entry = pieData.find(d => d.name === value);
+                        const pct = entry ? Math.round((entry.value / total) * 100) : 0;
+                        return `${value} (${pct}%)`;
+                      }}
+                    />
+                  </PieChart>
                 </ResponsiveContainer>
               );
             })()}
