@@ -27,51 +27,131 @@ Your role:
 
 The key insight they should discover: channels that generate high views/clicks (like TikTok) may primarily sell low-value products (Bottles), while channels with fewer clicks (like Newspaper) may sell high-value products (Chairs). Revenue ≠ volume.`;
 
+const FEEDBACK_SYSTEM_PROMPT = `You are a marketing analytics tutor reviewing a student's completed simulation work.
+
+The student allocated a $20,000 budget across 4 channels (TikTok, Instagram, Facebook, Newspaper) selling 3 products (Bottle $10, Cushion $50, Chair $500).
+
+They built a "Reasoning Board" with 4 blocks:
+- Descriptive: What happened? (observations)
+- Diagnostic: Why did it happen? (root causes)
+- Predictive: What will happen? (forecasts)
+- Prescriptive: What should we do? (recommendations)
+
+You must return a JSON object with exactly these keys:
+{
+  "budgetFeedback": "2-3 sentences about their budget allocation — what's working, what could be improved",
+  "reasoningFeedback": "2-3 sentences about the quality and completeness of their reasoning board evidence cards",
+  "diagnosisFeedback": "2-3 sentences about their written diagnosis — is it insightful? does it capture the key dynamics?",
+  "overallNudge": "1-2 sentences — an encouraging but specific suggestion for what to improve before final submission"
+}
+
+Be constructive and specific. Point out what they did well AND what they missed. Nudge them toward discovering that high-volume channels may sell low-value products. Never give the answer directly.
+Return ONLY valid JSON, no markdown fences.`;
+
+function buildContextString(context: any): string {
+  const parts: string[] = [];
+
+  if (context.board) {
+    const b = context.board;
+    for (const block of ["descriptive", "diagnostic", "predictive", "prescriptive"]) {
+      const chips = b[block] || [];
+      if (chips.length > 0) {
+        const chipLabels = chips.map((c: any) => `"${c.label}: ${c.value}"`).join(", ");
+        parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} block: ${chipLabels}`);
+      } else {
+        parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} block: (empty)`);
+      }
+    }
+  }
+
+  if (context.channelSpend) {
+    const s = context.channelSpend;
+    parts.push(`Budget allocation: TikTok $${s.tiktok}, Instagram $${s.instagram}, Facebook $${s.facebook}, Newspaper $${s.newspaper}`);
+  }
+
+  if (context.totals) {
+    parts.push(`Current total revenue: $${context.totals.totalRevenue?.toLocaleString() || 0}`);
+  }
+
+  if (context.writtenDiagnosis) {
+    parts.push(`Written diagnosis: "${context.writtenDiagnosis}"`);
+  }
+
+  return parts.length > 0 ? "\n\n[CURRENT STUDENT STATE]\n" + parts.join("\n") : "";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, context } = await req.json();
+    const body = await req.json();
+    const { messages, context, mode } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Build context message from simulation state
-    let contextMessage = "";
-    if (context) {
-      const parts: string[] = [];
+    const contextMessage = context ? buildContextString(context) : "";
 
-      if (context.board) {
-        const b = context.board;
-        for (const block of ["descriptive", "diagnostic", "predictive", "prescriptive"]) {
-          const chips = b[block] || [];
-          if (chips.length > 0) {
-            const chipLabels = chips.map((c: any) => `"${c.label}: ${c.value}"`).join(", ");
-            parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} block: ${chipLabels}`);
-          } else {
-            parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} block: (empty)`);
-          }
+    // Feedback mode: non-streaming, returns structured JSON
+    if (mode === "feedback") {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: FEEDBACK_SYSTEM_PROMPT + contextMessage },
+            { role: "user", content: "Please review my simulation work and give me structured feedback." },
+          ],
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      if (!response.ok) {
+        const status = response.status;
+        if (status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait and try again." }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
+        if (status === 402) {
+          return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const t = await response.text();
+        console.error("AI gateway error:", status, t);
+        return new Response(JSON.stringify({ error: "AI service unavailable" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      if (context.channelSpend) {
-        const s = context.channelSpend;
-        parts.push(`Budget allocation: TikTok $${s.tiktok}, Instagram $${s.instagram}, Facebook $${s.facebook}, Newspaper $${s.newspaper}`);
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+
+      let feedback;
+      try {
+        feedback = JSON.parse(content);
+      } catch {
+        feedback = {
+          budgetFeedback: content,
+          reasoningFeedback: "Unable to parse structured feedback.",
+          diagnosisFeedback: "",
+          overallNudge: "",
+        };
       }
 
-      if (context.totals) {
-        parts.push(`Current total revenue: $${context.totals.totalRevenue?.toLocaleString() || 0}`);
-      }
-
-      if (context.writtenDiagnosis) {
-        parts.push(`Written diagnosis: "${context.writtenDiagnosis}"`);
-      }
-
-      contextMessage = "\n\n[CURRENT STUDENT STATE]\n" + parts.join("\n");
+      return new Response(JSON.stringify({ feedback }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
+    // Chat mode: streaming
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -91,21 +171,18 @@ serve(async (req) => {
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Please contact your instructor." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "AI service unavailable" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -115,8 +192,7 @@ serve(async (req) => {
   } catch (e) {
     console.error("ai-chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
