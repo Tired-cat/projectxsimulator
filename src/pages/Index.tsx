@@ -77,7 +77,11 @@ function SimulationContent() {
     }
 
     if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
-      contextualiseChip(dropData.blockId, dropData.targetChipId, chipFromPayload(dragData.payload));
+      const incoming = chipFromPayload(dragData.payload);
+      // Prevent a chip from being contextualised with itself (same sourceId)
+      const targetChip = board[dropData.blockId]?.find(c => c.id === dropData.targetChipId);
+      if (targetChip && targetChip.sourceId === incoming.sourceId) return;
+      contextualiseChip(dropData.blockId, dropData.targetChipId, incoming);
     }
   }, [addChip, moveChip, contextualiseChip, chipFromPayload]);
 

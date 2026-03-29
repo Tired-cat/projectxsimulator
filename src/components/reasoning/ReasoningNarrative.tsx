@@ -60,18 +60,20 @@ const GLANCE_OPENERS: Record<ReasoningBlockId, string[]> = {
 
 function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
   if (chips.length === 0) return '';
+  // Revenue/profit chips lead the at-a-glance sentence
+  const ranked = rankChips(chips);
   let phrase: string;
-  if (chips.length === 1) {
-    phrase = formatEvidence(chips[0]);
+  if (ranked.length === 1) {
+    phrase = formatEvidence(ranked[0]);
   } else {
-    const parts = [formatEvidence(chips[0])];
-    for (let i = 1; i < chips.length; i++) {
-      parts.push(`${pickGlanceConnector(chips[i - 1], chips[i])} ${formatEvidence(chips[i])}`);
+    const parts = [formatEvidence(ranked[0])];
+    for (let i = 1; i < ranked.length; i++) {
+      parts.push(`${pickGlanceConnector(ranked[i - 1], ranked[i])} ${formatEvidence(ranked[i])}`);
     }
     phrase = parts.join(', ');
   }
   const templates = GLANCE_OPENERS[blockId];
-  const idx = Math.floor(seededRandom(chips.map(c => c.id).join('-') + blockId) * templates.length);
+  const idx = Math.floor(seededRandom(ranked.map(c => c.id).join('-') + blockId) * templates.length);
   return templates[idx].replace('[items]', phrase);
 }
 
@@ -131,14 +133,67 @@ function metricOf(chip: EvidenceChip): string {
   return chip.metricName || 'performance';
 }
 
+// ── Metric priority ranking (revenue/profit anchor the narrative) ──
+const METRIC_PRIORITY: Array<[string, number]> = [
+  ['revenue', 0], ['profit', 0], ['net profit', 0],
+  ['click', 1], ['conversion', 1],
+  ['view', 2], ['impression', 2],
+];
+
+function metricRank(chip: EvidenceChip): number {
+  const key = (chip.metricName ?? chip.label).toLowerCase();
+  for (const [term, rank] of METRIC_PRIORITY) {
+    if (key.includes(term)) return rank;
+  }
+  return 3;
+}
+
+function rankChips(chips: EvidenceChip[]): EvidenceChip[] {
+  return [...chips].sort((a, b) => metricRank(a) - metricRank(b));
+}
+
+// ── Metric-aware conclusion phrases ──
+function getContrastConclusion(chip: EvidenceChip): string {
+  const m = (chip.metricName ?? chip.label).toLowerCase();
+  if (m.includes('revenue') || m.includes('profit')) return 'suggesting the budget weight between them needs rebalancing';
+  if (m.includes('view') || m.includes('impression')) return 'indicating a reach imbalance that may not reflect revenue potential';
+  if (m.includes('click') || m.includes('conversion')) return 'pointing to an engagement gap worth investigating';
+  return 'suggesting the allocation between them deserves closer review';
+}
+
+function getReinforceConclusion(chip: EvidenceChip): string {
+  const m = (chip.metricName ?? chip.label).toLowerCase();
+  if (m.includes('revenue') || m.includes('profit')) return 'reinforcing their combined revenue contribution';
+  if (m.includes('view') || m.includes('impression')) return 'confirming consistent audience reach across both';
+  return 'confirming a consistent pattern across both channels';
+}
+
 /** Build a single-chip description (no context) */
 function describeChipAlone(chip: EvidenceChip): string {
   const ch = channelOf(chip);
-  const m = metricOf(chip);
-  if (chip.chipKind === 'delta-increase') return `strong ${m} growth in ${ch}`;
-  if (chip.chipKind === 'delta-decrease') return `declining ${m} in ${ch}`;
-  if (chip.chipKind === 'baseline') return `the baseline ${m} level for ${ch}`;
-  return `${ch}'s current ${m}`;
+  const val = chip.value;
+  const m = (chip.metricName ?? chip.label).toLowerCase();
+
+  if (m.includes('revenue') || m.includes('profit')) {
+    if (chip.chipKind === 'delta-increase') return `${ch} generating stronger revenue than expected`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} underperforming on revenue`;
+    return `${ch} contributing ${val} in revenue`;
+  }
+  if (m.includes('view') || m.includes('impression')) {
+    if (chip.chipKind === 'delta-increase') return `${ch} reaching a broader audience with ${val} views`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} losing reach, down to ${val} views`;
+    return `${ch} generating ${val} views`;
+  }
+  if (m.includes('click') || m.includes('conversion')) {
+    if (chip.chipKind === 'delta-increase') return `${ch} driving more engaged traffic`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} seeing reduced click-through`;
+    return `${ch} producing ${val} clicks`;
+  }
+  // fallback
+  if (chip.chipKind === 'delta-increase') return `strong ${metricOf(chip)} growth in ${ch}`;
+  if (chip.chipKind === 'delta-decrease') return `declining ${metricOf(chip)} in ${ch}`;
+  if (chip.chipKind === 'baseline') return `the baseline ${metricOf(chip)} level for ${ch}`;
+  return `${ch}'s ${metricOf(chip)} at ${val}`;
 }
 
 /** Build a relationship sentence between a chip and its context chip */
@@ -148,24 +203,25 @@ function describeRelationship(chip: EvidenceChip, ctx: EvidenceChip, seed: strin
   const chB = channelOf(ctx);
   const mA = metricOf(chip);
   const mB = metricOf(ctx);
+  // Use the higher-priority chip for the conclusion phrasing
+  const primaryChip = metricRank(chip) <= metricRank(ctx) ? chip : ctx;
 
   if (rel.isContrast) {
     const word = STORY_CONTRAST_WORDS[Math.floor(seededRandom(seed) * STORY_CONTRAST_WORDS.length)];
     const higher = rel.aHigher ? chA : chB;
     const lower = rel.aHigher ? chB : chA;
     const higherM = rel.aHigher ? mA : mB;
-    const lowerM = rel.aHigher ? mB : mA;
 
     if (rel.magnitude === 'vast')
-      return `${word} ${higher} driving ${rel.magnitude === 'vast' ? 'far' : ''} more ${higherM} than ${lower}, this gap suggests the ${lowerM} allocation may need rethinking`;
+      return `${word} ${higher} driving far stronger ${higherM} than ${lower}, ${getContrastConclusion(primaryChip)}`;
     if (rel.magnitude === 'considerable')
-      return `${word} ${higher} generating considerably stronger ${higherM} than ${lower}, the disparity in ${lowerM} warrants attention`;
-    return `${word} ${higher}'s ${higherM} outpacing ${lower}'s ${lowerM}, the difference points to an imbalance worth investigating`;
+      return `${word} ${higher} considerably outperforming ${lower} on ${higherM}, ${getContrastConclusion(primaryChip)}`;
+    return `${word} ${higher}'s ${higherM} outpacing ${lower}'s, ${getContrastConclusion(primaryChip)}`;
   } else {
     const word = STORY_REINFORCE_WORDS[Math.floor(seededRandom(seed) * STORY_REINFORCE_WORDS.length)];
     if (rel.magnitude === 'similar')
-      return `${chA}'s ${mA}, ${word} ${chB}'s ${mB}, showing a consistent pattern across both channels`;
-    return `${chA}'s ${mA} trending in the same direction as ${chB}'s ${mB}, ${word} the broader trend`;
+      return `${chA}'s ${mA} ${word} ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip)}`;
+    return `${chA}'s ${mA} moving in the same direction as ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip)}`;
   }
 }
 
@@ -192,55 +248,60 @@ function describePairRelationship(a: EvidenceChip, b: EvidenceChip, seed: string
 
 const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
   descriptive: [
-    'Before making changes, I saw [insight].',
-    'The data initially revealed [insight].',
-    'What stood out to me first was [insight].',
+    'The data showed me [insight].',
+    'Looking at the numbers, I identified [insight].',
+    'What stood out immediately was [insight].',
   ],
   diagnostic: [
-    'This led me to believe [insight] was driving the outcome.',
-    'Digging deeper, I concluded [insight] was the root cause.',
-    'I traced the issue back to [insight].',
+    '[insight] was the root cause.',
+    'The underlying driver here was [insight].',
+    'I traced this back to [insight].',
   ],
   prescriptive: [
-    'Based on this understanding, I chose to act on [insight].',
-    'Recognising [insight], I decided a strategic shift was needed.',
-    'Given [insight], I adjusted my approach accordingly.',
+    '[insight] drove my decision to act.',
+    'I chose to intervene because of [insight].',
+    'Acting on [insight], I shifted my budget allocation.',
   ],
   predictive: [
-    'Going forward, I expect [insight] to shape results.',
-    'After acting, [insight] signals what comes next.',
-    'Looking ahead, [insight] points to the likely trajectory.',
+    'With these changes in place, [insight] points to what comes next.',
+    'The likely outcome, based on [insight], is a shift in performance.',
+    'Looking ahead, [insight] shapes my expectation of results.',
   ],
 };
 
 function generateStorySentence(chips: EvidenceChip[], blockId: ReasoningBlockId): string {
   if (chips.length === 0) return '';
 
+  // Revenue/profit chips anchor the narrative; views/impressions are supporting context
+  const ranked = rankChips(chips);
+
   let insight: string;
-  if (chips.length === 1) {
-    const chip = chips[0];
-    if (chip.contextChip) {
-      insight = describeRelationship(chip, chip.contextChip, chip.id + 'ctx');
+  if (ranked.length === 1) {
+    const chip = ranked[0];
+    const ctx = chip.contextChip;
+    // Fix ISSUE-03: ignore self-referential contextualisation
+    if (ctx && ctx.sourceId !== chip.sourceId) {
+      insight = describeRelationship(chip, ctx, chip.id + 'ctx');
     } else {
       insight = describeChipAlone(chip);
     }
   } else {
-    // Weave multiple chips using value-derived relationships
-    const parts: string[] = [describeChipAlone(chips[0])];
-    for (let i = 1; i < chips.length; i++) {
-      parts.push(describePairRelationship(chips[i - 1], chips[i], chips[i - 1].id + chips[i].id));
+    const parts: string[] = [describeChipAlone(ranked[0])];
+    for (let i = 1; i < ranked.length; i++) {
+      parts.push(describePairRelationship(ranked[i - 1], ranked[i], ranked[i - 1].id + ranked[i].id));
     }
     insight = parts.join(', ');
   }
 
   const templates = STORY_OPENERS[blockId];
-  const idx = Math.floor(seededRandom(chips.map(c => c.id).join('-') + blockId + 'story') * templates.length);
+  const idx = Math.floor(seededRandom(ranked.map(c => c.id).join('-') + blockId + 'story') * templates.length);
   return templates[idx].replace('[insight]', insight);
 }
 
 // ── Layout ──
 
-const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
+// Correct causal chain: Observe → Diagnose → Decide → Predict
+const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
 
 const BLOCK_STYLE: Record<ReasoningBlockId, { label: string; accent: string; tint: string }> = {
   descriptive: { label: 'Descriptive', accent: '#D4A017', tint: 'rgba(212, 160, 23, 0.09)' },

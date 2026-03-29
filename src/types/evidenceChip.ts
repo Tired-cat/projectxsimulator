@@ -127,11 +127,12 @@ export const PAIRED_NARRATIVE_TEMPLATES: Record<ReasoningBlockId, string[]> = {
 };
 
 // Quadrant-specific connectors for the full story
+// Order: Descriptive → Diagnostic → Prescriptive → Predictive
 export const QUADRANT_CONNECTORS: Record<ReasoningBlockId, string> = {
-  descriptive: '', // stands alone
-  diagnostic: 'This led me to question... ',
-  predictive: 'After acting, ',
-  prescriptive: 'As a result, ',
+  descriptive: '', // stands alone — opens the story
+  diagnostic: 'This led me to conclude that ',
+  prescriptive: 'Based on this, I decided to ',
+  predictive: 'Going forward, I expect ',
 };
 
 export function generateNarrativeSentence(
