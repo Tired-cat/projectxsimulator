@@ -261,6 +261,25 @@ export default function ProfessorDashboard() {
     return <Badge variant="outline" className={map[status]}>{status}</Badge>;
   };
 
+  const triggerSimulation = useCallback(async () => {
+    if (!selectedClassId || !user) return;
+    const { error } = await supabase.from('simulations').insert({
+      class_id: selectedClassId,
+      status: 'active',
+    });
+    if (error) {
+      toast.error('Failed to trigger simulation');
+    } else {
+      toast.success('Simulation triggered!');
+      fetchAll();
+    }
+  }, [selectedClassId, user, fetchAll]);
+
+  const activeSimsForClass = useMemo(() => {
+    if (!selectedClassId) return simulations.filter(s => s.status === 'active').length;
+    return simulations.filter(s => s.class_id === selectedClassId && s.status === 'active').length;
+  }, [simulations, selectedClassId]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top bar */}
@@ -271,12 +290,19 @@ export default function ProfessorDashboard() {
             <Badge variant="secondary" className="text-xs">Live</Badge>
           </div>
           <div className="flex items-center gap-2">
+            <ClassSwitcher classes={classes} selectedClassId={selectedClassId} onSelect={setSelectedClassId} />
+            <AddClassDialog onClassAdded={fetchAll} />
             <Button size="sm" variant="outline" onClick={fetchAll} className="gap-1.5">
               <RefreshCw className="h-3.5 w-3.5" /> Refresh
             </Button>
             <Button size="sm" variant="outline" onClick={exportCsv} className="gap-1.5">
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>
+            {isAdmin && (
+              <Button size="sm" variant="outline" onClick={() => navigate('/admin')} className="gap-1.5">
+                <Shield className="h-3.5 w-3.5" /> Admin
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
               <LogOut className="h-3.5 w-3.5" /> Sign Out
             </Button>
@@ -285,8 +311,14 @@ export default function ProfessorDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* ─── Overview Cards ─────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* ─── Class KPI Cards ────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-4 pb-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10"><BookOpen className="h-5 w-5 text-primary" /></div>
+              <div><p className="text-2xl font-bold">{classes.length}</p><p className="text-xs text-muted-foreground">Classes</p></div>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="pt-4 pb-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10"><Users className="h-5 w-5 text-primary" /></div>
@@ -307,11 +339,29 @@ export default function ProfessorDashboard() {
           </Card>
           <Card>
             <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted"><AlertCircle className="h-5 w-5 text-muted-foreground" /></div>
-              <div><p className="text-2xl font-bold">{stats.notStarted}</p><p className="text-xs text-muted-foreground">Not Started</p></div>
+              <div className="p-2 rounded-lg bg-accent/10"><Zap className="h-5 w-5 text-accent-foreground" /></div>
+              <div><p className="text-2xl font-bold">{activeSimsForClass}</p><p className="text-xs text-muted-foreground">Active Sims</p></div>
             </CardContent>
           </Card>
         </div>
+
+        {/* ─── Simulation Launcher ────────────────────────────── */}
+        {selectedClassId && (
+          <Card>
+            <CardContent className="pt-4 pb-4 flex items-center justify-between">
+              <div>
+                <p className="font-medium">
+                  Managing: <strong>{classes.find(c => c.id === selectedClassId)?.name}</strong>
+                  {' — '}{classes.find(c => c.id === selectedClassId)?.section_code}
+                </p>
+                <p className="text-xs text-muted-foreground">{activeSimsForClass} active simulation(s)</p>
+              </div>
+              <Button onClick={triggerSimulation} className="gap-1.5">
+                <Zap className="h-4 w-4" /> Trigger Simulation
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ─── Student Table ──────────────────────────────────── */}
         <Card>
