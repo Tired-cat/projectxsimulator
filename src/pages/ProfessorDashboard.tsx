@@ -55,6 +55,7 @@ interface SubmissionRow {
   step_1_text: string | null;
   step_2_chips: Json | null;
   step_3_reflection: string | null;
+  reasoning_score: number;
 }
 
 interface StudentRecord {
@@ -66,6 +67,7 @@ interface StudentRecord {
   timeSpent: number;
   cardsOnBoard: number;
   adjustments: number;
+  reasoningScore: number;
   finalDecision: string | null;
   submittedAt: string | null;
   // detail fields
@@ -115,7 +117,7 @@ export default function ProfessorDashboard() {
       supabase.from('profiles').select('id, display_name, email').eq('role', 'student'),
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
-      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection'),
+      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
     if (sRes.data) setSessions(sRes.data as SessionRow[]);
@@ -164,6 +166,7 @@ export default function ProfessorDashboard() {
         timeSpent,
         cardsOnBoard: submission ? submission.cards_on_board_count : board ? countCards(board.cards) : 0,
         adjustments: board?.adjustments_made ?? 0,
+        reasoningScore: submission?.reasoning_score ?? 0,
         finalDecision: submission?.final_decision ?? null,
         submittedAt: submission?.submitted_at ?? null,
         writtenDiagnosis: board?.written_diagnosis ?? null,
