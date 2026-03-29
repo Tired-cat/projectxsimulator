@@ -407,6 +407,7 @@ function SimulationContent() {
             userId={user?.id ?? null}
             onReturnAndAdjust={handleReturnFromFeedback}
             onSubmitFinal={handleSubmit}
+            onFeedbackReady={() => setHasFeedback(true)}
           />
         </div>
       )}
