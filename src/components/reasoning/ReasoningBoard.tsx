@@ -373,6 +373,7 @@ function ChipCard({
         {/* Remove button */}
         <button
           onClick={onRemove}
+          onPointerDown={(e) => e.stopPropagation()}
           className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
         >
           <X className="h-3 w-3" />
