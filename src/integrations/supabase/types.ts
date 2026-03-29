@@ -185,54 +185,6 @@ export type Database = {
           },
         ]
       }
-      student_responses: {
-        Row: {
-          class_id: string
-          created_at: string
-          decisions: Json
-          id: string
-          simulation_id: string
-          student_identifier: string
-          student_name: string
-          submitted_at: string
-        }
-        Insert: {
-          class_id: string
-          created_at?: string
-          decisions?: Json
-          id?: string
-          simulation_id: string
-          student_identifier: string
-          student_name: string
-          submitted_at?: string
-        }
-        Update: {
-          class_id?: string
-          created_at?: string
-          decisions?: Json
-          id?: string
-          simulation_id?: string
-          student_identifier?: string
-          student_name?: string
-          submitted_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_responses_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_responses_simulation_id_fkey"
-            columns: ["simulation_id"]
-            isOneToOne: false
-            referencedRelation: "simulations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       submissions: {
         Row: {
           cards_on_board_count: number
