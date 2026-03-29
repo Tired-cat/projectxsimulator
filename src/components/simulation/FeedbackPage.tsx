@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Send, Loader2, Bot, DollarSign, Brain, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 import type { ReasoningBoardState } from '@/types/evidenceChip';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
 
@@ -21,24 +22,55 @@ interface AiFeedback {
 
 interface FeedbackPageProps {
   context: FeedbackContext;
+  sessionId: string | null;
+  userId: string | null;
   onReturnAndAdjust: () => void;
   onSubmitFinal: () => void;
 }
 
 const FEEDBACK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
-export function FeedbackPage({ context, onReturnAndAdjust, onSubmitFinal }: FeedbackPageProps) {
+export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, onSubmitFinal }: FeedbackPageProps) {
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const savedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchFeedback() {
+    async function loadOrFetchFeedback() {
       setLoading(true);
       setError(null);
+
+      // 1. Try loading saved feedback from the database
+      if (sessionId && userId) {
+        try {
+          const { data } = await supabase
+            .from('reasoning_board_state')
+            .select('ai_feedback')
+            .eq('session_id', sessionId)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (data?.ai_feedback && typeof data.ai_feedback === 'object') {
+            const saved = data.ai_feedback as unknown as AiFeedback;
+            if (saved.budgetFeedback) {
+              if (!cancelled) {
+                setFeedback(saved);
+                setLoading(false);
+                savedRef.current = true;
+              }
+              return;
+            }
+          }
+        } catch {
+          // Fall through to fetch from AI
+        }
+      }
+
+      // 2. Fetch fresh feedback from AI
       try {
         const resp = await fetch(FEEDBACK_URL, {
           method: 'POST',
@@ -55,7 +87,19 @@ export function FeedbackPage({ context, onReturnAndAdjust, onSubmitFinal }: Feed
         }
 
         const data = await resp.json();
-        if (!cancelled) setFeedback(data.feedback);
+        if (!cancelled) {
+          setFeedback(data.feedback);
+
+          // 3. Save feedback to DB so it persists
+          if (sessionId && userId && data.feedback) {
+            supabase
+              .from('reasoning_board_state')
+              .update({ ai_feedback: data.feedback as any })
+              .eq('session_id', sessionId)
+              .eq('user_id', userId)
+              .then(() => { savedRef.current = true; });
+          }
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to get feedback');
       } finally {
@@ -63,9 +107,9 @@ export function FeedbackPage({ context, onReturnAndAdjust, onSubmitFinal }: Feed
       }
     }
 
-    fetchFeedback();
+    loadOrFetchFeedback();
     return () => { cancelled = true; };
-  }, [context]);
+  }, [sessionId, userId]);
 
   const handleSubmitFinal = useCallback(async () => {
     setSubmitting(true);
