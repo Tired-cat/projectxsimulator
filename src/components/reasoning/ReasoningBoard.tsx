@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { X, GripVertical, FlaskConical, Check, Lock, AlertTriangle, CircleCheck } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
@@ -307,7 +306,6 @@ function ChipCard({
     attributes,
     listeners,
     setNodeRef,
-    transform,
     isDragging,
   } = useDraggable({
     id: getBoardChipDragId(blockId, chip.id),
@@ -327,8 +325,6 @@ function ChipCard({
     } satisfies EvidenceDropData,
   });
 
-  const dragStyle = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
-
   return (
     <div
       ref={setNodeRef}
@@ -336,9 +332,8 @@ function ChipCard({
       {...listeners}
       className={cn(
         'group flex flex-col bg-background rounded-lg border border-border shadow-sm hover:shadow-md transition-all duration-150 cursor-grab active:cursor-grabbing select-none',
-        isDragging && 'opacity-60 ring-2 ring-primary/40'
+        isDragging && 'opacity-30'
       )}
-      style={dragStyle}
     >
       <div className="flex items-start gap-2 p-2.5">
         {/* Drag handle */}

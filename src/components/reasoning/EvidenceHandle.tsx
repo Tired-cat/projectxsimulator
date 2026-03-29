@@ -4,7 +4,6 @@
  */
 import { useMemo, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { getExternalChipDragId } from '@/lib/evidenceDnd';
 import { cn } from '@/lib/utils';
@@ -43,7 +42,6 @@ export function EvidenceHandle({
     attributes,
     listeners,
     setNodeRef,
-    transform,
     isDragging,
   } = useDraggable({
     id: getExternalChipDragId(sourceId, label),
@@ -52,10 +50,6 @@ export function EvidenceHandle({
       payload,
     },
   });
-
-  const draggableStyle = transform
-    ? { transform: CSS.Translate.toString(transform) }
-    : undefined;
 
   return (
     <div
@@ -66,11 +60,10 @@ export function EvidenceHandle({
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         'relative group cursor-grab active:cursor-grabbing select-none rounded-md transition-all duration-150',
-        isDragging && 'opacity-50 ring-2 ring-primary/50',
+        isDragging && 'opacity-30',
         isHovered && !isDragging && 'ring-1 ring-primary/30 bg-primary/5',
         className
       )}
-      style={draggableStyle}
       title={`Drag "${label}: ${value}" to Reasoning Board`}
     >
       {/* Subtle grab indicator — only visible on hover */}
