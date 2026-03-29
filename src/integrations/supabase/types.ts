@@ -41,6 +41,7 @@ export type Database = {
       reasoning_board_state: {
         Row: {
           adjustments_made: number
+          ai_feedback: Json | null
           cards: Json
           current_step: number
           id: string
@@ -55,6 +56,7 @@ export type Database = {
         }
         Insert: {
           adjustments_made?: number
+          ai_feedback?: Json | null
           cards?: Json
           current_step?: number
           id?: string
@@ -69,6 +71,7 @@ export type Database = {
         }
         Update: {
           adjustments_made?: number
+          ai_feedback?: Json | null
           cards?: Json
           current_step?: number
           id?: string
