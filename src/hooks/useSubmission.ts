@@ -10,6 +10,7 @@ interface SubmitOptions {
   cardsOnBoardCount: number;
   board: ReasoningBoardState;
   adjustmentsMade: number;
+  usedAi: boolean;
   forceSave: () => Promise<void>;
   completeSession: () => Promise<void>;
 }
@@ -33,6 +34,7 @@ export function useSubmission({
   cardsOnBoardCount,
   board,
   adjustmentsMade,
+  usedAi,
   forceSave,
   completeSession,
 }: SubmitOptions) {
@@ -56,10 +58,11 @@ export function useSubmission({
       cards_on_board_count: cardsOnBoardCount,
       time_elapsed_seconds: elapsed,
       reasoning_score,
+      used_ai: usedAi,
     });
 
     await completeSession();
-  }, [sessionId, user, startedAt, finalDecision, cardsOnBoardCount, board, adjustmentsMade, forceSave, completeSession]);
+  }, [sessionId, user, startedAt, finalDecision, cardsOnBoardCount, board, adjustmentsMade, usedAi, forceSave, completeSession]);
 
   return { submit };
 }
