@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
-import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send, MessageCircle } from 'lucide-react';
+import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
 import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent, DragOverlay } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
 import { SimulationShell } from '@/components/simulation/SimulationShell';
