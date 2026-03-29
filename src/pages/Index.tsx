@@ -61,19 +61,31 @@ function SimulationContent() {
     return createEvidenceChip(label, value, context, sourceId, rest);
   }, []);
 
-  const isBlockUnlocked = useCallback((blockId: import('@/types/evidenceChip').ReasoningBlockId) => {
-    const PREREQ: Record<string, string | null> = {
-      descriptive: null, diagnostic: 'descriptive', predictive: 'diagnostic', prescriptive: 'predictive',
-    };
-    const prereq = PREREQ[blockId];
-    if (!prereq) return true;
-    return board[prereq as import('@/types/evidenceChip').ReasoningBlockId].length > 0;
-  }, [board]);
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragHtml(null);
+    setActiveDragSize(null);
+    const { active, over } = event;
+    const dragData = active.data.current as EvidenceDragData | undefined;
+    const dropData = over?.data.current as EvidenceDropData | undefined;
+
+    if (!dragData || !dropData) return;
+
+    if (dropData.kind === 'reasoning-block') {
+      if (dragData.kind === 'board-chip') {
+        moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
+      } else {
+        addChip(dropData.blockId, chipFromPayload(dragData.payload));
+      }
+      return;
+    }
+
+    if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
+      contextualiseChip(dropData.blockId, dropData.targetChipId, chipFromPayload(dragData.payload));
+    }
+  }, [addChip, moveChip, contextualiseChip, chipFromPayload]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    // Find the draggable element from the activator event target
     let node = (event.activatorEvent as PointerEvent)?.target as HTMLElement | null;
-    // Walk up to the draggable root — the element with role="button" set by useDraggable
     if (node) {
       const root = node.closest<HTMLElement>('[role="button"]');
       if (root) node = root;
@@ -88,30 +100,6 @@ function SimulationContent() {
     setActiveDragHtml(null);
     setActiveDragSize(null);
   }, []);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveDragHtml(null);
-    setActiveDragSize(null);
-    const { active, over } = event;
-    const dragData = active.data.current as EvidenceDragData | undefined;
-    const dropData = over?.data.current as EvidenceDropData | undefined;
-
-    if (!dragData || !dropData) return;
-
-    if (dropData.kind === 'reasoning-block') {
-      if (!isBlockUnlocked(dropData.blockId)) return;
-      if (dragData.kind === 'board-chip') {
-        moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
-      } else {
-        addChip(dropData.blockId, chipFromPayload(dragData.payload));
-      }
-      return;
-    }
-
-    if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
-      contextualiseChip(dropData.blockId, dropData.targetChipId, chipFromPayload(dragData.payload));
-    }
-  }, [addChip, moveChip, contextualiseChip, chipFromPayload, isBlockUnlocked]);
 
   const {
     channelSpend,
