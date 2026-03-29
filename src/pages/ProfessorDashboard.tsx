@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -333,6 +334,42 @@ export default function ProfessorDashboard() {
                 </Table>
               </ScrollArea>
             )}
+          </CardContent>
+        </Card>
+
+        {/* ─── Hypothesis Testing Chart ───────────────────────── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Hypothesis Testing — Slider Adjustments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const buckets = [
+                { label: '1–2 (Guessing)', min: 1, max: 2 },
+                { label: '3–5 (Basic Testing)', min: 3, max: 5 },
+                { label: '6–10 (Active Exploration)', min: 6, max: 10 },
+                { label: '11+ (Deep Analysis)', min: 11, max: Infinity },
+              ];
+              const adjustmentValues = students
+                .map(s => s.adjustments)
+                .filter(v => v > 0);
+              const chartData = buckets.map(b => ({
+                name: b.label,
+                students: adjustmentValues.filter(v => v >= b.min && v <= b.max).length,
+              }));
+              return adjustmentValues.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No adjustment data yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
+                    <XAxis type="number" allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 13 }} />
+                    <Tooltip formatter={(value: number) => [`${value} student${value !== 1 ? 's' : ''}`, 'Count']} />
+                    <Bar dataKey="students" radius={[0, 4, 4, 0]} fill="#0d9488" />
+                  </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
           </CardContent>
         </Card>
       </main>
