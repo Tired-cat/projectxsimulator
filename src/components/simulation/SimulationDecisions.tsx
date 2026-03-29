@@ -1,4 +1,4 @@
-import { ReactNode, useState, useCallback } from 'react';
+import { ReactNode, memo, useState, useCallback } from 'react';
 import { BarChart3, AlertCircle, PieChart, Settings } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
@@ -39,7 +39,7 @@ interface SimulationDecisionsProps {
  * Renders the simulation decision panels with drag-to-view support.
  * Original cards always remain in grid; dragging creates view clones.
  */
-export function SimulationDecisions({
+export const SimulationDecisions = memo(function SimulationDecisions({
   channelSpend,
   updateChannelSpend,
   channelMetrics,
@@ -105,92 +105,86 @@ export function SimulationDecisions({
     }
   };
 
-  // The main card grid component - always visible
-  const CardGrid = () => (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {/* Channel Performance - full width */}
-      <DraggableCard
-        panelId="channel-performance"
-        title="Channel Performance"
-        icon={<BarChart3 className="h-4 w-4" />}
-        className="lg:col-span-2"
-        onDragStart={setDraggingPanelId}
-        onDragEnd={() => setDraggingPanelId(null)}
-        onAddAsTab={handleAddAsTab}
-        onOpenInSplit={handleOpenInSplit}
-      >
-        {renderPanelContent('channel-performance')}
-      </DraggableCard>
-
-      {/* Product Mix — full width */}
-      <DraggableCard
-        panelId="product-mix"
-        title="Product Mix"
-        icon={<PieChart className="h-4 w-4" />}
-        className="lg:col-span-2"
-        onDragStart={setDraggingPanelId}
-        onDragEnd={() => setDraggingPanelId(null)}
-        onAddAsTab={handleAddAsTab}
-        onOpenInSplit={handleOpenInSplit}
-      >
-        {renderPanelContent('product-mix')}
-      </DraggableCard>
-
-
-
-
-      {/* Hints - full width */}
-      <DraggableCard
-        panelId="hints"
-        title="Hints & Tips"
-        icon={<AlertCircle className="h-4 w-4" />}
-        className="lg:col-span-2"
-        onDragStart={setDraggingPanelId}
-        onDragEnd={() => setDraggingPanelId(null)}
-        onAddAsTab={handleAddAsTab}
-        onOpenInSplit={handleOpenInSplit}
-      >
-        {renderPanelContent('hints')}
-      </DraggableCard>
-
-      {/* Assumptions - full width */}
-      <DraggableCard
-        panelId="assumptions"
-        title="Assumptions"
-        icon={<Settings className="h-4 w-4" />}
-        className="lg:col-span-2"
-        contentClassName="pt-0"
-        onDragStart={setDraggingPanelId}
-        onDragEnd={() => setDraggingPanelId(null)}
-        onAddAsTab={handleAddAsTab}
-        onOpenInSplit={handleOpenInSplit}
-      >
-        {renderPanelContent('assumptions')}
-      </DraggableCard>
-    </div>
-  );
-
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Fixed header with budget bar */}
       <div className="flex-shrink-0 p-4 pb-0">
-        <BudgetHeader 
-          totalSpent={totalSpent} 
+        <BudgetHeader
+          totalSpent={totalSpent}
           onReset={onReset}
           isSplit={split.enabled}
           onCloseSplit={disableSplit}
         />
       </div>
 
-      {/* Card grid — always rendered; split is handled at shell level */}
+      {/* Card grid — inlined directly to avoid nested component definitions that
+          would remount children (DraggableBarChart, ProductMixChart) on every
+          parent re-render, resetting their local state. */}
       <div className="flex-1 overflow-hidden p-4">
         <ScrollArea className="h-full">
-          <CardGrid />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Channel Performance - full width */}
+            <DraggableCard
+              panelId="channel-performance"
+              title="Channel Performance"
+              icon={<BarChart3 className="h-4 w-4" />}
+              className="lg:col-span-2"
+              onDragStart={setDraggingPanelId}
+              onDragEnd={() => setDraggingPanelId(null)}
+              onAddAsTab={handleAddAsTab}
+              onOpenInSplit={handleOpenInSplit}
+            >
+              {renderPanelContent('channel-performance')}
+            </DraggableCard>
+
+            {/* Product Mix — full width */}
+            <DraggableCard
+              panelId="product-mix"
+              title="Product Mix"
+              icon={<PieChart className="h-4 w-4" />}
+              className="lg:col-span-2"
+              onDragStart={setDraggingPanelId}
+              onDragEnd={() => setDraggingPanelId(null)}
+              onAddAsTab={handleAddAsTab}
+              onOpenInSplit={handleOpenInSplit}
+            >
+              {renderPanelContent('product-mix')}
+            </DraggableCard>
+
+            {/* Hints - full width */}
+            <DraggableCard
+              panelId="hints"
+              title="Hints & Tips"
+              icon={<AlertCircle className="h-4 w-4" />}
+              className="lg:col-span-2"
+              onDragStart={setDraggingPanelId}
+              onDragEnd={() => setDraggingPanelId(null)}
+              onAddAsTab={handleAddAsTab}
+              onOpenInSplit={handleOpenInSplit}
+            >
+              {renderPanelContent('hints')}
+            </DraggableCard>
+
+            {/* Assumptions - full width */}
+            <DraggableCard
+              panelId="assumptions"
+              title="Assumptions"
+              icon={<Settings className="h-4 w-4" />}
+              className="lg:col-span-2"
+              contentClassName="pt-0"
+              onDragStart={setDraggingPanelId}
+              onDragEnd={() => setDraggingPanelId(null)}
+              onAddAsTab={handleAddAsTab}
+              onOpenInSplit={handleOpenInSplit}
+            >
+              {renderPanelContent('assumptions')}
+            </DraggableCard>
+          </div>
         </ScrollArea>
       </div>
     </div>
   );
-}
+});
 
 // Budget header component
 interface BudgetHeaderProps {
