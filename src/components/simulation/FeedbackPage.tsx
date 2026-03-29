@@ -62,6 +62,7 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
                 setFeedback(saved);
                 setLoading(false);
                 savedRef.current = true;
+                onFeedbackReady?.();
               }
               return;
             }
@@ -90,7 +91,7 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
         const data = await resp.json();
         if (!cancelled) {
           setFeedback(data.feedback);
-
+          onFeedbackReady?.();
           // 3. Save feedback to DB so it persists
           if (sessionId && userId && data.feedback) {
             supabase
