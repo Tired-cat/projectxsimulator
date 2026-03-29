@@ -111,5 +111,5 @@ export function useAutoSave({ sessionId, board, writtenDiagnosis, isCompleted }:
       .eq('id', boardStateId);
   }, [boardStateId, user, board, writtenDiagnosis]);
 
-  return { saveStatus, forceSave, boardStateId };
+  return { saveStatus, forceSave, boardStateId, adjustmentsMade: changeCountRef.current };
 }
