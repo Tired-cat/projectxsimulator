@@ -418,6 +418,23 @@ function SimulationContent() {
 const Index = () => {
   const { user, loading, role } = useAuth();
 
+  // Handle pending class enrollment after email verification
+  useEffect(() => {
+    if (!user) return;
+    const pendingClassId = localStorage.getItem('pending_enrollment_class_id');
+    if (pendingClassId) {
+      localStorage.removeItem('pending_enrollment_class_id');
+      supabase.from('student_enrollments').upsert(
+        { user_id: user.id, class_id: pendingClassId } as any,
+        { onConflict: 'user_id,class_id' }
+      ).then(({ error }) => {
+        if (!error) {
+          toast({ title: 'Enrolled!', description: 'You have been added to your class.' });
+        }
+      });
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
