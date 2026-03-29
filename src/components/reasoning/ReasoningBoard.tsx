@@ -1,10 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check, Lock, AlertTriangle, CircleCheck } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Check, AlertTriangle, CircleCheck } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   REASONING_BLOCKS,
-  BLOCK_PREREQUISITE,
   getSmartInsight,
   validateReasoningBoard,
 } from '@/types/evidenceChip';
@@ -18,12 +17,6 @@ import {
 import { cn } from '@/lib/utils';
 import { ReasoningNarrative } from './ReasoningNarrative';
 
-const BLOCK_TITLE_MAP: Record<ReasoningBlockId, string> = {
-  descriptive: 'Descriptive',
-  diagnostic: 'Diagnostic',
-  predictive: 'Predictive',
-  prescriptive: 'Prescriptive',
-};
 
 export function ReasoningBoard() {
   const { board, removeChip } = useReasoningBoard();
@@ -34,19 +27,7 @@ export function ReasoningBoard() {
   const totalChips = Object.values(board).reduce((s, arr) => s + arr.length, 0);
   const validation = useMemo(() => validateReasoningBoard(board), [board]);
 
-  const isBlockUnlocked = useCallback((blockId: ReasoningBlockId) => {
-    const prerequisite = BLOCK_PREREQUISITE[blockId];
-    if (!prerequisite) return true;
-    return board[prerequisite].length > 0;
-  }, [board]);
-
-  const getLockMessage = useCallback((blockId: ReasoningBlockId) => {
-    const prerequisite = BLOCK_PREREQUISITE[blockId];
-    if (!prerequisite) return null;
-    return `Complete ${BLOCK_TITLE_MAP[prerequisite]} first.`;
-  }, []);
-
-  // activeDrag is no longer driven by useDndMonitor — 
+  // activeDrag is no longer driven by useDndMonitor —
   // the DndContext onDragEnd in Index.tsx handles all dispatch.
   // We keep activeDrag for visual hover highlighting only.
 
@@ -61,7 +42,7 @@ export function ReasoningBoard() {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-foreground">Reasoning Board</h2>
             <p className="text-[10px] text-muted-foreground truncate">
-              Fill in order: Descriptive, Diagnostic, Predictive, Prescriptive
+              Drag evidence into any block to build your reasoning
             </p>
           </div>
           {totalChips > 0 && (
@@ -77,7 +58,7 @@ export function ReasoningBoard() {
               Click <strong>Reason</strong> on <strong>Channel Performance</strong> or <strong>Product Mix</strong>, then drag evidence here.
             </p>
             <p className="text-xs text-muted-foreground">
-              Unlock blocks in sequence to build a valid reasoning chain.
+              Place evidence in any block — no set order required.
             </p>
           </div>
         )}
@@ -153,13 +134,11 @@ export function ReasoningBoard() {
           <div className="grid grid-cols-2 gap-3 content-start">
             {REASONING_BLOCKS.map((block) => {
               const chips = board[block.id];
-              const isUnlocked = isBlockUnlocked(block.id);
-              const lockMessage = getLockMessage(block.id);
 
               return (
                 <BlockDropContainer key={block.id} blockId={block.id}>
                   {({ setNodeRef, isOver }) => {
-                    const isHovered = isUnlocked && isOver && !!activeDrag;
+                    const isHovered = isOver && !!activeDrag;
 
                     return (
                       <div
@@ -168,8 +147,7 @@ export function ReasoningBoard() {
                           'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[140px]',
                           isHovered
                             ? 'border-dashed scale-[1.01] shadow-lg'
-                            : 'border-border/60',
-                          !isUnlocked && chips.length === 0 && 'opacity-75'
+                            : 'border-border/60'
                         )}
                         style={{
                           backgroundColor: isHovered ? block.bgColor : 'hsl(var(--card))',
@@ -190,12 +168,7 @@ export function ReasoningBoard() {
                           {block.question}
                         </div>
                       </div>
-                      {!isUnlocked && chips.length === 0 ? (
-                        <div className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground flex items-center gap-1">
-                          <Lock className="h-3 w-3" />
-                          Locked
-                        </div>
-                      ) : chips.length > 0 ? (
+                      {chips.length > 0 ? (
                         <div
                           className="text-xs font-semibold px-2 py-0.5 rounded-full"
                           style={{ backgroundColor: block.color + '20', color: block.color }}
@@ -216,20 +189,8 @@ export function ReasoningBoard() {
                         )}
                         style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                       >
-                        {isUnlocked ? (
-                          <>
-                            <span>{isHovered ? 'Drop evidence here' : 'Drop evidence here'}</span>
-                            <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex items-center gap-1">
-                              <Lock className="h-3 w-3" />
-                              {lockMessage}
-                            </span>
-                            <span className="text-muted-foreground/50 italic text-[9px]">Fill blocks in sequence.</span>
-                          </>
-                        )}
+                        <span>Drop evidence here</span>
+                        <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
                       </div>
                     ) : (
                       <>
