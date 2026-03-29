@@ -58,6 +58,7 @@ interface SubmissionRow {
   step_1_text: string | null;
   step_2_chips: Json | null;
   step_3_reflection: string | null;
+  reasoning_score: number;
 }
 
 interface StudentRecord {
@@ -71,6 +72,7 @@ interface StudentRecord {
   adjustments: number;
   finalDecision: string | null;
   submittedAt: string | null;
+  reasoningScore: number;
   // detail fields
   writtenDiagnosis: string | null;
   step1Text: string | null;
