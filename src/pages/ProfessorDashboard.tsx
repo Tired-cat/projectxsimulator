@@ -524,6 +524,7 @@ export default function ProfessorDashboard() {
               );
             })()}
           </CardContent>
+        </Card>
       </main>
 
       {/* ─── Student Detail Dialog ────────────────────────────── */}
