@@ -102,6 +102,22 @@ function countCards(cards: Json): number {
   return Object.values(obj).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
 }
 
+// ⚠️ Change this to your admin email
+const ADMIN_EMAIL = 'admin@projectx.edu';
+
+interface ClassRow {
+  id: string;
+  name: string;
+  section_code: string;
+}
+
+interface SimulationRow {
+  id: string;
+  class_id: string;
+  status: string;
+  created_at: string;
+}
+
 // ─── Component ───────────────────────────────────────────────────
 export default function ProfessorDashboard() {
   const { user, role, signOut, loading: authLoading } = useAuth();
@@ -111,22 +127,31 @@ export default function ProfessorDashboard() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [boards, setBoards] = useState<BoardRow[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [simulations, setSimulations] = useState<SimulationRow[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   // ─── Fetch all data ──────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     setDataLoading(true);
-    const [pRes, sRes, bRes, subRes] = await Promise.all([
+    const [pRes, sRes, bRes, subRes, cRes, simRes] = await Promise.all([
       supabase.from('profiles').select('id, display_name, email').eq('role', 'student'),
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
       supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score, used_ai'),
+      supabase.from('classes').select('id, name, section_code'),
+      supabase.from('simulations').select('id, class_id, status, created_at'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
     if (sRes.data) setSessions(sRes.data as SessionRow[]);
     if (bRes.data) setBoards(bRes.data as unknown as BoardRow[]);
     if (subRes.data) setSubmissions(subRes.data as unknown as SubmissionRow[]);
+    if (cRes.data) setClasses(cRes.data as ClassRow[]);
+    if (simRes.data) setSimulations(simRes.data as unknown as SimulationRow[]);
     setDataLoading(false);
   }, []);
 
