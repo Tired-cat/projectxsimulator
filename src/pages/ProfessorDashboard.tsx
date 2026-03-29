@@ -13,9 +13,12 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw, Zap, BookOpen, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Json } from '@/integrations/supabase/types';
+import { ClassSwitcher } from '@/components/dashboard/ClassSwitcher';
+import { AddClassDialog } from '@/components/dashboard/AddClassDialog';
+import { toast } from 'sonner';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Profile {
