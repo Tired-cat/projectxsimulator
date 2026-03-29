@@ -130,6 +130,7 @@ export type Database = {
           step_3_reflection: string | null
           submitted_at: string
           time_elapsed_seconds: number
+          used_ai: boolean
           user_id: string
         }
         Insert: {
@@ -143,6 +144,7 @@ export type Database = {
           step_3_reflection?: string | null
           submitted_at?: string
           time_elapsed_seconds?: number
+          used_ai?: boolean
           user_id: string
         }
         Update: {
@@ -156,6 +158,7 @@ export type Database = {
           step_3_reflection?: string | null
           submitted_at?: string
           time_elapsed_seconds?: number
+          used_ai?: boolean
           user_id?: string
         }
         Relationships: [
