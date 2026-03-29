@@ -187,6 +187,7 @@ function SimulationContent() {
   }, []);
 
   const handleReturnFromFeedback = useCallback(() => {
+    setHasFeedback(true);
     setShowFeedback(false);
   }, []);
 
@@ -295,7 +296,7 @@ function SimulationContent() {
 
       {/* Top bar with user info */}
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
-        {!submitted && totalChips > 0 && (
+        {!submitted && !hasFeedback && totalChips > 0 && (
           <Button
             size="sm"
             variant="default"
@@ -303,7 +304,18 @@ function SimulationContent() {
             className="gap-1.5"
           >
             <Send className="h-3.5 w-3.5" />
-            Submit
+            Get Feedback
+          </Button>
+        )}
+        {!submitted && hasFeedback && !showFeedback && (
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => setShowFeedback(true)}
+            className="gap-1.5"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Return to Feedback
           </Button>
         )}
         <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
