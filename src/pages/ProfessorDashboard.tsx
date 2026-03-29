@@ -13,9 +13,12 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw, Zap, BookOpen, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Json } from '@/integrations/supabase/types';
+import { ClassSwitcher } from '@/components/dashboard/ClassSwitcher';
+import { AddClassDialog } from '@/components/dashboard/AddClassDialog';
+import { toast } from 'sonner';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Profile {
@@ -99,6 +102,22 @@ function countCards(cards: Json): number {
   return Object.values(obj).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
 }
 
+// ⚠️ Change this to your admin email
+const ADMIN_EMAIL = 'admin@projectx.edu';
+
+interface ClassRow {
+  id: string;
+  name: string;
+  section_code: string;
+}
+
+interface SimulationRow {
+  id: string;
+  class_id: string;
+  status: string;
+  created_at: string;
+}
+
 // ─── Component ───────────────────────────────────────────────────
 export default function ProfessorDashboard() {
   const { user, role, signOut, loading: authLoading } = useAuth();
@@ -108,22 +127,31 @@ export default function ProfessorDashboard() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [boards, setBoards] = useState<BoardRow[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [simulations, setSimulations] = useState<SimulationRow[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   // ─── Fetch all data ──────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     setDataLoading(true);
-    const [pRes, sRes, bRes, subRes] = await Promise.all([
+    const [pRes, sRes, bRes, subRes, cRes, simRes] = await Promise.all([
       supabase.from('profiles').select('id, display_name, email').eq('role', 'student'),
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
       supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score, used_ai'),
+      supabase.from('classes').select('id, name, section_code'),
+      supabase.from('simulations').select('id, class_id, status, created_at'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
     if (sRes.data) setSessions(sRes.data as SessionRow[]);
     if (bRes.data) setBoards(bRes.data as unknown as BoardRow[]);
     if (subRes.data) setSubmissions(subRes.data as unknown as SubmissionRow[]);
+    if (cRes.data) setClasses(cRes.data as ClassRow[]);
+    if (simRes.data) setSimulations(simRes.data as unknown as SimulationRow[]);
     setDataLoading(false);
   }, []);
 
@@ -205,6 +233,25 @@ export default function ProfessorDashboard() {
     URL.revokeObjectURL(url);
   }, [students]);
 
+  const triggerSimulation = useCallback(async () => {
+    if (!selectedClassId || !user) return;
+    const { error } = await supabase.from('simulations').insert({
+      class_id: selectedClassId,
+      status: 'active',
+    });
+    if (error) {
+      toast.error('Failed to trigger simulation');
+    } else {
+      toast.success('Simulation triggered!');
+      fetchAll();
+    }
+  }, [selectedClassId, user, fetchAll]);
+
+  const activeSimsForClass = useMemo(() => {
+    if (!selectedClassId) return simulations.filter(s => s.status === 'active').length;
+    return simulations.filter(s => s.class_id === selectedClassId && s.status === 'active').length;
+  }, [simulations, selectedClassId]);
+
   // ─── Guards ──────────────────────────────────────────────────
   if (authLoading) {
     return <div className="h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Loading…</p></div>;
@@ -243,12 +290,19 @@ export default function ProfessorDashboard() {
             <Badge variant="secondary" className="text-xs">Live</Badge>
           </div>
           <div className="flex items-center gap-2">
+            <ClassSwitcher classes={classes} selectedClassId={selectedClassId} onSelect={setSelectedClassId} />
+            <AddClassDialog onClassAdded={fetchAll} />
             <Button size="sm" variant="outline" onClick={fetchAll} className="gap-1.5">
               <RefreshCw className="h-3.5 w-3.5" /> Refresh
             </Button>
             <Button size="sm" variant="outline" onClick={exportCsv} className="gap-1.5">
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>
+            {isAdmin && (
+              <Button size="sm" variant="outline" onClick={() => navigate('/admin')} className="gap-1.5">
+                <Shield className="h-3.5 w-3.5" /> Admin
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
               <LogOut className="h-3.5 w-3.5" /> Sign Out
             </Button>
@@ -257,8 +311,14 @@ export default function ProfessorDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* ─── Overview Cards ─────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* ─── Class KPI Cards ────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-4 pb-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10"><BookOpen className="h-5 w-5 text-primary" /></div>
+              <div><p className="text-2xl font-bold">{classes.length}</p><p className="text-xs text-muted-foreground">Classes</p></div>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="pt-4 pb-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10"><Users className="h-5 w-5 text-primary" /></div>
@@ -279,11 +339,29 @@ export default function ProfessorDashboard() {
           </Card>
           <Card>
             <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted"><AlertCircle className="h-5 w-5 text-muted-foreground" /></div>
-              <div><p className="text-2xl font-bold">{stats.notStarted}</p><p className="text-xs text-muted-foreground">Not Started</p></div>
+              <div className="p-2 rounded-lg bg-accent/10"><Zap className="h-5 w-5 text-accent-foreground" /></div>
+              <div><p className="text-2xl font-bold">{activeSimsForClass}</p><p className="text-xs text-muted-foreground">Active Sims</p></div>
             </CardContent>
           </Card>
         </div>
+
+        {/* ─── Simulation Launcher ────────────────────────────── */}
+        {selectedClassId && (
+          <Card>
+            <CardContent className="pt-4 pb-4 flex items-center justify-between">
+              <div>
+                <p className="font-medium">
+                  Managing: <strong>{classes.find(c => c.id === selectedClassId)?.name}</strong>
+                  {' — '}{classes.find(c => c.id === selectedClassId)?.section_code}
+                </p>
+                <p className="text-xs text-muted-foreground">{activeSimsForClass} active simulation(s)</p>
+              </div>
+              <Button onClick={triggerSimulation} className="gap-1.5">
+                <Zap className="h-4 w-4" /> Trigger Simulation
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ─── Student Table ──────────────────────────────────── */}
         <Card>
