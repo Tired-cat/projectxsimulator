@@ -26,6 +26,7 @@ import type { ReasoningBoardState } from '@/types/evidenceChip';
 import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from '@/lib/evidenceDnd';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { AiChatModal } from '@/components/simulation/AiChatModal';
 import {
   Accordion,
   AccordionContent,
@@ -49,10 +50,11 @@ function SimulationContent() {
   const [activeDragHtml, setActiveDragHtml] = useState<string | null>(null);
   const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(null);
   const [usedAi, setUsedAi] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
 
   const handleChatWithAi = useCallback(() => {
     setUsedAi(true);
-    window.open('#', '_blank');
+    setAiChatOpen(true);
   }, []);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
