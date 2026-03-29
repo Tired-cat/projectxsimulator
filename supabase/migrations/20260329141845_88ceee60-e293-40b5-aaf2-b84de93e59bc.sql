@@ -1,0 +1,1 @@
+ALTER TABLE public.reasoning_board_state ADD COLUMN ai_feedback jsonb DEFAULT NULL;

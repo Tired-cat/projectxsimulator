@@ -390,6 +390,8 @@ function SimulationContent() {
         <div className="fixed inset-0 z-50 bg-background overflow-auto">
           <FeedbackPage
             context={{ board, channelSpend, totals, writtenDiagnosis }}
+            sessionId={sessionId}
+            userId={user?.id ?? null}
             onReturnAndAdjust={handleReturnFromFeedback}
             onSubmitFinal={handleSubmit}
           />
