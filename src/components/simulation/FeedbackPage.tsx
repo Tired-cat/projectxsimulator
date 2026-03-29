@@ -26,11 +26,12 @@ interface FeedbackPageProps {
   userId: string | null;
   onReturnAndAdjust: () => void;
   onSubmitFinal: () => void;
+  onFeedbackReady?: () => void;
 }
 
 const FEEDBACK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
-export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, onSubmitFinal }: FeedbackPageProps) {
+export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, onSubmitFinal, onFeedbackReady }: FeedbackPageProps) {
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
                 setFeedback(saved);
                 setLoading(false);
                 savedRef.current = true;
+                onFeedbackReady?.();
               }
               return;
             }
@@ -89,7 +91,7 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
         const data = await resp.json();
         if (!cancelled) {
           setFeedback(data.feedback);
-
+          onFeedbackReady?.();
           // 3. Save feedback to DB so it persists
           if (sessionId && userId && data.feedback) {
             supabase
