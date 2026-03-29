@@ -65,7 +65,13 @@ function SimulationContent() {
   }, [board]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    const node = (event.active as any).node?.current as HTMLElement | undefined;
+    // Find the draggable element from the activator event target
+    let node = (event.activatorEvent as PointerEvent)?.target as HTMLElement | null;
+    // Walk up to the draggable root — the element with role="button" set by useDraggable
+    if (node) {
+      const root = node.closest<HTMLElement>('[role="button"]');
+      if (root) node = root;
+    }
     if (node) {
       setActiveDragHtml(node.outerHTML);
       setActiveDragSize({ width: node.offsetWidth, height: node.offsetHeight });
