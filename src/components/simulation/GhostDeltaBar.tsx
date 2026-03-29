@@ -130,7 +130,7 @@ export function GhostDeltaBar({
     setIsDraggingGhost(true);
     
     if (onTokenDrag && baselineValue !== null) {
-      const metricType = (viewMode === 'all' || viewMode === 'budget') ? 'clicks' : viewMode;
+      const metricType = 'clicks' as const; // budget tab always maps to clicks
       const token = createBaselineToken(
         channelId,
         channel.name,
@@ -152,7 +152,7 @@ export function GhostDeltaBar({
     setIsDraggingDelta(true);
     
     if (onTokenDrag && baselineValue !== null) {
-      const metricType = (viewMode === 'all' || viewMode === 'budget') ? 'clicks' : viewMode;
+      const metricType = 'clicks' as const; // budget tab always maps to clicks
       const token = createDeltaToken(
         channelId,
         channel.name,
