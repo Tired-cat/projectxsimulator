@@ -477,6 +477,53 @@ export default function ProfessorDashboard() {
             })()}
           </CardContent>
         </Card>
+
+        {/* ─── AI Impact on Time & Score ──────────────────────── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Impact of AI Usage on Time &amp; Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const submitted = students.filter(s => s.status === 'Submitted');
+              if (submitted.length === 0) {
+                return <p className="text-center text-muted-foreground py-8">No submitted students yet.</p>;
+              }
+              const usedAiData = submissions.filter(s => s.used_ai).map(s => {
+                const profile = profiles.find(p => p.id === s.user_id);
+                return { name: profile?.display_name || profile?.email || 'Unknown', minutes: Math.round(s.time_elapsed_seconds / 60), score: s.reasoning_score };
+              });
+              const noAiData = submissions.filter(s => !s.used_ai).map(s => {
+                const profile = profiles.find(p => p.id === s.user_id);
+                return { name: profile?.display_name || profile?.email || 'Unknown', minutes: Math.round(s.time_elapsed_seconds / 60), score: s.reasoning_score };
+              });
+              const CustomTooltip = ({ active, payload }: any) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload;
+                return (
+                  <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
+                    <p className="font-medium mb-1">{d.name}</p>
+                    <p className="text-muted-foreground">Score: <span className="text-foreground font-mono">{d.score}</span></p>
+                    <p className="text-muted-foreground">Time: <span className="text-foreground font-mono">{d.minutes} min</span></p>
+                  </div>
+                );
+              };
+              return (
+                <ResponsiveContainer width="100%" height={300}>
+                  <ScatterChart margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="minutes" name="Completion Time" unit=" min" tick={{ fontSize: 12 }} label={{ value: 'Completion Time (minutes)', position: 'insideBottom', offset: -5, fontSize: 12 }} />
+                    <YAxis type="number" dataKey="score" name="Reasoning Score" domain={[0, 100]} tick={{ fontSize: 12 }} label={{ value: 'Reasoning Score (0–100)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 12 }} />
+                    <ZAxis range={[60, 60]} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+                    <Legend />
+                    <Scatter name="Used AI" data={usedAiData} fill="#0d9488" />
+                    <Scatter name="Did Not Use AI" data={noAiData} fill="#f97316" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              );
+            })()}
+          </CardContent>
       </main>
 
       {/* ─── Student Detail Dialog ────────────────────────────── */}
