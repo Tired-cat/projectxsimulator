@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       classes: {
         Row: {
+          class_code: string
           created_at: string
           id: string
           instructor_id: string
@@ -23,6 +24,7 @@ export type Database = {
           section_code: string
         }
         Insert: {
+          class_code?: string
           created_at?: string
           id?: string
           instructor_id: string
@@ -30,6 +32,7 @@ export type Database = {
           section_code: string
         }
         Update: {
+          class_code?: string
           created_at?: string
           id?: string
           instructor_id?: string
