@@ -51,6 +51,7 @@ function SimulationContent() {
   const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(null);
   const [usedAi, setUsedAi] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [hasFeedback, setHasFeedback] = useState(false);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
