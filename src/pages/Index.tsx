@@ -151,7 +151,7 @@ function SimulationContent() {
   // Auto-save
   const totalChips = useMemo(() => Object.values(board).reduce((s, arr) => s + arr.length, 0), [board]);
 
-  const { saveStatus, forceSave, adjustmentsMade } = useAutoSave({
+  const { saveStatus, forceSave } = useAutoSave({
     sessionId,
     board,
     writtenDiagnosis,
@@ -171,8 +171,6 @@ function SimulationContent() {
     startedAt,
     finalDecision: writtenDiagnosis,
     cardsOnBoardCount: totalChips,
-    boardCards: board,
-    adjustmentsMade,
     forceSave,
     completeSession,
   });

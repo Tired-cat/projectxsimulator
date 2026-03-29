@@ -1,1 +1,0 @@
-ALTER TABLE public.submissions ADD COLUMN reasoning_score integer NOT NULL DEFAULT 0;

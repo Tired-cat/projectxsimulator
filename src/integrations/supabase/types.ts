@@ -123,7 +123,6 @@ export type Database = {
           cards_on_board_count: number
           final_decision: string
           id: string
-          reasoning_score: number
           session_id: string
           step_1_text: string | null
           step_2_chips: Json | null
@@ -136,7 +135,6 @@ export type Database = {
           cards_on_board_count?: number
           final_decision: string
           id?: string
-          reasoning_score?: number
           session_id: string
           step_1_text?: string | null
           step_2_chips?: Json | null
@@ -149,7 +147,6 @@ export type Database = {
           cards_on_board_count?: number
           final_decision?: string
           id?: string
-          reasoning_score?: number
           session_id?: string
           step_1_text?: string | null
           step_2_chips?: Json | null
