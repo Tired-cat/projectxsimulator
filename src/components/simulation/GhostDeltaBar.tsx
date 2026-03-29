@@ -12,7 +12,7 @@ interface GhostDeltaBarProps {
   currentValue: number;
   baselineValue: number | null;
   maxScale: number;
-  viewMode: 'clicks' | 'revenue' | 'profit' | 'all';
+  viewMode: 'budget' | 'clicks' | 'revenue' | 'profit' | 'all';
   isNegative: boolean;
   isDraggingSpend: boolean;
   isThisBarDragging: boolean;
@@ -53,7 +53,7 @@ export function GhostDeltaBar({
     ? Math.max(0, (Math.abs(baselineValue) / maxScale) * 100)
     : 0;
 
-  const metricLabel = viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
+  const metricLabel = viewMode === 'budget' ? 'Budget' : viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
 
   const mainPayload = useMemo<ExternalEvidencePayload>(() => {
     const displayValue = formatValue ? formatValue(currentValue) : currentValue.toLocaleString();
@@ -126,7 +126,7 @@ export function GhostDeltaBar({
     setIsDraggingGhost(true);
     
     if (onTokenDrag && baselineValue !== null) {
-      const metricType = viewMode === 'all' ? 'clicks' : viewMode;
+      const metricType = (viewMode === 'all' || viewMode === 'budget') ? 'clicks' : viewMode;
       const token = createBaselineToken(
         channelId,
         channel.name,
@@ -148,7 +148,7 @@ export function GhostDeltaBar({
     setIsDraggingDelta(true);
     
     if (onTokenDrag && baselineValue !== null) {
-      const metricType = viewMode === 'all' ? 'clicks' : viewMode;
+      const metricType = (viewMode === 'all' || viewMode === 'budget') ? 'clicks' : viewMode;
       const token = createDeltaToken(
         channelId,
         channel.name,
