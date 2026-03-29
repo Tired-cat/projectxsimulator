@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import ProfessorDashboard from "./pages/ProfessorDashboard";
 import AdminPanel from "./pages/AdminPanel";
+import StudentSimulation from "./pages/StudentSimulation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
