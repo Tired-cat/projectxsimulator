@@ -233,6 +233,25 @@ export default function ProfessorDashboard() {
     URL.revokeObjectURL(url);
   }, [students]);
 
+  const triggerSimulation = useCallback(async () => {
+    if (!selectedClassId || !user) return;
+    const { error } = await supabase.from('simulations').insert({
+      class_id: selectedClassId,
+      status: 'active',
+    });
+    if (error) {
+      toast.error('Failed to trigger simulation');
+    } else {
+      toast.success('Simulation triggered!');
+      fetchAll();
+    }
+  }, [selectedClassId, user, fetchAll]);
+
+  const activeSimsForClass = useMemo(() => {
+    if (!selectedClassId) return simulations.filter(s => s.status === 'active').length;
+    return simulations.filter(s => s.class_id === selectedClassId && s.status === 'active').length;
+  }, [simulations, selectedClassId]);
+
   // ─── Guards ──────────────────────────────────────────────────
   if (authLoading) {
     return <div className="h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Loading…</p></div>;
@@ -260,25 +279,6 @@ export default function ProfessorDashboard() {
     };
     return <Badge variant="outline" className={map[status]}>{status}</Badge>;
   };
-
-  const triggerSimulation = useCallback(async () => {
-    if (!selectedClassId || !user) return;
-    const { error } = await supabase.from('simulations').insert({
-      class_id: selectedClassId,
-      status: 'active',
-    });
-    if (error) {
-      toast.error('Failed to trigger simulation');
-    } else {
-      toast.success('Simulation triggered!');
-      fetchAll();
-    }
-  }, [selectedClassId, user, fetchAll]);
-
-  const activeSimsForClass = useMemo(() => {
-    if (!selectedClassId) return simulations.filter(s => s.status === 'active').length;
-    return simulations.filter(s => s.class_id === selectedClassId && s.status === 'active').length;
-  }, [simulations, selectedClassId]);
 
   return (
     <div className="min-h-screen bg-background">
