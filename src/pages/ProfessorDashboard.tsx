@@ -132,6 +132,7 @@ export default function ProfessorDashboard() {
   const [simulations, setSimulations] = useState<SimulationRow[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
