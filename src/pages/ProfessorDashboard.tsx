@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw, Zap, BookOpen, Shield } from 'lucide-react';
+import { LogOut, Download, Users, CheckCircle, Clock, AlertCircle, ArrowLeft, RefreshCw, Zap, BookOpen, Shield, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Json } from '@/integrations/supabase/types';
 import { ClassSwitcher } from '@/components/dashboard/ClassSwitcher';
@@ -109,6 +109,7 @@ interface ClassRow {
   id: string;
   name: string;
   section_code: string;
+  class_code: string;
 }
 
 interface SimulationRow {
@@ -143,7 +144,7 @@ export default function ProfessorDashboard() {
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
       supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score, used_ai'),
-      supabase.from('classes').select('id, name, section_code'),
+      supabase.from('classes').select('id, name, section_code, class_code'),
       supabase.from('simulations').select('id, class_id, status, created_at'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
