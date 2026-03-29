@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ interface SubmissionRow {
   step_1_text: string | null;
   step_2_chips: Json | null;
   step_3_reflection: string | null;
+  reasoning_score: number;
 }
 
 interface StudentRecord {
@@ -66,6 +67,7 @@ interface StudentRecord {
   timeSpent: number;
   cardsOnBoard: number;
   adjustments: number;
+  reasoningScore: number;
   finalDecision: string | null;
   submittedAt: string | null;
   // detail fields
@@ -115,7 +117,7 @@ export default function ProfessorDashboard() {
       supabase.from('profiles').select('id, display_name, email').eq('role', 'student'),
       supabase.from('sessions').select('*'),
       supabase.from('reasoning_board_state').select('session_id, user_id, cards, adjustments_made, written_diagnosis, current_step, step_1_completed, step_2_completed, step_3_completed, last_active_at'),
-      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection'),
+      supabase.from('submissions').select('session_id, user_id, final_decision, cards_on_board_count, time_elapsed_seconds, submitted_at, step_1_text, step_2_chips, step_3_reflection, reasoning_score'),
     ]);
     if (pRes.data) setProfiles(pRes.data);
     if (sRes.data) setSessions(sRes.data as SessionRow[]);
@@ -164,6 +166,7 @@ export default function ProfessorDashboard() {
         timeSpent,
         cardsOnBoard: submission ? submission.cards_on_board_count : board ? countCards(board.cards) : 0,
         adjustments: board?.adjustments_made ?? 0,
+        reasoningScore: submission?.reasoning_score ?? 0,
         finalDecision: submission?.final_decision ?? null,
         submittedAt: submission?.submitted_at ?? null,
         writtenDiagnosis: board?.written_diagnosis ?? null,
@@ -367,6 +370,51 @@ export default function ProfessorDashboard() {
                     <Tooltip formatter={(value: number) => [`${value} student${value !== 1 ? 's' : ''}`, 'Count']} />
                     <Bar dataKey="students" radius={[0, 4, 4, 0]} fill="#0d9488" />
                   </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
+          </CardContent>
+        </Card>
+
+        {/* ─── Completion Time vs Reasoning Score ─────────────── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Completion Time vs. Reasoning Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const scatterData = students
+                .filter(s => s.status === 'Submitted')
+                .map(s => ({
+                  name: s.name,
+                  minutes: Math.round(s.timeSpent / 60),
+                  score: s.reasoningScore,
+                }));
+              return scatterData.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No submitted students yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <ScatterChart margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="minutes" name="Completion Time" unit=" min" tick={{ fontSize: 12 }} label={{ value: 'Completion Time (minutes)', position: 'insideBottom', offset: -5, fontSize: 12 }} />
+                    <YAxis type="number" dataKey="score" name="Reasoning Score" domain={[0, 100]} tick={{ fontSize: 12 }} label={{ value: 'Reasoning Score (0–100)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 12 }} />
+                    <ZAxis range={[60, 60]} />
+                    <Tooltip
+                      cursor={{ strokeDasharray: '3 3' }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
+                            <p className="font-medium mb-1">{d.name}</p>
+                            <p className="text-muted-foreground">Score: <span className="text-foreground font-mono">{d.score}</span></p>
+                            <p className="text-muted-foreground">Time: <span className="text-foreground font-mono">{d.minutes} min</span></p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Scatter data={scatterData} fill="#0d9488" />
+                  </ScatterChart>
                 </ResponsiveContainer>
               );
             })()}
