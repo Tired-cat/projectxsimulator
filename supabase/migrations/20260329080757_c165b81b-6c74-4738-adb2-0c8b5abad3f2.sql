@@ -1,0 +1,1 @@
+ALTER TABLE public.submissions ADD COLUMN used_ai boolean NOT NULL DEFAULT false;
