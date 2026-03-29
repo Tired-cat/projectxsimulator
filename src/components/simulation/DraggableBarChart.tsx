@@ -769,7 +769,7 @@ export function DraggableBarChart({
                     onPointerMove={(isReadOnlyTab || reasonMode) ? undefined : handleColumnPointerMove}
                     onPointerUp={(isReadOnlyTab || reasonMode) ? undefined : handleColumnPointerUp}
                     onPointerCancel={(isReadOnlyTab || reasonMode) ? undefined : handleColumnPointerUp}
-                    style={{ touchAction: (isReadOnlyTab || reasonMode) ? 'auto' : 'none' }}
+                    style={{ touchAction: isSnapshot ? 'auto' : 'none' }}
                   >
                     {/* Invisible full-height hit area for dragging from empty space */}
                     <div
