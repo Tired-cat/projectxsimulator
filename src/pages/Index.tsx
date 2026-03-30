@@ -54,6 +54,7 @@ function SimulationContent() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [feedbackEventId, setFeedbackEventId] = useState<string | null>(null);
+  const [showFeedbackConfirm, setShowFeedbackConfirm] = useState(false);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
