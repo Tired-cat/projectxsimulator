@@ -176,6 +176,7 @@ export function BrowserTabStrip() {
           <div
             key={tab.id}
             draggable
+            {...(tab.kind === 'reasoning' ? { 'data-tutorial': 'reasoning-tab' } : {})}
             onClick={() => {
               const isInCurrentSplit = split.leftTabId === tab.id || split.rightTabId === tab.id;
               if (split.enabled && !isInCurrentSplit) disableSplit();
