@@ -1,5 +1,8 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/hooks/useSession';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { ArrowRight, CheckCircle2, X } from 'lucide-react';
 
@@ -195,8 +198,14 @@ function SplitViewHintArrow({ spotlight }: { spotlight: SpotlightRect }) {
 
 export function TutorialOverlay() {
   const { active, step, skipTutorial, advanceStep, actionCompleted } = useTutorial();
+  const { user } = useAuth();
+  const { sessionId } = useSession();
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
+  const tutorialStartTimeRef = useRef<number | null>(null);
+  const prevActiveRef = useRef(false);
+
+  const TOTAL_STEPS = STEP_CONFIG.length;
 
   const config = STEP_CONFIG[step - 1];
 
@@ -233,6 +242,61 @@ export function TutorialOverlay() {
     if (!active) return;
     setIsMinimized(false);
   }, [active, step]);
+
+  // Track tutorial start time
+  useEffect(() => {
+    if (active && !prevActiveRef.current) {
+      tutorialStartTimeRef.current = Date.now();
+    }
+    prevActiveRef.current = active;
+  }, [active]);
+
+  // Log step_viewed each time the step changes while active
+  useEffect(() => {
+    if (!active || !sessionId || !user) return;
+    supabase.from('tutorial_events').insert({
+      session_id: sessionId,
+      user_id: user.id,
+      action: 'step_viewed',
+      step_number: step,
+      total_steps: TOTAL_STEPS,
+    }).then(() => {});
+  }, [active, step, sessionId, user, TOTAL_STEPS]);
+
+  // Wrap advanceStep to detect completion at final step
+  const handleAdvance = useCallback(() => {
+    if (step === TOTAL_STEPS && sessionId && user) {
+      // Final step — log 'completed' and update session
+      supabase.from('tutorial_events').insert({
+        session_id: sessionId,
+        user_id: user.id,
+        action: 'completed',
+        step_number: step,
+        total_steps: TOTAL_STEPS,
+      }).then(() => {});
+      supabase.from('sessions').update({ tutorial_completed: true })
+        .eq('id', sessionId).then(() => {});
+    }
+    advanceStep();
+  }, [step, TOTAL_STEPS, sessionId, user, advanceStep]);
+
+  // Wrap skipTutorial to log 'skipped'
+  const handleSkip = useCallback(() => {
+    if (sessionId && user) {
+      const elapsed = tutorialStartTimeRef.current
+        ? Math.round((Date.now() - tutorialStartTimeRef.current) / 1000)
+        : null;
+      supabase.from('tutorial_events').insert({
+        session_id: sessionId,
+        user_id: user.id,
+        action: 'skipped',
+        step_number: step,
+        total_steps: TOTAL_STEPS,
+        time_spent_seconds: elapsed,
+      }).then(() => {});
+    }
+    skipTutorial();
+  }, [sessionId, user, step, TOTAL_STEPS, skipTutorial]);
 
   /** True when the target element is fully visible in the viewport */
   const isTargetFullyInViewport = useMemo(() => {
@@ -404,7 +468,7 @@ export function TutorialOverlay() {
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">Tutorial minimized.</p>
               <button
-                onClick={skipTutorial}
+                onClick={handleSkip}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
               >
                 <X className="w-3 h-3" /> Skip
@@ -443,7 +507,7 @@ export function TutorialOverlay() {
                   </div>
                   {actionCompleted && (
                     <button
-                      onClick={advanceStep}
+                      onClick={handleAdvance}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
                     >
                       Next Step <ArrowRight className="w-4 h-4" />
@@ -452,7 +516,7 @@ export function TutorialOverlay() {
                 </div>
               ) : (
                 <button
-                  onClick={advanceStep}
+                  onClick={handleAdvance}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
                 >
                   {step === 9 ? 'Got It — Finish Tutorial' : 'Got It — Next Step'}
