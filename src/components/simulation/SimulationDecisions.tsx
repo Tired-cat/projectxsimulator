@@ -1,4 +1,4 @@
-import { ReactNode, memo, useState, useCallback } from 'react';
+import { ReactNode, memo, useState, useCallback, useEffect } from 'react';
 import { BarChart3, AlertCircle, PieChart, Settings, HelpCircle } from 'lucide-react';
 import { SplitViewBarCharts } from './SplitViewBarCharts';
 import { ProductMixChart } from './ProductMixChart';
@@ -67,6 +67,24 @@ export const SimulationDecisions = memo(function SimulationDecisions({
     setCompareActive(false);
     setSnapshotSpend(null);
   }, []);
+
+  // Tutorial: close compare mode when the tutorial requests it (steps 4 and 5 entry)
+  useEffect(() => {
+    const onCloseCompare = () => {
+      setCompareActive(false);
+      setSnapshotSpend(null);
+    };
+    window.addEventListener('tutorial:close-compare', onCloseCompare);
+    return () => window.removeEventListener('tutorial:close-compare', onCloseCompare);
+  }, []);
+
+  // Tutorial: fire compare-activated whenever compareActive becomes true
+  // (covers the case where compare was already on when step 4 starts)
+  useEffect(() => {
+    if (compareActive) {
+      window.dispatchEvent(new Event('tutorial:compare-activated'));
+    }
+  }, [compareActive]);
 
   const handleAddAsTab = (panelId: PanelId, title: string) => {
     addPanelAsTab(panelId, title);

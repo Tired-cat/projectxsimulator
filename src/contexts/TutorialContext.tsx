@@ -55,6 +55,11 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     if (step < 6) {
       const next = (step + 1) as TutorialStep;
       setStep(next);
+      // Entering step 4: close compare mode so the Compare button is always visible
+      // Entering step 5: close compare mode so the layout resets and Reason button is accessible
+      if (next === 4 || next === 5) {
+        window.dispatchEvent(new Event('tutorial:close-compare'));
+      }
       // Step 6 needs reasoning board visible so narrative is spotlighted
       if (next === 6) {
         openTab('reasoning');

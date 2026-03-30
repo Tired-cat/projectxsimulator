@@ -52,7 +52,7 @@ const STEP_CONFIG = [
     target: '[data-tutorial="reason-button"]',
     title: 'Build Your Evidence',
     description:
-      'Click the Reason button to enter evidence-collection mode. Each bar becomes draggable. Drag a bar onto one of the four quadrants on the Reasoning Board (Descriptive, Diagnostic, Prescriptive, Predictive) to record it as evidence.',
+      'Compare mode has been closed so you can see the full chart. Click the Reason button at the bottom of the chart to enter evidence-collection mode — each bar becomes draggable. Drag a bar onto one of the four quadrants on the Reasoning Board to record it as evidence.',
     action: 'Drag one piece of evidence onto any Reasoning Board quadrant',
     tooltipSide: 'top' as const,
   },
