@@ -116,7 +116,9 @@ function SimulationContent() {
 
   const { sessionId, isCompleted, startedAt, completedAt, loading: sessionLoading, completeSession } = useSession();
 
-  // Load saved board state when session is ready
+  // Track tab navigation events
+  useNavigationTracking(activeTabId, sessionId, user?.id ?? null);
+
   useEffect(() => {
     if (!sessionId || !user) return;
 
