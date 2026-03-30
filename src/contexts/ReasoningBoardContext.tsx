@@ -99,6 +99,15 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const clearBoard = useCallback(() => {
+    setBoard(prev => {
+      const totalCards = Object.values(prev).reduce((s, arr) => s + arr.length, 0);
+      window.dispatchEvent(new CustomEvent('board:clear', { detail: { cardsCleared: totalCards } }));
+      return EMPTY_BOARD;
+    });
+    setWrittenDiagnosis('');
+  }, []);
+
   return (
     <ReasoningBoardContext.Provider value={{
       board,
@@ -106,6 +115,7 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       removeChip,
       moveChip,
       contextualiseChip,
+      clearBoard,
       draggingChip,
       setDraggingChip,
       reasonMode,
