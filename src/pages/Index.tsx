@@ -666,7 +666,7 @@ function SimulationContent() {
             feedbackEventId={feedbackEventId}
             onReturnAndAdjust={handleReturnFromFeedback}
             onSubmitFinal={handleSubmit}
-            onFeedbackReady={() => setHasFeedback(true)}
+            onFeedbackReady={() => { setHasFeedback(true); feedbackShownAtRef.current = Date.now(); }}
           />
         </div>
       )}
