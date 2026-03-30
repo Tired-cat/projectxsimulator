@@ -157,6 +157,54 @@ export type Database = {
           },
         ]
       }
+      navigation_events: {
+        Row: {
+          entered_at: string
+          exited_at: string | null
+          id: string
+          session_id: string
+          tab: string
+          time_spent_seconds: number | null
+          user_id: string
+          visit_number: number | null
+        }
+        Insert: {
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          session_id: string
+          tab: string
+          time_spent_seconds?: number | null
+          user_id: string
+          visit_number?: number | null
+        }
+        Update: {
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          session_id?: string
+          tab?: string
+          time_spent_seconds?: number | null
+          user_id?: string
+          visit_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
