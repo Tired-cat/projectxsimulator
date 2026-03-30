@@ -55,6 +55,7 @@ function SimulationContent() {
   const [hasFeedback, setHasFeedback] = useState(false);
   const [feedbackEventId, setFeedbackEventId] = useState<string | null>(null);
   const [showFeedbackConfirm, setShowFeedbackConfirm] = useState(false);
+  const feedbackShownAtRef = useRef<number | null>(null);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
@@ -293,10 +294,42 @@ function SimulationContent() {
 
   const handleSubmit = useCallback(async () => {
     setShowSubmitDialog(false);
+
+    // If submitting from the feedback page (or after adjusting), update ai_feedback_events
+    if (feedbackEventId) {
+      const contextPairsCount = Object.values(board).reduce(
+        (sum, chips) => sum + chips.filter((c: any) => c.pairedWith).length,
+        0,
+      );
+      const updatePayload: Record<string, any> = {
+        board_state_after: board as any,
+        descriptive_cards_after: board.descriptive?.length ?? 0,
+        diagnostic_cards_after: board.diagnostic?.length ?? 0,
+        prescriptive_cards_after: board.prescriptive?.length ?? 0,
+        predictive_cards_after: board.predictive?.length ?? 0,
+        contextualise_pairs_after: contextPairsCount,
+        tiktok_spend_after: channelSpend.tiktok,
+        instagram_spend_after: channelSpend.instagram,
+        facebook_spend_after: channelSpend.facebook,
+        newspaper_spend_after: channelSpend.newspaper,
+      };
+      // If submitting directly from feedback page (not after adjusting)
+      if (showFeedback && feedbackShownAtRef.current) {
+        const timeAdjusting = Math.round((Date.now() - feedbackShownAtRef.current) / 1000);
+        updatePayload.post_feedback_action = 'submitted_immediately';
+        updatePayload.action_taken_at = new Date().toISOString();
+        updatePayload.time_adjusting_seconds = timeAdjusting;
+      }
+      await supabase
+        .from('ai_feedback_events')
+        .update(updatePayload)
+        .eq('id', feedbackEventId);
+    }
+
     await submit();
     setSubmitted(true);
     toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
-  }, [submit]);
+  }, [submit, feedbackEventId, board, channelSpend, showFeedback]);
 
   // Check on mount if feedback already exists for this session
   useEffect(() => {
@@ -360,10 +393,22 @@ function SimulationContent() {
     setShowFeedback(true);
   }, [feedbackEventId, sessionId, user, board, channelSpend]);
 
-  const handleReturnFromFeedback = useCallback(() => {
+  const handleReturnFromFeedback = useCallback(async () => {
+    // Record 'adjusted' action with timing
+    if (feedbackEventId && feedbackShownAtRef.current) {
+      const timeAdjusting = Math.round((Date.now() - feedbackShownAtRef.current) / 1000);
+      await supabase
+        .from('ai_feedback_events')
+        .update({
+          post_feedback_action: 'adjusted',
+          action_taken_at: new Date().toISOString(),
+          time_adjusting_seconds: timeAdjusting,
+        })
+        .eq('id', feedbackEventId);
+    }
     setHasFeedback(true);
     setShowFeedback(false);
-  }, []);
+  }, [feedbackEventId]);
 
   // Dispatch tutorial event when budget diverges from initial allocation
   useEffect(() => {
@@ -621,7 +666,7 @@ function SimulationContent() {
             feedbackEventId={feedbackEventId}
             onReturnAndAdjust={handleReturnFromFeedback}
             onSubmitFinal={handleSubmit}
-            onFeedbackReady={() => setHasFeedback(true)}
+            onFeedbackReady={() => { setHasFeedback(true); feedbackShownAtRef.current = Date.now(); }}
           />
         </div>
       )}
