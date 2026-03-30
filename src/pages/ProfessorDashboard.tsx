@@ -4,7 +4,7 @@ import DashboardOverview from '@/pages/dashboard/DashboardOverview';
 import DashboardEngagement from '@/pages/dashboard/DashboardEngagement';
 import DashboardReasoning from '@/pages/dashboard/DashboardReasoning';
 import DashboardAiUsage from '@/pages/dashboard/DashboardAiUsage';
-import PlaceholderPage from '@/pages/dashboard/PlaceholderPage';
+import DashboardStudents from '@/pages/dashboard/DashboardStudents';
 
 export default function ProfessorDashboard() {
   return (
@@ -15,7 +15,7 @@ export default function ProfessorDashboard() {
         <Route path="engagement" element={<DashboardEngagement />} />
         <Route path="reasoning" element={<DashboardReasoning />} />
         <Route path="ai-usage" element={<DashboardAiUsage />} />
-        <Route path="students" element={<PlaceholderPage title="Students" />} />
+        <Route path="students" element={<DashboardStudents />} />
       </Routes>
     </DashboardLayout>
   );
