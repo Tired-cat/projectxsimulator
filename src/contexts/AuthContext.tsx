@@ -37,8 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock on initial load
-          setTimeout(() => fetchRole(session.user.id), 0);
+          await fetchRole(session.user.id);
         } else {
           setRole(null);
         }
@@ -46,11 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        await fetchRole(session.user.id);
       }
       setLoading(false);
     });
