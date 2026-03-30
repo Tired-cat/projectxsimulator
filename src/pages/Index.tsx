@@ -54,6 +54,7 @@ function SimulationContent() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [feedbackEventId, setFeedbackEventId] = useState<string | null>(null);
+  const [showFeedbackConfirm, setShowFeedbackConfirm] = useState(false);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
@@ -479,18 +480,24 @@ function SimulationContent() {
 
       {/* Top bar with user info */}
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
-        {!submitted && !showFeedback && (hasFeedback || totalChips > 0) && (
-          <Button
-            data-tutorial="feedback-button"
-            size="sm"
-            variant="default"
-            onClick={handleShowFeedback}
-            className="gap-1.5"
-          >
-            <Send className="h-3.5 w-3.5" />
-            {hasFeedback ? 'View Feedback' : 'Get Feedback'}
-          </Button>
-        )}
+        {!submitted && !showFeedback && (hasFeedback || totalChips > 0) && (() => {
+          const allQuadrantsFilled = board.descriptive.length > 0 && board.diagnostic.length > 0 && board.predictive.length > 0 && board.prescriptive.length > 0;
+          const isDisabled = !hasFeedback && !allQuadrantsFilled;
+          return (
+            <Button
+              data-tutorial="feedback-button"
+              size="sm"
+              variant="default"
+              onClick={hasFeedback ? handleShowFeedback : () => setShowFeedbackConfirm(true)}
+              disabled={isDisabled}
+              className="gap-1.5"
+              title={isDisabled ? 'Place at least 1 evidence card in each of the 4 reasoning quadrants' : undefined}
+            >
+              <Send className="h-3.5 w-3.5" />
+              {hasFeedback ? 'View Feedback' : 'Get Feedback'}
+            </Button>
+          );
+        })()}
         <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
           <LogOut className="h-3.5 w-3.5" />
           Sign Out
@@ -578,6 +585,27 @@ function SimulationContent() {
             <Button onClick={handleSubmit}>
               <Send className="h-4 w-4 mr-2" />
               Confirm Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Feedback confirmation dialog */}
+      <Dialog open={showFeedbackConfirm} onOpenChange={setShowFeedbackConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure you want to get feedback?</DialogTitle>
+            <DialogDescription>
+              You only get <strong>one</strong> AI-generated feedback per session. Make sure you've put your best effort into your reasoning board and budget decisions before requesting it — you'll use this feedback to refine your final submission.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFeedbackConfirm(false)}>
+              Go Back
+            </Button>
+            <Button onClick={() => { setShowFeedbackConfirm(false); handleShowFeedback(); }}>
+              <Send className="h-4 w-4 mr-2" />
+              Yes, Get Feedback
             </Button>
           </DialogFooter>
         </DialogContent>
