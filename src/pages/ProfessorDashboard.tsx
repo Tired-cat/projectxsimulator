@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import DashboardOverview from '@/pages/dashboard/DashboardOverview';
 import DashboardEngagement from '@/pages/dashboard/DashboardEngagement';
 import DashboardReasoning from '@/pages/dashboard/DashboardReasoning';
+import DashboardAiUsage from '@/pages/dashboard/DashboardAiUsage';
 import PlaceholderPage from '@/pages/dashboard/PlaceholderPage';
 
 export default function ProfessorDashboard() {
@@ -13,7 +14,7 @@ export default function ProfessorDashboard() {
         <Route path="overview" element={<Navigate to="/dashboard" replace />} />
         <Route path="engagement" element={<DashboardEngagement />} />
         <Route path="reasoning" element={<DashboardReasoning />} />
-        <Route path="ai-usage" element={<PlaceholderPage title="AI Usage" />} />
+        <Route path="ai-usage" element={<DashboardAiUsage />} />
         <Route path="students" element={<PlaceholderPage title="Students" />} />
       </Routes>
     </DashboardLayout>
