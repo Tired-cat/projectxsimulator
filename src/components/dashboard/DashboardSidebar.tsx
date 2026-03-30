@@ -29,7 +29,7 @@ export function DashboardSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        <SidebarGroup defaultOpen>
+        <SidebarGroup>
           <SidebarGroupLabel className="font-[var(--font-heading)] text-xs uppercase tracking-wider">
             Dashboard
           </SidebarGroupLabel>
