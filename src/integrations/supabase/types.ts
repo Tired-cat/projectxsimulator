@@ -594,6 +594,7 @@ export type Database = {
           contextualise_pairs_count: number
           descriptive_card_count: number
           diagnostic_card_count: number
+          feedback_rounds_used: number
           final_decision: string
           final_facebook_spend: number | null
           final_instagram_spend: number | null
@@ -618,6 +619,7 @@ export type Database = {
           contextualise_pairs_count?: number
           descriptive_card_count?: number
           diagnostic_card_count?: number
+          feedback_rounds_used?: number
           final_decision: string
           final_facebook_spend?: number | null
           final_instagram_spend?: number | null
@@ -642,6 +644,7 @@ export type Database = {
           contextualise_pairs_count?: number
           descriptive_card_count?: number
           diagnostic_card_count?: number
+          feedback_rounds_used?: number
           final_decision?: string
           final_facebook_spend?: number | null
           final_instagram_spend?: number | null
