@@ -243,6 +243,61 @@ export function TutorialOverlay() {
     setIsMinimized(false);
   }, [active, step]);
 
+  // Track tutorial start time
+  useEffect(() => {
+    if (active && !prevActiveRef.current) {
+      tutorialStartTimeRef.current = Date.now();
+    }
+    prevActiveRef.current = active;
+  }, [active]);
+
+  // Log step_viewed each time the step changes while active
+  useEffect(() => {
+    if (!active || !sessionId || !user) return;
+    supabase.from('tutorial_events').insert({
+      session_id: sessionId,
+      user_id: user.id,
+      action: 'step_viewed',
+      step_number: step,
+      total_steps: TOTAL_STEPS,
+    }).then(() => {});
+  }, [active, step, sessionId, user, TOTAL_STEPS]);
+
+  // Wrap advanceStep to detect completion at final step
+  const handleAdvance = useCallback(() => {
+    if (step === TOTAL_STEPS && sessionId && user) {
+      // Final step — log 'completed' and update session
+      supabase.from('tutorial_events').insert({
+        session_id: sessionId,
+        user_id: user.id,
+        action: 'completed',
+        step_number: step,
+        total_steps: TOTAL_STEPS,
+      }).then(() => {});
+      supabase.from('sessions').update({ tutorial_completed: true })
+        .eq('id', sessionId).then(() => {});
+    }
+    advanceStep();
+  }, [step, TOTAL_STEPS, sessionId, user, advanceStep]);
+
+  // Wrap skipTutorial to log 'skipped'
+  const handleSkip = useCallback(() => {
+    if (sessionId && user) {
+      const elapsed = tutorialStartTimeRef.current
+        ? Math.round((Date.now() - tutorialStartTimeRef.current) / 1000)
+        : null;
+      supabase.from('tutorial_events').insert({
+        session_id: sessionId,
+        user_id: user.id,
+        action: 'skipped',
+        step_number: step,
+        total_steps: TOTAL_STEPS,
+        time_spent_seconds: elapsed,
+      }).then(() => {});
+    }
+    skipTutorial();
+  }, [sessionId, user, step, TOTAL_STEPS, skipTutorial]);
+
   /** True when the target element is fully visible in the viewport */
   const isTargetFullyInViewport = useMemo(() => {
     if (!spotlight) return false;
