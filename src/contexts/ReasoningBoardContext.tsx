@@ -8,6 +8,7 @@ interface ReasoningBoardContextValue {
   removeChip: (blockId: ReasoningBlockId, chipId: string) => void;
   moveChip: (fromBlock: ReasoningBlockId, toBlock: ReasoningBlockId, chipId: string) => void;
   contextualiseChip: (blockId: ReasoningBlockId, targetChipId: string, contextChip: EvidenceChip) => void;
+  clearBoard: () => void;
   draggingChip: EvidenceChip | null;
   setDraggingChip: (chip: EvidenceChip | null) => void;
   reasonMode: boolean;
@@ -51,10 +52,18 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeChip = useCallback((blockId: ReasoningBlockId, chipId: string) => {
-    setBoard(prev => ({
-      ...prev,
-      [blockId]: prev[blockId].filter(c => c.id !== chipId),
-    }));
+    setBoard(prev => {
+      const chip = prev[blockId].find(c => c.id === chipId);
+      if (chip) {
+        window.dispatchEvent(new CustomEvent('board:remove-chip', {
+          detail: { evidenceId: chip.sourceId, quadrant: blockId },
+        }));
+      }
+      return {
+        ...prev,
+        [blockId]: prev[blockId].filter(c => c.id !== chipId),
+      };
+    });
   }, []);
 
   const moveChip = useCallback((fromBlock: ReasoningBlockId, toBlock: ReasoningBlockId, chipId: string) => {
@@ -90,6 +99,15 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const clearBoard = useCallback(() => {
+    setBoard(prev => {
+      const totalCards = Object.values(prev).reduce((s, arr) => s + arr.length, 0);
+      window.dispatchEvent(new CustomEvent('board:clear', { detail: { cardsCleared: totalCards } }));
+      return EMPTY_BOARD;
+    });
+    setWrittenDiagnosis('');
+  }, []);
+
   return (
     <ReasoningBoardContext.Provider value={{
       board,
@@ -97,6 +115,7 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       removeChip,
       moveChip,
       contextualiseChip,
+      clearBoard,
       draggingChip,
       setDraggingChip,
       reasonMode,

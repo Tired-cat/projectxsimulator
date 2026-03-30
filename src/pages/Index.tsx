@@ -204,7 +204,34 @@ function SimulationContent() {
     }
   }, [addChip, moveChip, contextualiseChip, chipFromPayload, logBoardEvent, mapChipKindToEvidenceType, board]);
 
-  // Load saved board state when session is ready
+  // Listen for remove_card and clear_board events from ReasoningBoardContext
+  useEffect(() => {
+    if (!sessionId || !user) return;
+
+    const handleRemove = (e: Event) => {
+      const { evidenceId, quadrant } = (e as CustomEvent).detail;
+      logBoardEvent('remove_card', null, evidenceId, quadrant);
+    };
+
+    const handleClear = (e: Event) => {
+      const { cardsCleared } = (e as CustomEvent).detail;
+      logBoardEvent('clear_board', null, null, 'all');
+      supabase.from('resets').insert({
+        session_id: sessionId,
+        user_id: user.id,
+        reset_type: 'board_reset',
+        cards_cleared: cardsCleared,
+      }).then(() => {});
+    };
+
+    window.addEventListener('board:remove-chip', handleRemove);
+    window.addEventListener('board:clear', handleClear);
+    return () => {
+      window.removeEventListener('board:remove-chip', handleRemove);
+      window.removeEventListener('board:clear', handleClear);
+    };
+  }, [sessionId, user, logBoardEvent]);
+
   useEffect(() => {
     if (!sessionId || !user) return;
 
