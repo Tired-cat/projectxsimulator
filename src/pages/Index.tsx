@@ -340,6 +340,8 @@ function SimulationContent() {
           <SimulationHome
             onStartDecisions={handleStartDecisions}
             currentRevenue={totals.totalRevenue}
+            sessionId={sessionId}
+            userId={user?.id ?? null}
           />
         }
         decisionsContent={

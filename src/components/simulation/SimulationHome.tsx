@@ -56,7 +56,7 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Tutorial Banner */}
       <button
-        onClick={startTutorial}
+        onClick={handleTutorialClick}
         className="w-full flex items-center gap-4 p-5 rounded-xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all group text-left"
       >
         <div className="p-3 bg-primary/20 rounded-xl group-hover:bg-primary/30 transition-colors">
