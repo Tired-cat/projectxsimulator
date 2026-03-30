@@ -49,7 +49,7 @@ const App = () => (
 
             {/* Admin route */}
             <Route
-              path="/admin"
+              path="/admin/*"
               element={
                 <RoleGuard allowed={['admin']}>
                   <AdminPanel />
