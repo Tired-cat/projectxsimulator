@@ -45,7 +45,7 @@ import {
 
 
 function SimulationContent() {
-  const { openTab } = useTabs();
+  const { openTab, activeTabId } = useTabs();
   const { user, signOut, role } = useAuth();
   const { board, addChip, moveChip, contextualiseChip, writtenDiagnosis, loadBoard } = useReasoningBoard();
   const [activeDragHtml, setActiveDragHtml] = useState<string | null>(null);
