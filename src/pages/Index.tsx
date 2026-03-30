@@ -480,18 +480,24 @@ function SimulationContent() {
 
       {/* Top bar with user info */}
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
-        {!submitted && !showFeedback && (hasFeedback || totalChips > 0) && (
-          <Button
-            data-tutorial="feedback-button"
-            size="sm"
-            variant="default"
-            onClick={handleShowFeedback}
-            className="gap-1.5"
-          >
-            <Send className="h-3.5 w-3.5" />
-            {hasFeedback ? 'View Feedback' : 'Get Feedback'}
-          </Button>
-        )}
+        {!submitted && !showFeedback && (hasFeedback || totalChips > 0) && (() => {
+          const allQuadrantsFilled = board.descriptive.length > 0 && board.diagnostic.length > 0 && board.predictive.length > 0 && board.prescriptive.length > 0;
+          const isDisabled = !hasFeedback && !allQuadrantsFilled;
+          return (
+            <Button
+              data-tutorial="feedback-button"
+              size="sm"
+              variant="default"
+              onClick={hasFeedback ? handleShowFeedback : () => setShowFeedbackConfirm(true)}
+              disabled={isDisabled}
+              className="gap-1.5"
+              title={isDisabled ? 'Place at least 1 evidence card in each of the 4 reasoning quadrants' : undefined}
+            >
+              <Send className="h-3.5 w-3.5" />
+              {hasFeedback ? 'View Feedback' : 'Get Feedback'}
+            </Button>
+          );
+        })()}
         <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
           <LogOut className="h-3.5 w-3.5" />
           Sign Out
