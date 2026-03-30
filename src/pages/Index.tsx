@@ -17,7 +17,7 @@ import { useSession } from '@/hooks/useSession';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSubmission } from '@/hooks/useSubmission';
 import { supabase } from '@/integrations/supabase/client';
-import Auth from '@/pages/Auth';
+
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
