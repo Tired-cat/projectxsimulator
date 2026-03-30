@@ -469,7 +469,17 @@ function SimulationContent() {
             remainingBudget={remainingBudget}
             hasUserModified={hasUserModified}
             totalSpent={totalSpent}
-            onReset={submitted ? () => {} : resetSimulation}
+            onReset={submitted ? () => {} : () => {
+              resetSimulation();
+              if (sessionId && user) {
+                supabase.from('resets').insert({
+                  session_id: sessionId,
+                  user_id: user.id,
+                  reset_type: 'allocation_reset',
+                  cards_cleared: 0,
+                }).then(() => {});
+              }
+            }}
           />
         }
         renderPanelContent={renderPanelContent}
