@@ -52,10 +52,18 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeChip = useCallback((blockId: ReasoningBlockId, chipId: string) => {
-    setBoard(prev => ({
-      ...prev,
-      [blockId]: prev[blockId].filter(c => c.id !== chipId),
-    }));
+    setBoard(prev => {
+      const chip = prev[blockId].find(c => c.id === chipId);
+      if (chip) {
+        window.dispatchEvent(new CustomEvent('board:remove-chip', {
+          detail: { evidenceId: chip.sourceId, quadrant: blockId },
+        }));
+      }
+      return {
+        ...prev,
+        [blockId]: prev[blockId].filter(c => c.id !== chipId),
+      };
+    });
   }, []);
 
   const moveChip = useCallback((fromBlock: ReasoningBlockId, toBlock: ReasoningBlockId, chipId: string) => {
