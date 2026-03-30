@@ -190,6 +190,16 @@ function SimulationContent() {
     setShowFeedback(false);
   }, []);
 
+  // Dispatch tutorial event when budget diverges from initial allocation
+  useEffect(() => {
+    const isModified = CHANNEL_IDS.some(
+      id => channelSpend[id as keyof ChannelSpend] !== INITIAL_SPEND[id as keyof ChannelSpend]
+    );
+    if (isModified) {
+      window.dispatchEvent(new Event('tutorial:budget-adjusted'));
+    }
+  }, [channelSpend]);
+
   // Compare-mode state
   const [shellCompareActive, setShellCompareActive] = useState(false);
   const [shellSnapshotSpend, setShellSnapshotSpend] = useState<ChannelSpend | null>(null);
@@ -297,6 +307,7 @@ function SimulationContent() {
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
         {!submitted && !hasFeedback && totalChips > 0 && (
           <Button
+            data-tutorial="feedback-button"
             size="sm"
             variant="default"
             onClick={handleShowFeedback}

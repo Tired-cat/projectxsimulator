@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import { useTabs } from './TabContext';
 import { useReasoningBoard } from './ReasoningBoardContext';
 
-export type TutorialStep = 1 | 2 | 3;
+export type TutorialStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 interface TutorialContextValue {
   active: boolean;
@@ -32,11 +32,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const [step, setStep] = useState<TutorialStep>(1);
   const [actionCompleted, setActionCompleted] = useState(false);
 
-  const { split, openTab } = useTabs();
+  const { openTab, split } = useTabs();
   const { board } = useReasoningBoard();
 
   const startTutorial = useCallback(() => {
-    // Navigate to decisions tab so the UI is visible
     openTab('decisions');
     setStep(1);
     setActionCompleted(false);
@@ -52,15 +51,24 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   const advanceStep = useCallback(() => {
     setActionCompleted(false);
-    if (step < 3) {
+    if (step < 9) {
       const next = (step + 1) as TutorialStep;
       setStep(next);
-      // Step 2 needs decisions view, step 3 needs reasoning board
-      if (next === 3) {
-        openTab('reasoning');
+
+      // Close compare mode before steps that need a clean layout
+      if (next === 4 || next === 7) {
+        window.dispatchEvent(new Event('tutorial:close-compare'));
+      }
+
+      // Navigate to the right tab for each step
+      if (next === 5) {
+        openTab('reasoning'); // Show the board so students see the 4 quadrants
+      } else if (next === 6) {
+        openTab('decisions'); // Go back to decisions to drag the Reasoning Board tab
+      } else if (next === 8) {
+        openTab('reasoning'); // Show the generated narrative
       }
     } else {
-      // Tutorial complete
       setActive(false);
       setStep(1);
       openTab('home');
@@ -71,33 +79,41 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     setActionCompleted(true);
   }, []);
 
-  // Step 1: watch for split view activation
+  // Step 1: budget bar dragged
   useEffect(() => {
     if (!active || step !== 1) return;
-    if (split.enabled) {
-      setActionCompleted(true);
-    }
-  }, [active, step, split.enabled]);
-
-  // Step 1 alternative completion: compare mode toggle in Channel Performance
-  useEffect(() => {
-    if (!active || step !== 1) return;
-
-    const onCompareActivated = () => setActionCompleted(true);
-    window.addEventListener('tutorial:compare-activated', onCompareActivated as EventListener);
-
-    return () => {
-      window.removeEventListener('tutorial:compare-activated', onCompareActivated as EventListener);
-    };
+    const handler = () => setActionCompleted(true);
+    window.addEventListener('tutorial:budget-adjusted', handler as EventListener);
+    return () => window.removeEventListener('tutorial:budget-adjusted', handler as EventListener);
   }, [active, step]);
 
-  // Step 2: watch for any chip added to the board
+  // Step 2: view tab switched away from Budget
   useEffect(() => {
     if (!active || step !== 2) return;
+    const handler = () => setActionCompleted(true);
+    window.addEventListener('tutorial:view-switched', handler as EventListener);
+    return () => window.removeEventListener('tutorial:view-switched', handler as EventListener);
+  }, [active, step]);
+
+  // Step 4: compare mode activated
+  useEffect(() => {
+    if (!active || step !== 4) return;
+    const handler = () => setActionCompleted(true);
+    window.addEventListener('tutorial:compare-activated', handler as EventListener);
+    return () => window.removeEventListener('tutorial:compare-activated', handler as EventListener);
+  }, [active, step]);
+
+  // Step 6: split view opened (user dragged Reasoning Board tab to split zone)
+  useEffect(() => {
+    if (!active || step !== 6) return;
+    if (split.enabled) setActionCompleted(true);
+  }, [active, step, split.enabled]);
+
+  // Step 7: chip added to the reasoning board
+  useEffect(() => {
+    if (!active || step !== 7) return;
     const totalChips = Object.values(board).reduce((s, arr) => s + arr.length, 0);
-    if (totalChips > 0) {
-      setActionCompleted(true);
-    }
+    if (totalChips > 0) setActionCompleted(true);
   }, [active, step, board]);
 
   return (
