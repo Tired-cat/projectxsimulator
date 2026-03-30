@@ -14,6 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_feedback_events: {
+        Row: {
+          action_taken_at: string | null
+          ai_feedback_text: string | null
+          board_state_after: Json | null
+          board_state_before: Json
+          contextualise_pairs_after: number | null
+          contextualise_pairs_before: number
+          descriptive_cards_after: number | null
+          descriptive_cards_before: number
+          diagnostic_cards_after: number | null
+          diagnostic_cards_before: number
+          facebook_spend_after: number | null
+          facebook_spend_before: number | null
+          feedback_round: number
+          id: string
+          instagram_spend_after: number | null
+          instagram_spend_before: number | null
+          newspaper_spend_after: number | null
+          newspaper_spend_before: number | null
+          post_feedback_action: string | null
+          predictive_cards_after: number | null
+          predictive_cards_before: number
+          prescriptive_cards_after: number | null
+          prescriptive_cards_before: number
+          requested_at: string
+          session_id: string
+          tiktok_spend_after: number | null
+          tiktok_spend_before: number | null
+          time_adjusting_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          action_taken_at?: string | null
+          ai_feedback_text?: string | null
+          board_state_after?: Json | null
+          board_state_before: Json
+          contextualise_pairs_after?: number | null
+          contextualise_pairs_before?: number
+          descriptive_cards_after?: number | null
+          descriptive_cards_before?: number
+          diagnostic_cards_after?: number | null
+          diagnostic_cards_before?: number
+          facebook_spend_after?: number | null
+          facebook_spend_before?: number | null
+          feedback_round?: number
+          id?: string
+          instagram_spend_after?: number | null
+          instagram_spend_before?: number | null
+          newspaper_spend_after?: number | null
+          newspaper_spend_before?: number | null
+          post_feedback_action?: string | null
+          predictive_cards_after?: number | null
+          predictive_cards_before?: number
+          prescriptive_cards_after?: number | null
+          prescriptive_cards_before?: number
+          requested_at?: string
+          session_id: string
+          tiktok_spend_after?: number | null
+          tiktok_spend_before?: number | null
+          time_adjusting_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          action_taken_at?: string | null
+          ai_feedback_text?: string | null
+          board_state_after?: Json | null
+          board_state_before?: Json
+          contextualise_pairs_after?: number | null
+          contextualise_pairs_before?: number
+          descriptive_cards_after?: number | null
+          descriptive_cards_before?: number
+          diagnostic_cards_after?: number | null
+          diagnostic_cards_before?: number
+          facebook_spend_after?: number | null
+          facebook_spend_before?: number | null
+          feedback_round?: number
+          id?: string
+          instagram_spend_after?: number | null
+          instagram_spend_before?: number | null
+          newspaper_spend_after?: number | null
+          newspaper_spend_before?: number | null
+          post_feedback_action?: string | null
+          predictive_cards_after?: number | null
+          predictive_cards_before?: number
+          prescriptive_cards_after?: number | null
+          prescriptive_cards_before?: number
+          requested_at?: string
+          session_id?: string
+          tiktok_spend_after?: number | null
+          tiktok_spend_before?: number | null
+          time_adjusting_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allocation_events: {
         Row: {
           channel: string
