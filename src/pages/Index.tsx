@@ -53,6 +53,7 @@ function SimulationContent() {
   const [usedAi, setUsedAi] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasFeedback, setHasFeedback] = useState(false);
+  const [feedbackEventId, setFeedbackEventId] = useState<string | null>(null);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
@@ -296,10 +297,67 @@ function SimulationContent() {
     toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
   }, [submit]);
 
-  const handleShowFeedback = useCallback(() => {
+  // Check on mount if feedback already exists for this session
+  useEffect(() => {
+    if (!sessionId || !user) return;
+    supabase
+      .from('ai_feedback_events')
+      .select('id, ai_feedback_text')
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id)
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setHasFeedback(true);
+          setUsedAi(true);
+          setFeedbackEventId(data[0].id);
+        }
+      });
+  }, [sessionId, user]);
+
+  const handleShowFeedback = useCallback(async () => {
     setUsedAi(true);
+
+    // If feedback row already exists, just show it
+    if (feedbackEventId) {
+      setShowFeedback(true);
+      return;
+    }
+
+    // First time: insert before-state row
+    if (!sessionId || !user) return;
+
+    const contextPairsCount = Object.values(board).reduce(
+      (sum, chips) => sum + chips.filter((c: any) => c.pairedWith).length,
+      0,
+    );
+
+    const { data: inserted } = await supabase
+      .from('ai_feedback_events')
+      .insert({
+        session_id: sessionId,
+        user_id: user.id,
+        feedback_round: 1,
+        board_state_before: board as any,
+        descriptive_cards_before: board.descriptive?.length ?? 0,
+        diagnostic_cards_before: board.diagnostic?.length ?? 0,
+        prescriptive_cards_before: board.prescriptive?.length ?? 0,
+        predictive_cards_before: board.predictive?.length ?? 0,
+        contextualise_pairs_before: contextPairsCount,
+        tiktok_spend_before: channelSpend.tiktok,
+        instagram_spend_before: channelSpend.instagram,
+        facebook_spend_before: channelSpend.facebook,
+        newspaper_spend_before: channelSpend.newspaper,
+      })
+      .select('id')
+      .single();
+
+    if (inserted) {
+      setFeedbackEventId(inserted.id);
+    }
+
     setShowFeedback(true);
-  }, []);
+  }, [feedbackEventId, sessionId, user, board, channelSpend]);
 
   const handleReturnFromFeedback = useCallback(() => {
     setHasFeedback(true);
@@ -421,7 +479,7 @@ function SimulationContent() {
 
       {/* Top bar with user info */}
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
-        {!submitted && !hasFeedback && totalChips > 0 && (
+        {!submitted && !showFeedback && (hasFeedback || totalChips > 0) && (
           <Button
             data-tutorial="feedback-button"
             size="sm"
@@ -430,18 +488,7 @@ function SimulationContent() {
             className="gap-1.5"
           >
             <Send className="h-3.5 w-3.5" />
-            Get Feedback
-          </Button>
-        )}
-        {!submitted && hasFeedback && !showFeedback && (
-          <Button
-            size="sm"
-            variant="default"
-            onClick={() => setShowFeedback(true)}
-            className="gap-1.5"
-          >
-            <Send className="h-3.5 w-3.5" />
-            Return to Feedback
+            {hasFeedback ? 'View Feedback' : 'Get Feedback'}
           </Button>
         )}
         <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
@@ -543,6 +590,7 @@ function SimulationContent() {
             context={{ board, channelSpend, totals, writtenDiagnosis }}
             sessionId={sessionId}
             userId={user?.id ?? null}
+            feedbackEventId={feedbackEventId}
             onReturnAndAdjust={handleReturnFromFeedback}
             onSubmitFinal={handleSubmit}
             onFeedbackReady={() => setHasFeedback(true)}

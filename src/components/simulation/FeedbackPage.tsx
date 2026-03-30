@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Send, Loader2, Bot, DollarSign, Brain, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,7 @@ interface FeedbackPageProps {
   context: FeedbackContext;
   sessionId: string | null;
   userId: string | null;
+  feedbackEventId: string | null;
   onReturnAndAdjust: () => void;
   onSubmitFinal: () => void;
   onFeedbackReady?: () => void;
@@ -31,12 +32,11 @@ interface FeedbackPageProps {
 
 const FEEDBACK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
-export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, onSubmitFinal, onFeedbackReady }: FeedbackPageProps) {
+export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onReturnAndAdjust, onSubmitFinal, onFeedbackReady }: FeedbackPageProps) {
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const savedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,26 +45,28 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
       setLoading(true);
       setError(null);
 
-      // 1. Try loading saved feedback from the database
-      if (sessionId && userId) {
+      // 1. Try loading saved feedback from ai_feedback_events
+      if (feedbackEventId) {
         try {
           const { data } = await supabase
-            .from('reasoning_board_state')
-            .select('ai_feedback')
-            .eq('session_id', sessionId)
-            .eq('user_id', userId)
-            .maybeSingle();
+            .from('ai_feedback_events')
+            .select('ai_feedback_text')
+            .eq('id', feedbackEventId)
+            .single();
 
-          if (data?.ai_feedback && typeof data.ai_feedback === 'object') {
-            const saved = data.ai_feedback as unknown as AiFeedback;
-            if (saved.budgetFeedback) {
-              if (!cancelled) {
-                setFeedback(saved);
-                setLoading(false);
-                savedRef.current = true;
-                onFeedbackReady?.();
+          if (data?.ai_feedback_text) {
+            try {
+              const saved = JSON.parse(data.ai_feedback_text) as AiFeedback;
+              if (saved.budgetFeedback) {
+                if (!cancelled) {
+                  setFeedback(saved);
+                  setLoading(false);
+                  onFeedbackReady?.();
+                }
+                return;
               }
-              return;
+            } catch {
+              // Not valid JSON, fall through
             }
           }
         } catch {
@@ -72,7 +74,7 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
         }
       }
 
-      // 2. Fetch fresh feedback from AI
+      // 2. Fetch fresh feedback from AI (only if no stored text found)
       try {
         const resp = await fetch(FEEDBACK_URL, {
           method: 'POST',
@@ -92,14 +94,13 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
         if (!cancelled) {
           setFeedback(data.feedback);
           onFeedbackReady?.();
-          // 3. Save feedback to DB so it persists
-          if (sessionId && userId && data.feedback) {
+          // 3. Save AI response text to ai_feedback_events row
+          if (feedbackEventId && data.feedback) {
             supabase
-              .from('reasoning_board_state')
-              .update({ ai_feedback: data.feedback as any })
-              .eq('session_id', sessionId)
-              .eq('user_id', userId)
-              .then(() => { savedRef.current = true; });
+              .from('ai_feedback_events')
+              .update({ ai_feedback_text: JSON.stringify(data.feedback) })
+              .eq('id', feedbackEventId)
+              .then(() => {});
           }
         }
       } catch (e) {
@@ -111,7 +112,7 @@ export function FeedbackPage({ context, sessionId, userId, onReturnAndAdjust, on
 
     loadOrFetchFeedback();
     return () => { cancelled = true; };
-  }, [sessionId, userId]);
+  }, [feedbackEventId]);
 
   const handleSubmitFinal = useCallback(async () => {
     setSubmitting(true);
