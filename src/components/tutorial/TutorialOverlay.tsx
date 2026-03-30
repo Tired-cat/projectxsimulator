@@ -1,5 +1,8 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/hooks/useSession';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { ArrowRight, CheckCircle2, X } from 'lucide-react';
 
