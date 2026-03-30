@@ -10,10 +10,11 @@ const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
 export default function AuthRedirect() {
   const { user, role, loading } = useAuth();
 
-  if (loading) {
+  // Wait for both auth AND role to be resolved
+  if (loading || (user && role === null)) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Loading…</p>
+        <p className="text-muted-foreground">Loading your session…</p>
       </div>
     );
   }
