@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
+import { useCallback, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
 import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent, DragOverlay } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
@@ -114,11 +114,16 @@ function SimulationContent() {
     hasUserModified,
   } = useMarketingSimulation();
 
+  const { sessionId, isCompleted, startedAt, completedAt, loading: sessionLoading, completeSession } = useSession();
+
+  // Track tab navigation events
+  useNavigationTracking(activeTabId, sessionId, user?.id ?? null);
+
   // --- Allocation event tracking ---
   const allocationSeqRef = useRef(0);
   const spendBeforeDragRef = useRef<ChannelSpend | null>(null);
 
-  // Capture spend snapshot before a drag starts (called on pointer down in chart)
+  // Capture spend snapshot before a drag starts
   useEffect(() => {
     const handler = () => {
       spendBeforeDragRef.current = { ...channelSpend };
@@ -152,11 +157,6 @@ function SimulationContent() {
     },
     [rawUpdateChannelSpend, channelSpend, sessionId, user],
   );
-
-  const { sessionId, isCompleted, startedAt, completedAt, loading: sessionLoading, completeSession } = useSession();
-
-  // Track tab navigation events
-  useNavigationTracking(activeTabId, sessionId, user?.id ?? null);
 
   useEffect(() => {
     if (!sessionId || !user) return;
