@@ -1,0 +1,1 @@
+ALTER TABLE public.submissions ADD COLUMN feedback_rounds_used integer NOT NULL DEFAULT 0;
