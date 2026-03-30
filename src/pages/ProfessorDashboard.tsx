@@ -15,7 +15,7 @@ export default function ProfessorDashboard() {
         <Route path="engagement" element={<DashboardEngagement />} />
         <Route path="reasoning" element={<DashboardReasoning />} />
         <Route path="ai-usage" element={<DashboardAiUsage />} />
-        <Route path="students" element={<PlaceholderPage title="Students" />} />
+        <Route path="students" element={<DashboardStudents />} />
       </Routes>
     </DashboardLayout>
   );
