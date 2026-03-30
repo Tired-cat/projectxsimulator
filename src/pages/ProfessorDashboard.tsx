@@ -4,7 +4,7 @@ import DashboardOverview from '@/pages/dashboard/DashboardOverview';
 import DashboardEngagement from '@/pages/dashboard/DashboardEngagement';
 import DashboardReasoning from '@/pages/dashboard/DashboardReasoning';
 import DashboardAiUsage from '@/pages/dashboard/DashboardAiUsage';
-import PlaceholderPage from '@/pages/dashboard/PlaceholderPage';
+import DashboardStudents from '@/pages/dashboard/DashboardStudents';
 
 export default function ProfessorDashboard() {
   return (
