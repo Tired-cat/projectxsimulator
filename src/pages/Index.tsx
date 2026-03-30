@@ -361,10 +361,22 @@ function SimulationContent() {
     setShowFeedback(true);
   }, [feedbackEventId, sessionId, user, board, channelSpend]);
 
-  const handleReturnFromFeedback = useCallback(() => {
+  const handleReturnFromFeedback = useCallback(async () => {
+    // Record 'adjusted' action with timing
+    if (feedbackEventId && feedbackShownAtRef.current) {
+      const timeAdjusting = Math.round((Date.now() - feedbackShownAtRef.current) / 1000);
+      await supabase
+        .from('ai_feedback_events')
+        .update({
+          post_feedback_action: 'adjusted',
+          action_taken_at: new Date().toISOString(),
+          time_adjusting_seconds: timeAdjusting,
+        })
+        .eq('id', feedbackEventId);
+    }
     setHasFeedback(true);
     setShowFeedback(false);
-  }, []);
+  }, [feedbackEventId]);
 
   // Dispatch tutorial event when budget diverges from initial allocation
   useEffect(() => {
