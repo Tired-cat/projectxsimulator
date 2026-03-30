@@ -674,6 +674,54 @@ export type Database = {
           },
         ]
       }
+      tutorial_events: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          session_id: string
+          step_number: number | null
+          time_spent_seconds: number | null
+          total_steps: number | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          session_id: string
+          step_number?: number | null
+          time_spent_seconds?: number | null
+          total_steps?: number | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          session_id?: string
+          step_number?: number | null
+          time_spent_seconds?: number | null
+          total_steps?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutorial_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutorial_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
