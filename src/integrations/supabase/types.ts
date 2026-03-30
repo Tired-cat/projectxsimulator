@@ -14,6 +14,219 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_feedback_events: {
+        Row: {
+          action_taken_at: string | null
+          ai_feedback_text: string | null
+          board_state_after: Json | null
+          board_state_before: Json
+          contextualise_pairs_after: number | null
+          contextualise_pairs_before: number
+          descriptive_cards_after: number | null
+          descriptive_cards_before: number
+          diagnostic_cards_after: number | null
+          diagnostic_cards_before: number
+          facebook_spend_after: number | null
+          facebook_spend_before: number | null
+          feedback_round: number
+          id: string
+          instagram_spend_after: number | null
+          instagram_spend_before: number | null
+          newspaper_spend_after: number | null
+          newspaper_spend_before: number | null
+          post_feedback_action: string | null
+          predictive_cards_after: number | null
+          predictive_cards_before: number
+          prescriptive_cards_after: number | null
+          prescriptive_cards_before: number
+          requested_at: string
+          session_id: string
+          tiktok_spend_after: number | null
+          tiktok_spend_before: number | null
+          time_adjusting_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          action_taken_at?: string | null
+          ai_feedback_text?: string | null
+          board_state_after?: Json | null
+          board_state_before: Json
+          contextualise_pairs_after?: number | null
+          contextualise_pairs_before?: number
+          descriptive_cards_after?: number | null
+          descriptive_cards_before?: number
+          diagnostic_cards_after?: number | null
+          diagnostic_cards_before?: number
+          facebook_spend_after?: number | null
+          facebook_spend_before?: number | null
+          feedback_round?: number
+          id?: string
+          instagram_spend_after?: number | null
+          instagram_spend_before?: number | null
+          newspaper_spend_after?: number | null
+          newspaper_spend_before?: number | null
+          post_feedback_action?: string | null
+          predictive_cards_after?: number | null
+          predictive_cards_before?: number
+          prescriptive_cards_after?: number | null
+          prescriptive_cards_before?: number
+          requested_at?: string
+          session_id: string
+          tiktok_spend_after?: number | null
+          tiktok_spend_before?: number | null
+          time_adjusting_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          action_taken_at?: string | null
+          ai_feedback_text?: string | null
+          board_state_after?: Json | null
+          board_state_before?: Json
+          contextualise_pairs_after?: number | null
+          contextualise_pairs_before?: number
+          descriptive_cards_after?: number | null
+          descriptive_cards_before?: number
+          diagnostic_cards_after?: number | null
+          diagnostic_cards_before?: number
+          facebook_spend_after?: number | null
+          facebook_spend_before?: number | null
+          feedback_round?: number
+          id?: string
+          instagram_spend_after?: number | null
+          instagram_spend_before?: number | null
+          newspaper_spend_after?: number | null
+          newspaper_spend_before?: number | null
+          post_feedback_action?: string | null
+          predictive_cards_after?: number | null
+          predictive_cards_before?: number
+          prescriptive_cards_after?: number | null
+          prescriptive_cards_before?: number
+          requested_at?: string
+          session_id?: string
+          tiktok_spend_after?: number | null
+          tiktok_spend_before?: number | null
+          time_adjusting_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      allocation_events: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          new_value: number | null
+          previous_value: number | null
+          sequence_number: number | null
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          new_value?: number | null
+          previous_value?: number | null
+          sequence_number?: number | null
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          new_value?: number | null
+          previous_value?: number | null
+          sequence_number?: number | null
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allocation_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          evidence_id: string | null
+          evidence_type: string | null
+          id: string
+          paired_with: string | null
+          quadrant: string | null
+          sequence_number: number | null
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          evidence_id?: string | null
+          evidence_type?: string | null
+          id?: string
+          paired_with?: string | null
+          quadrant?: string | null
+          sequence_number?: number | null
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          evidence_id?: string | null
+          evidence_type?: string | null
+          id?: string
+          paired_with?: string | null
+          quadrant?: string | null
+          sequence_number?: number | null
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           class_code: string
@@ -22,6 +235,8 @@ export type Database = {
           instructor_id: string
           name: string
           section_code: string
+          semester: string | null
+          year: number | null
         }
         Insert: {
           class_code?: string
@@ -30,6 +245,8 @@ export type Database = {
           instructor_id: string
           name: string
           section_code: string
+          semester?: string | null
+          year?: number | null
         }
         Update: {
           class_code?: string
@@ -38,11 +255,61 @@ export type Database = {
           instructor_id?: string
           name?: string
           section_code?: string
+          semester?: string | null
+          year?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "classes_instructor_id_fkey"
             columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      navigation_events: {
+        Row: {
+          entered_at: string
+          exited_at: string | null
+          id: string
+          session_id: string
+          tab: string
+          time_spent_seconds: number | null
+          user_id: string
+          visit_number: number | null
+        }
+        Insert: {
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          session_id: string
+          tab: string
+          time_spent_seconds?: number | null
+          user_id: string
+          visit_number?: number | null
+        }
+        Update: {
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          session_id?: string
+          tab?: string
+          time_spent_seconds?: number | null
+          user_id?: string
+          visit_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_events_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -55,6 +322,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          institution: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -62,6 +330,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id: string
+          institution?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -69,6 +338,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          institution?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
@@ -129,32 +399,91 @@ export type Database = {
           },
         ]
       }
+      resets: {
+        Row: {
+          cards_cleared: number | null
+          created_at: string
+          id: string
+          reset_type: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          cards_cleared?: number | null
+          created_at?: string
+          id?: string
+          reset_type: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          cards_cleared?: number | null
+          created_at?: string
+          id?: string
+          reset_type?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
+          class_id: string | null
           completed_at: string | null
           id: string
           is_completed: boolean
           scenario_id: string
           started_at: string
+          tutorial_completed: boolean
+          tutorial_opened: boolean
           user_id: string
         }
         Insert: {
+          class_id?: string | null
           completed_at?: string | null
           id?: string
           is_completed?: boolean
           scenario_id?: string
           started_at?: string
+          tutorial_completed?: boolean
+          tutorial_opened?: boolean
           user_id: string
         }
         Update: {
+          class_id?: string | null
           completed_at?: string | null
           id?: string
           is_completed?: boolean
           scenario_id?: string
           started_at?: string
+          tutorial_completed?: boolean
+          tutorial_opened?: boolean
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       simulations: {
         Row: {
@@ -268,8 +597,19 @@ export type Database = {
       submissions: {
         Row: {
           cards_on_board_count: number
+          contextualise_pairs_count: number
+          descriptive_card_count: number
+          diagnostic_card_count: number
+          feedback_rounds_used: number
           final_decision: string
+          final_facebook_spend: number | null
+          final_instagram_spend: number | null
+          final_newspaper_spend: number | null
+          final_tiktok_spend: number | null
+          generated_story: string | null
           id: string
+          predictive_card_count: number
+          prescriptive_card_count: number
           reasoning_score: number
           session_id: string
           step_1_text: string | null
@@ -282,8 +622,19 @@ export type Database = {
         }
         Insert: {
           cards_on_board_count?: number
+          contextualise_pairs_count?: number
+          descriptive_card_count?: number
+          diagnostic_card_count?: number
+          feedback_rounds_used?: number
           final_decision: string
+          final_facebook_spend?: number | null
+          final_instagram_spend?: number | null
+          final_newspaper_spend?: number | null
+          final_tiktok_spend?: number | null
+          generated_story?: string | null
           id?: string
+          predictive_card_count?: number
+          prescriptive_card_count?: number
           reasoning_score?: number
           session_id: string
           step_1_text?: string | null
@@ -296,8 +647,19 @@ export type Database = {
         }
         Update: {
           cards_on_board_count?: number
+          contextualise_pairs_count?: number
+          descriptive_card_count?: number
+          diagnostic_card_count?: number
+          feedback_rounds_used?: number
           final_decision?: string
+          final_facebook_spend?: number | null
+          final_instagram_spend?: number | null
+          final_newspaper_spend?: number | null
+          final_tiktok_spend?: number | null
+          generated_story?: string | null
           id?: string
+          predictive_card_count?: number
+          prescriptive_card_count?: number
           reasoning_score?: number
           session_id?: string
           step_1_text?: string | null
@@ -314,6 +676,54 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tutorial_events: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          session_id: string
+          step_number: number | null
+          time_spent_seconds: number | null
+          total_steps: number | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          session_id: string
+          step_number?: number | null
+          time_spent_seconds?: number | null
+          total_steps?: number | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          session_id?: string
+          step_number?: number | null
+          time_spent_seconds?: number | null
+          total_steps?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutorial_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutorial_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -348,6 +758,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "student" | "professor"

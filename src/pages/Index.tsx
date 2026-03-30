@@ -17,7 +17,7 @@ import { useSession } from '@/hooks/useSession';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSubmission } from '@/hooks/useSubmission';
 import { supabase } from '@/integrations/supabase/client';
-import Auth from '@/pages/Auth';
+
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
@@ -454,21 +454,7 @@ const Index = () => {
   }
 
   if (!user) {
-    return <Auth />;
-  }
-
-  // Professors see a link to dashboard instead of the simulation
-  if (role === 'professor') {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <p className="text-lg font-medium">Welcome, Professor!</p>
-          <a href="/dashboard" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity">
-            📊 Go to Dashboard
-          </a>
-        </div>
-      </div>
-    );
+    return null; // RoleGuard handles redirect to /auth
   }
 
   return (
