@@ -204,6 +204,8 @@ function SimulationContent() {
     }
   }, [addChip, moveChip, contextualiseChip, chipFromPayload, logBoardEvent, mapChipKindToEvidenceType, board]);
 
+  // Load saved board state when session is ready
+  useEffect(() => {
     if (!sessionId || !user) return;
 
     const loadSaved = async () => {
