@@ -449,6 +449,8 @@ export type Database = {
           is_completed: boolean
           scenario_id: string
           started_at: string
+          tutorial_completed: boolean
+          tutorial_opened: boolean
           user_id: string
         }
         Insert: {
@@ -458,6 +460,8 @@ export type Database = {
           is_completed?: boolean
           scenario_id?: string
           started_at?: string
+          tutorial_completed?: boolean
+          tutorial_opened?: boolean
           user_id: string
         }
         Update: {
@@ -467,6 +471,8 @@ export type Database = {
           is_completed?: boolean
           scenario_id?: string
           started_at?: string
+          tutorial_completed?: boolean
+          tutorial_opened?: boolean
           user_id?: string
         }
         Relationships: [
