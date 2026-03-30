@@ -590,6 +590,27 @@ function SimulationContent() {
         </DialogContent>
       </Dialog>
 
+      {/* Feedback confirmation dialog */}
+      <Dialog open={showFeedbackConfirm} onOpenChange={setShowFeedbackConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure you want to get feedback?</DialogTitle>
+            <DialogDescription>
+              You only get <strong>one</strong> AI-generated feedback per session. Make sure you've put your best effort into your reasoning board and budget decisions before requesting it — you'll use this feedback to refine your final submission.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFeedbackConfirm(false)}>
+              Go Back
+            </Button>
+            <Button onClick={() => { setShowFeedbackConfirm(false); handleShowFeedback(); }}>
+              <Send className="h-4 w-4 mr-2" />
+              Yes, Get Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Feedback page overlay */}
       {showFeedback && (
         <div className="fixed inset-0 z-50 bg-background overflow-auto">
