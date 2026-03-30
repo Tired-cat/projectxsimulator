@@ -22,6 +22,8 @@ export type Database = {
           instructor_id: string
           name: string
           section_code: string
+          semester: string | null
+          year: number | null
         }
         Insert: {
           class_code?: string
@@ -30,6 +32,8 @@ export type Database = {
           instructor_id: string
           name: string
           section_code: string
+          semester?: string | null
+          year?: number | null
         }
         Update: {
           class_code?: string
@@ -38,6 +42,8 @@ export type Database = {
           instructor_id?: string
           name?: string
           section_code?: string
+          semester?: string | null
+          year?: number | null
         }
         Relationships: [
           {
@@ -55,6 +61,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          institution: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -62,6 +69,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id: string
+          institution?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -69,6 +77,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          institution?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
