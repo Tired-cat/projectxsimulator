@@ -60,6 +60,7 @@ export const SimulationDecisions = memo(function SimulationDecisions({
     setSnapshotSpend({ ...channelSpend });
     setBaselineSpend({ ...channelSpend });
     setCompareActive(true);
+    window.dispatchEvent(new Event('tutorial:compare-activated'));
   }, [channelSpend]);
 
   const handleCloseCompare = useCallback(() => {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { cn } from '@/lib/utils';
-import { ArrowRight, CheckCircle2, X } from 'lucide-react';
+import { ArrowRight, ArrowDown, ArrowUp, ArrowLeft, CheckCircle2, X } from 'lucide-react';
 
 interface SpotlightRect {
   top: number;
@@ -208,6 +208,24 @@ export function TutorialOverlay() {
     };
   }, [spotlight, step, isMinimized]);
 
+  // Compute which direction the spotlight is relative to the tooltip card
+  const arrowDirection = useMemo((): 'up' | 'down' | 'left' | 'right' | null => {
+    if (!spotlight) return null;
+    const tooltipWidth = isMinimized ? 300 : 400;
+    const tooltipHeight = isMinimized ? 64 : 280;
+    const tipTop = typeof tooltipStyle.top === 'number' ? tooltipStyle.top : null;
+    const tipLeft = typeof tooltipStyle.left === 'number' ? tooltipStyle.left : null;
+    if (tipTop === null || tipLeft === null) return null;
+    const tooltipCenterX = tipLeft + tooltipWidth / 2;
+    const tooltipCenterY = tipTop + tooltipHeight / 2;
+    const spotCenterX = spotlight.left + spotlight.width / 2;
+    const spotCenterY = spotlight.top + spotlight.height / 2;
+    const dx = spotCenterX - tooltipCenterX;
+    const dy = spotCenterY - tooltipCenterY;
+    if (Math.abs(dx) < 80 && Math.abs(dy) < 80) return null;
+    return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  }, [spotlight, tooltipStyle, isMinimized]);
+
   if (!shouldRender) return null;
 
   return (
@@ -218,17 +236,30 @@ export function TutorialOverlay() {
         style={{ clipPath }}
       />
 
-      {/* Spotlight border ring */}
+      {/* Spotlight — pulsing outer ring + solid inner ring */}
       {spotlight && (
-        <div
-          className="absolute rounded-xl border-2 border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.2)] pointer-events-none transition-all duration-300"
-          style={{
-            top: spotlight.top,
-            left: spotlight.left,
-            width: spotlight.width,
-            height: spotlight.height,
-          }}
-        />
+        <>
+          {/* Pulsing halo behind the spotlight */}
+          <div
+            className="absolute rounded-xl border-2 border-primary/50 animate-ping pointer-events-none"
+            style={{
+              top: spotlight.top,
+              left: spotlight.left,
+              width: spotlight.width,
+              height: spotlight.height,
+            }}
+          />
+          {/* Solid spotlight border */}
+          <div
+            className="absolute rounded-xl border-2 border-primary shadow-[0_0_0_6px_hsl(var(--primary)/0.25)] pointer-events-none transition-all duration-300"
+            style={{
+              top: spotlight.top,
+              left: spotlight.left,
+              width: spotlight.width,
+              height: spotlight.height,
+            }}
+          />
+        </>
       )}
 
       {/* Tooltip card */}
@@ -312,6 +343,15 @@ export function TutorialOverlay() {
                   </>
                 )}
               </div>
+              {/* Directional hint — points user toward the spotlighted element */}
+              {!actionCompleted && arrowDirection && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/70 animate-bounce">
+                  {arrowDirection === 'up' && <><ArrowUp className="w-3.5 h-3.5" /><span>It's above</span><ArrowUp className="w-3.5 h-3.5" /></>}
+                  {arrowDirection === 'down' && <><ArrowDown className="w-3.5 h-3.5" /><span>Scroll down to see it</span><ArrowDown className="w-3.5 h-3.5" /></>}
+                  {arrowDirection === 'left' && <><ArrowLeft className="w-3.5 h-3.5" /><span>It's to the left</span><ArrowLeft className="w-3.5 h-3.5" /></>}
+                  {arrowDirection === 'right' && <><ArrowRight className="w-3.5 h-3.5" /><span>It's to the right</span><ArrowRight className="w-3.5 h-3.5" /></>}
+                </div>
+              )}
               {actionCompleted && (
                 <button
                   onClick={advanceStep}
