@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSession } from '@/hooks/useSession';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSubmission } from '@/hooks/useSubmission';
+import { useNavigationTracking } from '@/hooks/useNavigationTracking';
 import { supabase } from '@/integrations/supabase/client';
 
 import type { PanelId } from '@/types/workspaceTypes';
