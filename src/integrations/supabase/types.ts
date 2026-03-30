@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      allocation_events: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          new_value: number | null
+          previous_value: number | null
+          sequence_number: number | null
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          new_value?: number | null
+          previous_value?: number | null
+          sequence_number?: number | null
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          new_value?: number | null
+          previous_value?: number | null
+          sequence_number?: number | null
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allocation_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allocation_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_events: {
         Row: {
           created_at: string
