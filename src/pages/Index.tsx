@@ -445,7 +445,6 @@ const Index = () => {
   if (!user) {
     return null; // RoleGuard handles redirect to /auth
   }
-  }
 
   return (
     <TabProvider>
