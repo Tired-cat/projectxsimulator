@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,8 @@ import { GraduationCap, BookOpen, Shield } from 'lucide-react';
 const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
 
 export default function Auth() {
-  const { signIn, signUp } = useAuth();
+  const { user, signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('student');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -21,8 +23,12 @@ export default function Auth() {
   const [classCode, setClassCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const resetFields = () => {
-    setEmail('');
+  // If already logged in, redirect
+  useEffect(() => {
+    if (user) navigate('/auth-redirect', { replace: true });
+  }, [user, navigate]);
+
+    const resetFields = () => {
     setPassword('');
     setDisplayName('');
     setClassCode('');
