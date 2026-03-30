@@ -307,6 +307,7 @@ function SimulationContent() {
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
         {!submitted && !hasFeedback && totalChips > 0 && (
           <Button
+            data-tutorial="feedback-button"
             size="sm"
             variant="default"
             onClick={handleShowFeedback}

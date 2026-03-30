@@ -49,21 +49,39 @@ const STEP_CONFIG = [
   },
   {
     step: 5,
-    target: '[data-tutorial="reason-button"]',
-    title: 'Build Your Evidence',
+    target: '[data-tutorial="reasoning-board"]',
+    title: 'Meet the Reasoning Board',
     description:
-      'Compare mode has been closed so you can see the full chart. Click the Reason button at the bottom of the chart to enter evidence-collection mode — each bar becomes draggable. Drag a bar onto one of the four quadrants on the Reasoning Board to record it as evidence.',
-    action: 'Drag one piece of evidence onto any Reasoning Board quadrant',
-    tooltipSide: 'top' as const,
+      'This is where you build your analysis. The board has four quadrants:\n\n• Descriptive — What did you observe in the data?\n• Diagnostic — Why did it happen?\n• Prescriptive — What decision did you make?\n• Predictive — What outcome do you expect?\n\nYou\'ll drag evidence from the charts directly into these quadrants.',
+    action: null,
+    tooltipSide: 'right' as const,
   },
   {
     step: 6,
+    target: '[data-tutorial="reason-button"]',
+    title: 'Drag Evidence onto the Board',
+    description:
+      'Click the Reason button to enter evidence mode — each bar in the chart becomes draggable. Grab a bar and drag it across to a Reasoning Board quadrant to drop it as evidence. You can drag from Revenue, Views, Profit, or Budget bars.\n\nTip: Switch to the Reasoning Board tab while dragging to drop your evidence.',
+    action: 'Drag one bar onto any Reasoning Board quadrant',
+    tooltipSide: 'top' as const,
+  },
+  {
+    step: 7,
     target: '[data-tutorial="narrative"]',
     title: 'Your Reasoning Story',
     description:
-      'The "At a Glance" cards and "My Full Reasoning Story" update in real time as you add evidence. Review whether the auto-generated narrative matches your actual reasoning — this becomes your analytical submission.',
+      'The "At a Glance" cards and "My Full Reasoning Story" auto-generate from the evidence you placed. Each quadrant contributes a sentence to your story — Descriptive sets the scene, Diagnostic explains why, Prescriptive states your decision, and Predictive projects what comes next.\n\nReview it — does the story match your actual thinking?',
     action: null,
     tooltipSide: 'top' as const,
+  },
+  {
+    step: 8,
+    target: '[data-tutorial="feedback-button"]',
+    title: 'Get AI Feedback — Once',
+    description:
+      'When you\'re satisfied with your reasoning board and budget decisions, click "Get Feedback" for personalised AI analysis of your strategy.\n\nImportant: you only get this feedback once. Do your best analysis first — place your evidence, write your reasoning, finalise your budget — then get feedback and use it to refine before submitting.',
+    action: null,
+    tooltipSide: 'bottom' as const,
   },
 ];
 
@@ -153,9 +171,9 @@ export function TutorialOverlay() {
       y: clamp(c.y, margin, window.innerHeight - tooltipHeight - margin),
     }));
 
-    // Avoid blocking likely interaction zones on step 5 (chart + reasoning board).
+    // Avoid blocking likely interaction zones on step 6 (chart + reasoning board).
     const avoidRects: Array<{ left: number; top: number; right: number; bottom: number }> = [];
-    if (step === 5) {
+    if (step === 6) {
       document.querySelectorAll('[data-tutorial="chart-area"], [data-tutorial="reasoning-board"]').forEach((el) => {
         const rect = el.getBoundingClientRect();
         avoidRects.push({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom });
@@ -274,7 +292,7 @@ export function TutorialOverlay() {
           {/* Step indicator */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {[1, 2, 3, 4, 5, 6].map((s) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
                 <div
                   key={s}
                   className={cn(
@@ -287,7 +305,7 @@ export function TutorialOverlay() {
                   )}
                 />
               ))}
-              <span className="text-xs text-muted-foreground ml-1">Step {step} of 6</span>
+              <span className="text-xs text-muted-foreground ml-1">Step {step} of 8</span>
             </div>
             <button
               onClick={() => setIsMinimized((prev) => !prev)}
@@ -367,8 +385,8 @@ export function TutorialOverlay() {
               onClick={advanceStep}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
             >
-              {step === 6 ? 'Got It — Finish Tutorial' : 'Got It — Next Step'}
-              {step === 6 ? <CheckCircle2 className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+              {step === 8 ? 'Got It — Finish Tutorial' : 'Got It — Next Step'}
+              {step === 8 ? <CheckCircle2 className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
             </button>
           )}
             </>

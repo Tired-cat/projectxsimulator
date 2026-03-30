@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import { useTabs } from './TabContext';
 import { useReasoningBoard } from './ReasoningBoardContext';
 
-export type TutorialStep = 1 | 2 | 3 | 4 | 5 | 6;
+export type TutorialStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 interface TutorialContextValue {
   active: boolean;
@@ -36,7 +36,6 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const { board } = useReasoningBoard();
 
   const startTutorial = useCallback(() => {
-    // Navigate to decisions tab so budget bars are visible
     openTab('decisions');
     setStep(1);
     setActionCompleted(false);
@@ -52,18 +51,27 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   const advanceStep = useCallback(() => {
     setActionCompleted(false);
-    if (step < 6) {
+    if (step < 8) {
       const next = (step + 1) as TutorialStep;
       setStep(next);
-      // Entering step 4: close compare mode so the Compare button is always visible
-      // Entering step 5: close compare mode so the layout resets and Reason button is accessible
-      if (next === 4 || next === 5) {
+
+      // Close compare mode before steps that need a clean single-chart layout
+      if (next === 4 || next === 6) {
         window.dispatchEvent(new Event('tutorial:close-compare'));
       }
-      // Step 6 needs reasoning board visible so narrative is spotlighted
-      if (next === 6) {
+
+      // Navigate to the right tab for each step
+      if (next === 5) {
+        // Show the reasoning board so students see the 4 quadrants
+        openTab('reasoning');
+      } else if (next === 6) {
+        // Go back to decisions so the Reason button and chart are visible
+        openTab('decisions');
+      } else if (next === 7) {
+        // Show the narrative that was built from evidence
         openTab('reasoning');
       }
+      // Steps 1–4 and 8 stay on whatever tab they're on (decisions or reasoning)
     } else {
       // Tutorial complete
       setActive(false);
@@ -100,9 +108,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('tutorial:compare-activated', onCompareActivated as EventListener);
   }, [active, step]);
 
-  // Step 5: watch for any chip added to the reasoning board
+  // Step 6: watch for any chip added to the reasoning board
   useEffect(() => {
-    if (!active || step !== 5) return;
+    if (!active || step !== 6) return;
     const totalChips = Object.values(board).reduce((s, arr) => s + arr.length, 0);
     if (totalChips > 0) {
       setActionCompleted(true);
