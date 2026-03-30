@@ -13,28 +13,55 @@ interface SpotlightRect {
 const STEP_CONFIG = [
   {
     step: 1,
-    target: '[data-tutorial="tab-strip"]',
-    title: 'Split View — Compare Before & After',
+    target: '[data-tutorial="budget-bars"]',
+    title: 'Adjust Your $20,000 Budget',
     description:
-      'The tab strip lets you open side-by-side comparisons. Drag one tab onto another, or use the "Compare Before / After" button in Channel Performance to see how your changes compare to the baseline.',
-    action: 'Open Split View to continue',
-    tooltipSide: 'bottom' as const,
+      'Each bar represents a marketing channel. Drag any bar up or down to move budget between TikTok, Instagram, Facebook, and Newspaper. The total must always equal $20,000 — so raising one channel automatically pulls from others.',
+    action: 'Drag any channel bar to change its spend',
+    tooltipSide: 'right' as const,
   },
   {
     step: 2,
-    target: '[data-tutorial="reason-button"]',
-    title: 'Reason Mode & Evidence Dragging',
+    target: '[data-tutorial="view-tabs"]',
+    title: 'Switch Views to See the Full Picture',
     description:
-      'Click the Reason button to activate drag mode. When active, each bar in Channel Performance and each segment in Product Mix becomes draggable evidence. Drag a bar into any quadrant on the Reasoning Board to build your argument.',
-    action: 'Drag one piece of evidence into any Reasoning Board quadrant',
-    tooltipSide: 'top' as const,
+      'The tabs above the chart change what\'s measured. "Budget" shows spend, "Views" shows clicks driven, "Revenue" shows gross income, "Profit" shows net after deducting spend. Click Revenue now — you\'ll see that the channel with the most views isn\'t always the top revenue driver.',
+    action: 'Click the Revenue tab',
+    tooltipSide: 'bottom' as const,
   },
   {
     step: 3,
+    target: '[data-tutorial="product-mix"]',
+    title: 'Discover the Product Mix',
+    description:
+      'The Product Mix chart shows what each channel actually sells. TikTok drives massive traffic but mostly sells $10 Bottles. Newspaper has low traffic but sells $500 Chairs at a 20% conversion rate — making it the hidden revenue gem per dollar spent.',
+    action: null,
+    tooltipSide: 'left' as const,
+  },
+  {
+    step: 4,
+    target: '[data-tutorial="compare-button"]',
+    title: 'Compare Before & After',
+    description:
+      'Click "Compare Before / After" to snapshot your current allocation. Then freely adjust the bars — you\'ll see a frozen "Before" pane alongside the live "After" pane, with delta indicators showing exactly what changed.',
+    action: 'Click Compare Before / After to take a snapshot',
+    tooltipSide: 'bottom' as const,
+  },
+  {
+    step: 5,
+    target: '[data-tutorial="reason-button"]',
+    title: 'Build Your Evidence',
+    description:
+      'Click the Reason button to enter evidence-collection mode. Each bar becomes draggable. Drag a bar onto one of the four quadrants on the Reasoning Board (Descriptive, Diagnostic, Prescriptive, Predictive) to record it as evidence.',
+    action: 'Drag one piece of evidence onto any Reasoning Board quadrant',
+    tooltipSide: 'top' as const,
+  },
+  {
+    step: 6,
     target: '[data-tutorial="narrative"]',
     title: 'Your Reasoning Story',
     description:
-      'The "At a Glance" cards and "My Full Reasoning Story" update in real time as you add evidence. Check whether the generated narrative matches what you intended — this is your analytical summary.',
+      'The "At a Glance" cards and "My Full Reasoning Story" update in real time as you add evidence. Review whether the auto-generated narrative matches your actual reasoning — this becomes your analytical submission.',
     action: null,
     tooltipSide: 'top' as const,
   },
@@ -86,13 +113,13 @@ export function TutorialOverlay() {
   // Build clip-path to cut out the spotlight area
   const clipPath = spotlight
     ? `polygon(
-        0% 0%, 0% 100%, 
-        ${spotlight.left}px 100%, 
-        ${spotlight.left}px ${spotlight.top}px, 
-        ${spotlight.left + spotlight.width}px ${spotlight.top}px, 
-        ${spotlight.left + spotlight.width}px ${spotlight.top + spotlight.height}px, 
-        ${spotlight.left}px ${spotlight.top + spotlight.height}px, 
-        ${spotlight.left}px 100%, 
+        0% 0%, 0% 100%,
+        ${spotlight.left}px 100%,
+        ${spotlight.left}px ${spotlight.top}px,
+        ${spotlight.left + spotlight.width}px ${spotlight.top}px,
+        ${spotlight.left + spotlight.width}px ${spotlight.top + spotlight.height}px,
+        ${spotlight.left}px ${spotlight.top + spotlight.height}px,
+        ${spotlight.left}px 100%,
         100% 100%, 100% 0%
       )`
     : undefined;
@@ -126,9 +153,9 @@ export function TutorialOverlay() {
       y: clamp(c.y, margin, window.innerHeight - tooltipHeight - margin),
     }));
 
-    // Avoid blocking likely interaction zones on step 2 (chart + reasoning board).
+    // Avoid blocking likely interaction zones on step 5 (chart + reasoning board).
     const avoidRects: Array<{ left: number; top: number; right: number; bottom: number }> = [];
-    if (step === 2) {
+    if (step === 5) {
       document.querySelectorAll('[data-tutorial="chart-area"], [data-tutorial="reasoning-board"]').forEach((el) => {
         const rect = el.getBoundingClientRect();
         avoidRects.push({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom });
@@ -216,11 +243,11 @@ export function TutorialOverlay() {
           {/* Step indicator */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {[1, 2, 3].map((s) => (
+              {[1, 2, 3, 4, 5, 6].map((s) => (
                 <div
                   key={s}
                   className={cn(
-                    'w-2.5 h-2.5 rounded-full transition-colors',
+                    'w-2 h-2 rounded-full transition-colors',
                     s === step
                       ? 'bg-primary scale-125'
                       : s < step
@@ -229,7 +256,7 @@ export function TutorialOverlay() {
                   )}
                 />
               ))}
-              <span className="text-xs text-muted-foreground ml-1">Step {step} of 3</span>
+              <span className="text-xs text-muted-foreground ml-1">Step {step} of 6</span>
             </div>
             <button
               onClick={() => setIsMinimized((prev) => !prev)}
@@ -300,8 +327,8 @@ export function TutorialOverlay() {
               onClick={advanceStep}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
             >
-              Got It — Finish Tutorial
-              <CheckCircle2 className="w-4 h-4" />
+              {step === 6 ? 'Got It — Finish Tutorial' : 'Got It — Next Step'}
+              {step === 6 ? <CheckCircle2 className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
             </button>
           )}
             </>

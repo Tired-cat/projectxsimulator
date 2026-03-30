@@ -604,7 +604,7 @@ export function DraggableBarChart({
               </div>
 
               {/* Filter tabs */}
-              <div className="flex items-center gap-1 flex-wrap">
+              <div data-tutorial="view-tabs" className="flex items-center gap-1 flex-wrap">
                 <span className={`${fillContainer ? 'text-xs' : 'text-sm'} text-muted-foreground flex items-center gap-1`}>
                   <svg className={`${fillContainer ? 'w-3 h-3' : 'w-4 h-4'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
@@ -617,7 +617,12 @@ export function DraggableBarChart({
                   return (
                     <button
                       key={option.id}
-                      onClick={() => setViewMode(option.id)}
+                      onClick={() => {
+                        setViewMode(option.id);
+                        if (option.id !== 'budget') {
+                          window.dispatchEvent(new Event('tutorial:view-switched'));
+                        }
+                      }}
                       title={option.description}
                       className={`flex items-center gap-1 ${fillContainer ? 'px-1.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'} rounded-full font-medium transition-all ${
                         isActive
@@ -725,15 +730,18 @@ export function DraggableBarChart({
             data-tutorial="chart-area"
             ref={chartRef}
             className={`relative bg-secondary/20 rounded-lg ${fillContainer ? 'p-2' : 'p-4'} select-none`}
-            style={{ 
-              height: fillContainer ? '100%' : '350px', 
-              minHeight: fillContainer ? undefined : '350px', 
+            style={{
+              height: fillContainer ? '100%' : '350px',
+              minHeight: fillContainer ? undefined : '350px',
               maxHeight: fillContainer ? undefined : '350px',
               touchAction: 'none',
               // Contain this specific area during drag
               contain: isDragging ? 'strict' : 'layout',
             }}
           >
+            {/* Tutorial landmark for budget bars spotlight */}
+            <div data-tutorial="budget-bars" className="absolute inset-0 pointer-events-none" />
+
             {/* Y-axis labels */}
             <div className={`absolute left-0 ${fillContainer ? 'top-6 bottom-8 w-10 text-[9px]' : 'top-10 bottom-12 w-16 text-xs'} flex flex-col justify-between text-muted-foreground`}>
               {getYAxisLabels().map((label, i) => (

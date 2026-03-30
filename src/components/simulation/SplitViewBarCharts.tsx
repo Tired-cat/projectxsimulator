@@ -82,6 +82,7 @@ export function SplitViewBarCharts({
         <div className="flex items-center gap-2">
           {!isSplitView ? (
             <Button
+              data-tutorial="compare-button"
               variant="outline"
               size="default"
               onClick={onActivateSplitView}

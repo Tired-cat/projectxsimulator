@@ -190,6 +190,16 @@ function SimulationContent() {
     setShowFeedback(false);
   }, []);
 
+  // Dispatch tutorial event when budget diverges from initial allocation
+  useEffect(() => {
+    const isModified = CHANNEL_IDS.some(
+      id => channelSpend[id as keyof ChannelSpend] !== INITIAL_SPEND[id as keyof ChannelSpend]
+    );
+    if (isModified) {
+      window.dispatchEvent(new Event('tutorial:budget-adjusted'));
+    }
+  }, [channelSpend]);
+
   // Compare-mode state
   const [shellCompareActive, setShellCompareActive] = useState(false);
   const [shellSnapshotSpend, setShellSnapshotSpend] = useState<ChannelSpend | null>(null);

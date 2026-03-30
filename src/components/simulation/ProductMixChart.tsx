@@ -164,7 +164,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
   const insight = getInsight();
 
   return (
-    <Card className={`border-2 transition-all duration-200 ${reasonMode ? 'border-primary bg-primary/[0.04] shadow-md shadow-primary/10' : 'border-primary/20 bg-card'}`}>
+    <Card data-tutorial="product-mix" className={`border-2 transition-all duration-200 ${reasonMode ? 'border-primary bg-primary/[0.04] shadow-md shadow-primary/10' : 'border-primary/20 bg-card'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -299,7 +299,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
         {/* Reason Button */}
         <div className="mt-6 flex justify-center">
           <Button
-            data-tutorial="reason-button"
+            data-tutorial="reason-button-mix"
             onClick={toggleReasonMode}
             className={`flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold transition-all duration-200 border-2 ${
               reasonMode
