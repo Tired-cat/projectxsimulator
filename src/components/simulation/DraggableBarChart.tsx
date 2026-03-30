@@ -351,6 +351,9 @@ export function DraggableBarChart({
     // Initialize draft with current spend values
     setDraftSpend({ ...channelSpend });
     setDraggingChannel(channelId);
+
+    // Notify listeners that a drag is starting (for allocation event tracking)
+    window.dispatchEvent(new Event('allocation:drag-start'));
     
     // Immediately compute initial value from pointer position
     if (chartRef.current) {
