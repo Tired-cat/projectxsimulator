@@ -280,6 +280,19 @@ function SimulationContent() {
     setSubmitted(isCompleted);
   }, [isCompleted]);
 
+  // Compute generated story text from board for submission
+  const generatedStory = useMemo(() => {
+    const quadrants: (keyof ReasoningBoardState)[] = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
+    const parts: string[] = [];
+    for (const q of quadrants) {
+      const chips = board[q];
+      if (chips.length === 0) continue;
+      const labels = chips.map((c: any) => `${c.label}: ${c.value}`).join('; ');
+      parts.push(`[${q}] ${labels}`);
+    }
+    return parts.join(' | ');
+  }, [board]);
+
   const { submit } = useSubmission({
     sessionId,
     startedAt,
@@ -290,6 +303,9 @@ function SimulationContent() {
     usedAi,
     forceSave,
     completeSession,
+    channelSpend,
+    feedbackRoundsUsed: hasFeedback ? 1 : 0,
+    generatedStory,
   });
 
   const handleSubmit = useCallback(async () => {
