@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
+import { useCallback, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
 import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent, DragOverlay } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
@@ -105,7 +105,7 @@ function SimulationContent() {
 
   const {
     channelSpend,
-    updateChannelSpend,
+    updateChannelSpend: rawUpdateChannelSpend,
     remainingBudget,
     totalSpent,
     channelMetrics,
@@ -118,6 +118,45 @@ function SimulationContent() {
 
   // Track tab navigation events
   useNavigationTracking(activeTabId, sessionId, user?.id ?? null);
+
+  // --- Allocation event tracking ---
+  const allocationSeqRef = useRef(0);
+  const spendBeforeDragRef = useRef<ChannelSpend | null>(null);
+
+  // Capture spend snapshot before a drag starts
+  useEffect(() => {
+    const handler = () => {
+      spendBeforeDragRef.current = { ...channelSpend };
+    };
+    window.addEventListener('allocation:drag-start', handler);
+    return () => window.removeEventListener('allocation:drag-start', handler);
+  }, [channelSpend]);
+
+  const updateChannelSpend = useCallback(
+    (channelId: keyof ChannelSpend, value: number) => {
+      const previousValue = spendBeforeDragRef.current
+        ? spendBeforeDragRef.current[channelId]
+        : channelSpend[channelId];
+
+      rawUpdateChannelSpend(channelId, value);
+
+      // Only log if value actually changed
+      if (value !== previousValue && sessionId && user) {
+        allocationSeqRef.current += 1;
+        supabase.from('allocation_events').insert({
+          session_id: sessionId,
+          user_id: user.id,
+          channel: channelId,
+          previous_value: previousValue,
+          new_value: value,
+          sequence_number: allocationSeqRef.current,
+        }).then(() => {});
+      }
+
+      spendBeforeDragRef.current = null;
+    },
+    [rawUpdateChannelSpend, channelSpend, sessionId, user],
+  );
 
   useEffect(() => {
     if (!sessionId || !user) return;
