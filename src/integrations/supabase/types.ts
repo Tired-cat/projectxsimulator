@@ -332,6 +332,7 @@ export type Database = {
       }
       sessions: {
         Row: {
+          class_id: string | null
           completed_at: string | null
           id: string
           is_completed: boolean
@@ -340,6 +341,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          class_id?: string | null
           completed_at?: string | null
           id?: string
           is_completed?: boolean
@@ -348,6 +350,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          class_id?: string | null
           completed_at?: string | null
           id?: string
           is_completed?: boolean
@@ -355,7 +358,15 @@ export type Database = {
           started_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       simulations: {
         Row: {
