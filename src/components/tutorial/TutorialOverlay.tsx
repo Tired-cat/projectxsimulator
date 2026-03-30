@@ -198,8 +198,14 @@ function SplitViewHintArrow({ spotlight }: { spotlight: SpotlightRect }) {
 
 export function TutorialOverlay() {
   const { active, step, skipTutorial, advanceStep, actionCompleted } = useTutorial();
+  const { user } = useAuth();
+  const { sessionId } = useSession();
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
+  const tutorialStartTimeRef = useRef<number | null>(null);
+  const prevActiveRef = useRef(false);
+
+  const TOTAL_STEPS = STEP_CONFIG.length;
 
   const config = STEP_CONFIG[step - 1];
 
