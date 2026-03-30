@@ -60,7 +60,7 @@ function SimulationContent() {
     return createEvidenceChip(label, value, context, sourceId, rest);
   }, []);
 
-  // --- Board event tracking ---
+  // --- Board event tracking (refs + pure helpers defined early, functions using sessionId defined after useSession) ---
   const boardSeqRef = useRef(0);
 
   const mapChipKindToEvidenceType = useCallback((payload: ExternalEvidencePayload): string => {
@@ -70,68 +70,6 @@ function SimulationContent() {
     if (metric.includes('profit')) return 'profit_bar';
     return 'channel_bar';
   }, []);
-
-  const logBoardEvent = useCallback((
-    eventType: string,
-    evidenceType: string | null,
-    evidenceId: string | null,
-    quadrant: string,
-    pairedWith?: string | null,
-  ) => {
-    if (!sessionId || !user) return;
-    boardSeqRef.current += 1;
-    supabase.from('board_events').insert({
-      session_id: sessionId,
-      user_id: user.id,
-      event_type: eventType,
-      evidence_type: evidenceType,
-      evidence_id: evidenceId,
-      quadrant,
-      paired_with: pairedWith ?? null,
-      sequence_number: boardSeqRef.current,
-    }).then(() => {});
-  }, [sessionId, user]);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveDragHtml(null);
-    setActiveDragSize(null);
-    const { active, over } = event;
-    const dragData = active.data.current as EvidenceDragData | undefined;
-    const dropData = over?.data.current as EvidenceDropData | undefined;
-
-    if (!dragData || !dropData) return;
-
-    if (dropData.kind === 'reasoning-block') {
-      if (dragData.kind === 'board-chip') {
-        moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
-        logBoardEvent('move_on_board', null, dragData.chip.sourceId, dropData.blockId);
-      } else {
-        addChip(dropData.blockId, chipFromPayload(dragData.payload));
-        logBoardEvent(
-          'drag_to_board',
-          mapChipKindToEvidenceType(dragData.payload),
-          dragData.payload.sourceId,
-          dropData.blockId,
-        );
-      }
-      return;
-    }
-
-    if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
-      const incoming = chipFromPayload(dragData.payload);
-      // Prevent a chip from being contextualised with itself (same sourceId)
-      const targetChip = board[dropData.blockId]?.find(c => c.id === dropData.targetChipId);
-      if (targetChip && targetChip.sourceId === incoming.sourceId) return;
-      contextualiseChip(dropData.blockId, dropData.targetChipId, incoming);
-      logBoardEvent(
-        'contextualise',
-        mapChipKindToEvidenceType(dragData.payload),
-        dragData.payload.sourceId,
-        dropData.blockId,
-        targetChip?.sourceId ?? null,
-      );
-    }
-  }, [addChip, moveChip, contextualiseChip, chipFromPayload, logBoardEvent, mapChipKindToEvidenceType]);
   const handleDragStart = useCallback((event: DragStartEvent) => {
     let node = (event.activatorEvent as PointerEvent)?.target as HTMLElement | null;
     if (node) {
