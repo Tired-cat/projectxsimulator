@@ -13,7 +13,8 @@ import { GraduationCap, BookOpen, Shield } from 'lucide-react';
 const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
 
 export default function Auth() {
-  const { signIn, signUp } = useAuth();
+  const { user, signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('student');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
