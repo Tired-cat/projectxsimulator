@@ -3,36 +3,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClassFilter } from '@/contexts/ClassFilterContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Users, Brain, Clock, Bot } from 'lucide-react';
-import type { Json } from '@/integrations/supabase/types';
 
 interface EnrollmentRow { user_id: string; class_id: string }
 interface SubmissionRow { user_id: string; reasoning_score: number; time_elapsed_seconds: number; used_ai: boolean }
-interface SessionRow { user_id: string }
 
 export default function DashboardOverview() {
   const { classes, selectedClassId } = useClassFilter();
   const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [eRes, subRes, sesRes] = await Promise.all([
+    const [eRes, subRes] = await Promise.all([
       supabase.from('student_enrollments').select('user_id, class_id'),
       supabase.from('submissions').select('user_id, reasoning_score, time_elapsed_seconds, used_ai'),
-      supabase.from('sessions').select('user_id'),
     ]);
     if (eRes.data) setEnrollments(eRes.data);
     if (subRes.data) setSubmissions(subRes.data as SubmissionRow[]);
-    if (sesRes.data) setSessions(sesRes.data as SessionRow[]);
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Filter enrollments by selected class
   const filteredEnrollments = useMemo(() => {
     if (!selectedClassId) return enrollments;
     return enrollments.filter(e => e.class_id === selectedClassId);
@@ -44,7 +39,6 @@ export default function DashboardOverview() {
     return submissions.filter(s => enrolledUserIds.has(s.user_id));
   }, [submissions, enrolledUserIds]);
 
-  // Summary stats
   const stats = useMemo(() => {
     const totalStudents = enrolledUserIds.size;
     const subs = filteredSubmissions;
@@ -60,7 +54,6 @@ export default function DashboardOverview() {
     return { totalStudents, avgScore, avgTime, pctAi };
   }, [enrolledUserIds, filteredSubmissions]);
 
-  // Class comparison table (when All Classes selected and 2+ classes)
   const classComparison = useMemo(() => {
     if (selectedClassId || classes.length < 2) return null;
     return classes.map(cls => {
@@ -88,15 +81,11 @@ export default function DashboardOverview() {
     { label: '% Used AI', value: `${stats.pctAi}%`, icon: Bot, color: 'bg-accent/10 text-accent-foreground' },
   ];
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading overview…</div>;
-  }
-
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold font-[var(--font-heading)]">Overview</h2>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - show skeletons while loading */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
           <Card key={card.label}>
@@ -105,7 +94,11 @@ export default function DashboardOverview() {
                 <card.icon className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{card.value}</p>
+                {loading ? (
+                  <Skeleton className="h-8 w-16 mb-1" />
+                ) : (
+                  <p className="text-2xl font-bold">{card.value}</p>
+                )}
                 <p className="text-xs text-muted-foreground">{card.label}</p>
               </div>
             </CardContent>
@@ -114,7 +107,7 @@ export default function DashboardOverview() {
       </div>
 
       {/* Class Comparison Table */}
-      {classComparison && (
+      {!loading && classComparison && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Class Comparison</CardTitle>
