@@ -469,8 +469,18 @@ export type Database = {
       submissions: {
         Row: {
           cards_on_board_count: number
+          contextualise_pairs_count: number
+          descriptive_card_count: number
+          diagnostic_card_count: number
           final_decision: string
+          final_facebook_spend: number | null
+          final_instagram_spend: number | null
+          final_newspaper_spend: number | null
+          final_tiktok_spend: number | null
+          generated_story: string | null
           id: string
+          predictive_card_count: number
+          prescriptive_card_count: number
           reasoning_score: number
           session_id: string
           step_1_text: string | null
@@ -483,8 +493,18 @@ export type Database = {
         }
         Insert: {
           cards_on_board_count?: number
+          contextualise_pairs_count?: number
+          descriptive_card_count?: number
+          diagnostic_card_count?: number
           final_decision: string
+          final_facebook_spend?: number | null
+          final_instagram_spend?: number | null
+          final_newspaper_spend?: number | null
+          final_tiktok_spend?: number | null
+          generated_story?: string | null
           id?: string
+          predictive_card_count?: number
+          prescriptive_card_count?: number
           reasoning_score?: number
           session_id: string
           step_1_text?: string | null
@@ -497,8 +517,18 @@ export type Database = {
         }
         Update: {
           cards_on_board_count?: number
+          contextualise_pairs_count?: number
+          descriptive_card_count?: number
+          diagnostic_card_count?: number
           final_decision?: string
+          final_facebook_spend?: number | null
+          final_instagram_spend?: number | null
+          final_newspaper_spend?: number | null
+          final_tiktok_spend?: number | null
+          generated_story?: string | null
           id?: string
+          predictive_card_count?: number
+          prescriptive_card_count?: number
           reasoning_score?: number
           session_id?: string
           step_1_text?: string | null
