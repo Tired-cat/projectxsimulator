@@ -23,7 +23,11 @@ export default function Auth() {
   const [classCode, setClassCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const resetFields = () => {
+  // If already logged in, redirect
+  useEffect(() => {
+    if (user) navigate('/auth-redirect', { replace: true });
+  }, [user, navigate]);
+
     setEmail('');
     setPassword('');
     setDisplayName('');
