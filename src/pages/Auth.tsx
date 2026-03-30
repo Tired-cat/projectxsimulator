@@ -28,7 +28,7 @@ export default function Auth() {
     if (user) navigate('/auth-redirect', { replace: true });
   }, [user, navigate]);
 
-    setEmail('');
+    const resetFields = () => {
     setPassword('');
     setDisplayName('');
     setClassCode('');
