@@ -288,6 +288,48 @@ export type Database = {
           },
         ]
       }
+      resets: {
+        Row: {
+          cards_cleared: number | null
+          created_at: string
+          id: string
+          reset_type: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          cards_cleared?: number | null
+          created_at?: string
+          id?: string
+          reset_type: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          cards_cleared?: number | null
+          created_at?: string
+          id?: string
+          reset_type?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           completed_at: string | null
