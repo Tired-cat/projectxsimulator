@@ -468,7 +468,7 @@ export function TutorialOverlay() {
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">Tutorial minimized.</p>
               <button
-                onClick={skipTutorial}
+                onClick={handleSkip}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
               >
                 <X className="w-3 h-3" /> Skip
@@ -507,7 +507,7 @@ export function TutorialOverlay() {
                   </div>
                   {actionCompleted && (
                     <button
-                      onClick={advanceStep}
+                      onClick={handleAdvance}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
                     >
                       Next Step <ArrowRight className="w-4 h-4" />
@@ -516,7 +516,7 @@ export function TutorialOverlay() {
                 </div>
               ) : (
                 <button
-                  onClick={advanceStep}
+                  onClick={handleAdvance}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors"
                 >
                   {step === 9 ? 'Got It — Finish Tutorial' : 'Got It — Next Step'}
