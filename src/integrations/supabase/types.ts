@@ -759,6 +759,18 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_class_instructor: {
+        Args: { _class_id: string; _professor_id: string }
+        Returns: boolean
+      }
+      is_enrolled_in_class: {
+        Args: { _class_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_professor_of_student: {
+        Args: { _professor_id: string; _student_user_id: string }
+        Returns: boolean
+      }
       lookup_class_by_code: {
         Args: { _class_code: string }
         Returns: {
