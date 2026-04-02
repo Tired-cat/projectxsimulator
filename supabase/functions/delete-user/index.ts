@@ -22,7 +22,6 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    // Verify caller is admin
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -48,14 +47,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Prevent self-deletion
     if (user_id === caller.id) {
       return new Response(JSON.stringify({ error: 'Cannot delete your own account' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Delete user from auth.users (cascades to profiles, user_roles)
+    // Delete all related data first (service role bypasses RLS)
+    const userIdTables = [
+      'ai_feedback_events',
+      'allocation_events',
+      'board_events',
+      'navigation_events',
+      'tutorial_events',
+      'resets',
+      'submissions',
+      'reasoning_board_state',
+      'sessions',
+      'student_enrollments',
+      'user_roles',
+    ];
+
+    for (const table of userIdTables) {
+      const { error } = await adminClient.from(table).delete().eq('user_id', user_id);
+      if (error) console.error(`Error deleting from ${table}:`, error.message);
+    }
+
+    // Delete profile (uses 'id' column)
+    const { error: profileErr } = await adminClient.from('profiles').delete().eq('id', user_id);
+    if (profileErr) console.error('Error deleting profile:', profileErr.message);
+
+    // Delete user from auth.users
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user_id);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), {
