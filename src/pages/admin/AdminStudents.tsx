@@ -36,6 +36,10 @@ export default function AdminStudents() {
   const [removing, setRemoving] = useState(false);
   // Assign class
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+  // Delete unenrolled student
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; email: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { session } = useAuth();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
