@@ -336,7 +336,7 @@ function DraggableLegendRow({
     label: `${channelLabel} — ${segment.label}`,
     value: `$${segment.revenue.toLocaleString()} revenue, ${segment.units.toLocaleString()} sold`,
     context: `Product Mix • ${channelLabel}`,
-    sourceId: `product-mix-${segment.id}-${selectedChannel}`,
+    sourceId: `${segment.id}_${selectedChannel}`,
     chipKind: 'product' as const,
   }), [channelLabel, segment, selectedChannel]);
 

@@ -84,7 +84,7 @@ export function GhostDeltaBar({
       label: `${channel.name} ${metricLabel}`,
       value: `${isInc ? '+' : ''}${delta.toLocaleString()}`,
       context: `${isInc ? 'Increased' : 'Decreased'} ${metricLabel} • Channel Performance`,
-      sourceId: `${channelId}-delta-${viewMode}`,
+      sourceId: `${channelId}_delta_${viewMode}`,
       chipKind: isInc ? 'delta-increase' : 'delta-decrease',
       channelName: channel.name,
       metricName: metricLabel.toLowerCase(),
