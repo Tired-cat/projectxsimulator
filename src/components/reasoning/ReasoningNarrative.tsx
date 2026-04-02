@@ -148,22 +148,67 @@ function rankChips(chips: EvidenceChip[]): EvidenceChip[] {
   return [...chips].sort((a, b) => metricRank(a) - metricRank(b));
 }
 
-// ── Metric-aware conclusion phrases ──
-function getContrastConclusion(chip: EvidenceChip): string {
+// ── Metric-aware conclusion phrases (pooled for variety) ──
+const CONTRAST_CONCLUSIONS: Record<string, string[]> = {
+  revenue: [
+    'suggesting the spend distribution between them needs rebalancing',
+    'pointing to an uneven return on investment across channels',
+    'raising a question about whether budget is flowing to the right performers',
+  ],
+  view: [
+    'indicating a reach imbalance that may not reflect revenue potential',
+    'suggesting that volume of views is not translating evenly across channels',
+  ],
+  click: [
+    'pointing to an engagement gap worth investigating',
+    'suggesting one channel is converting attention far more effectively',
+  ],
+  budget: [
+    'raising the question of whether this split is the best use of the total budget',
+    'suggesting a reallocation could improve overall return',
+  ],
+  default: [
+    'suggesting the allocation between them deserves closer review',
+    'indicating an imbalance that may warrant strategic attention',
+  ],
+};
+
+const REINFORCE_CONCLUSIONS: Record<string, string[]> = {
+  revenue: [
+    'reinforcing their combined contribution to total revenue',
+    'confirming both channels are pulling their weight on revenue',
+  ],
+  view: [
+    'confirming consistent audience reach across both',
+    'showing both channels are delivering similar reach levels',
+  ],
+  budget: [
+    'showing a deliberate, proportional investment in both channels',
+    'reflecting a balanced allocation strategy across these channels',
+  ],
+  default: [
+    'confirming a consistent pattern across both channels',
+    'suggesting both channels are performing in alignment',
+  ],
+};
+
+function getContrastConclusion(chip: EvidenceChip, seed = ''): string {
   const m = (chip.metricName ?? chip.label).toLowerCase();
-  if (m.includes('revenue') || m.includes('profit')) return 'suggesting the spend distribution between them needs rebalancing';
-  if (m.includes('view') || m.includes('impression')) return 'indicating a reach imbalance that may not reflect revenue potential';
-  if (m.includes('click') || m.includes('conversion')) return 'pointing to an engagement gap worth investigating';
-  if (m.includes('budget')) return 'raising the question of whether this split is the best use of the total budget';
-  return 'suggesting the allocation between them deserves closer review';
+  const pool = m.includes('revenue') || m.includes('profit') ? CONTRAST_CONCLUSIONS.revenue
+    : m.includes('view') || m.includes('impression') ? CONTRAST_CONCLUSIONS.view
+    : m.includes('click') || m.includes('conversion') ? CONTRAST_CONCLUSIONS.click
+    : m.includes('budget') ? CONTRAST_CONCLUSIONS.budget
+    : CONTRAST_CONCLUSIONS.default;
+  return pool[Math.floor(seededRandom(seed + 'contrast') * pool.length)];
 }
 
-function getReinforceConclusion(chip: EvidenceChip): string {
+function getReinforceConclusion(chip: EvidenceChip, seed = ''): string {
   const m = (chip.metricName ?? chip.label).toLowerCase();
-  if (m.includes('revenue') || m.includes('profit')) return 'reinforcing their combined contribution to total revenue';
-  if (m.includes('view') || m.includes('impression')) return 'confirming consistent audience reach across both';
-  if (m.includes('budget')) return 'showing a deliberate, proportional investment in both channels';
-  return 'confirming a consistent pattern across both channels';
+  const pool = m.includes('revenue') || m.includes('profit') ? REINFORCE_CONCLUSIONS.revenue
+    : m.includes('view') || m.includes('impression') ? REINFORCE_CONCLUSIONS.view
+    : m.includes('budget') ? REINFORCE_CONCLUSIONS.budget
+    : REINFORCE_CONCLUSIONS.default;
+  return pool[Math.floor(seededRandom(seed + 'reinforce') * pool.length)];
 }
 
 /** Build a single-chip description (no context) */
@@ -226,15 +271,15 @@ function describeRelationship(chip: EvidenceChip, ctx: EvidenceChip, seed: strin
     const higherM = rel.aHigher ? mA : mB;
 
     if (rel.magnitude === 'vast')
-      return `${word} ${higher} driving far stronger ${higherM} than ${lower}, ${getContrastConclusion(primaryChip)}`;
+      return `${word} ${higher} driving far stronger ${higherM} than ${lower}, ${getContrastConclusion(primaryChip, seed)}`;
     if (rel.magnitude === 'considerable')
-      return `${word} ${higher} considerably outperforming ${lower} on ${higherM}, ${getContrastConclusion(primaryChip)}`;
-    return `${word} ${higher}'s ${higherM} outpacing ${lower}'s, ${getContrastConclusion(primaryChip)}`;
+      return `${word} ${higher} considerably outperforming ${lower} on ${higherM}, ${getContrastConclusion(primaryChip, seed)}`;
+    return `${word} ${higher}'s ${higherM} outpacing ${lower}'s, ${getContrastConclusion(primaryChip, seed)}`;
   } else {
     const word = STORY_REINFORCE_WORDS[Math.floor(seededRandom(seed) * STORY_REINFORCE_WORDS.length)];
     if (rel.magnitude === 'similar')
-      return `${chA}'s ${mA} ${word} ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip)}`;
-    return `${chA}'s ${mA} moving in the same direction as ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip)}`;
+      return `${chA}'s ${mA} ${word} ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip, seed)}`;
+    return `${chA}'s ${mA} moving in the same direction as ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip, seed)}`;
   }
 }
 
@@ -479,6 +524,11 @@ export function ReasoningNarrative() {
                             {(chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : [])).map((ctx, ci) => (
                               <span key={`ctx-${ci}`} className="text-muted-foreground ml-1">+ {ctx.label}</span>
                             ))}
+                            {chip.annotation && (
+                              <span className="block text-[11px] italic text-muted-foreground mt-0.5">
+                                "{chip.annotation}"
+                              </span>
+                            )}
                           </span>
                         </div>
                       ))}
