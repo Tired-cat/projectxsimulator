@@ -410,21 +410,35 @@ function SimulationContent() {
   }, [feedbackEventId, sessionId, user, board, channelSpend]);
 
   const handleReturnFromFeedback = useCallback(async () => {
-    // Record 'adjusted' action with timing
+    // Record 'adjusted' action with timing + after-state snapshot
     if (feedbackEventId && feedbackShownAtRef.current) {
       const timeAdjusting = Math.round((Date.now() - feedbackShownAtRef.current) / 1000);
+      const contextPairsCount = Object.values(board).reduce(
+        (sum, chips) => sum + chips.filter((c: any) => c.contextChips?.length > 0 || c.contextChip).length,
+        0,
+      );
       await supabase
         .from('ai_feedback_events')
         .update({
           post_feedback_action: 'adjusted',
           action_taken_at: new Date().toISOString(),
           time_adjusting_seconds: timeAdjusting,
+          board_state_after: board as any,
+          descriptive_cards_after: board.descriptive?.length ?? 0,
+          diagnostic_cards_after: board.diagnostic?.length ?? 0,
+          prescriptive_cards_after: board.prescriptive?.length ?? 0,
+          predictive_cards_after: board.predictive?.length ?? 0,
+          contextualise_pairs_after: contextPairsCount,
+          tiktok_spend_after: channelSpend.tiktok,
+          instagram_spend_after: channelSpend.instagram,
+          facebook_spend_after: channelSpend.facebook,
+          newspaper_spend_after: channelSpend.newspaper,
         })
         .eq('id', feedbackEventId);
     }
     setHasFeedback(true);
     setShowFeedback(false);
-  }, [feedbackEventId]);
+  }, [feedbackEventId, board, channelSpend]);
 
   // Dispatch tutorial event when budget diverges from initial allocation
   useEffect(() => {
