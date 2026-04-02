@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
 } from 'recharts';
 import { LayoutGrid, Grid2x2, Link2, RotateCcw, AlertTriangle } from 'lucide-react';
 import {
