@@ -236,6 +236,11 @@ export default function PilotAiFeedback({ classId }: Props) {
           </CardContent>
         </Card>
       </div>
+      {/* ── FEEDBACK VS NO FEEDBACK OUTCOME ────── */}
+      <FeedbackOutcomeChart rows={rows} subs={subs} />
+
+      {/* ── ALLOCATION DELTA AFTER FEEDBACK ──────── */}
+      <AllocationDeltaChart rows={rows} />
     </div>
   );
 }
