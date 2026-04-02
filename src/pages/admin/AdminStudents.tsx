@@ -106,6 +106,24 @@ export default function AdminStudents() {
     fetchData();
   };
 
+  const handleDeleteStudent = async () => {
+    if (!deleteTarget || !session?.access_token) return;
+    setDeleting(true);
+    try {
+      const res = await supabase.functions.invoke('delete-user', {
+        body: { user_id: deleteTarget.id },
+      });
+      if (res.error) throw res.error;
+      toast.success(`${deleteTarget.email} deleted permanently`);
+      setDeleteTarget(null);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete student');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) return <div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-64 w-full" /></div>;
 
   return (
