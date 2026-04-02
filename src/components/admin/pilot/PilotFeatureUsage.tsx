@@ -81,7 +81,7 @@ export default function PilotFeatureUsage({ classId }: Props) {
       const ids = await getSessionIds(classId);
 
       const [sessData, subData, aiData, boardData, tutData] = await Promise.all([
-        chunked<SessionRow>((c) => supabase.from('sessions').select('id, tutorial_completed').in('id', c), ids),
+        chunked<SessionRow>((c) => supabase.from('sessions').select('id, tutorial_completed, tutorial_opened').in('id', c), ids),
         chunked<SubRow>((c) => supabase.from('submissions').select('session_id, final_tiktok_spend, final_newspaper_spend, contextualise_pairs_count, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count').in('session_id', c), ids),
         chunked<AiFeedbackRow>((c) => supabase.from('ai_feedback_events').select('session_id').in('session_id', c), ids),
         chunked<BoardEventRow>((c) => supabase.from('board_events').select('session_id, evidence_type').in('session_id', c), ids),
