@@ -72,7 +72,7 @@ export function GhostDeltaBar({
     label: `${channel.name} Baseline ${metricLabel}`,
     value: baselineValue?.toLocaleString() ?? '0',
     context: `Baseline ${metricLabel} • Channel Performance`,
-    sourceId: `${channelId}-baseline-${viewMode}`,
+    sourceId: `${channelId}_baseline_${viewMode}`,
     chipKind: 'baseline',
     channelName: channel.name,
     metricName: metricLabel.toLowerCase(),
