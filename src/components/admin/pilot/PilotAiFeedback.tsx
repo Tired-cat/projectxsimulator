@@ -252,7 +252,7 @@ function FeedbackOutcomeChart({ rows, subs }: { rows: AiRow[]; subs: SubRow[] })
     const feedbackSessions = new Set(rows.map((r) => r.session_id));
     let usedCorrect = 0, usedTotal = 0, skippedCorrect = 0, skippedTotal = 0;
     subs.forEach((s) => {
-      const correct = (s.final_tiktok_spend ?? 9000) < 9000 && (s.final_newspaper_spend ?? 1000) > 1000;
+      const correct = (s.final_tiktok_spend ?? 9000) <= 9000 && (s.final_newspaper_spend ?? 1000) >= 1000;
       if (feedbackSessions.has(s.session_id)) {
         usedTotal++; if (correct) usedCorrect++;
       } else {

@@ -58,7 +58,7 @@ interface TutorialEventRow { session_id: string; step_number: number | null; act
 function isCorrect(s: SubRow): boolean {
   const tk = s.final_tiktok_spend ?? 9000;
   const np = s.final_newspaper_spend ?? 1000;
-  return tk < 9000 && np > 1000;
+  return tk <= 9000 && np >= 1000;
 }
 
 function verdict(delta: number): { label: string; cls: string } {

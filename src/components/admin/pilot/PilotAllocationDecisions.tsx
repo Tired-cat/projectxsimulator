@@ -79,8 +79,8 @@ function categorize(r: SubRow): Category {
   const isDefault = tk === DEFAULTS.tiktok && ig === DEFAULTS.instagram && fb === DEFAULTS.facebook && np === DEFAULTS.newspaper;
   if (isDefault) return 'nochange';
 
-  const reducedTiktok = tk < 9000;
-  const increasedNewspaper = np > 1000;
+  const reducedTiktok = tk <= 9000;
+  const increasedNewspaper = np >= 1000;
   if (reducedTiktok && increasedNewspaper) return 'fully';
   if (reducedTiktok || increasedNewspaper) return 'partial';
   return 'incorrect';
