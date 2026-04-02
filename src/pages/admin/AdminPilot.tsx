@@ -136,6 +136,8 @@ export default function AdminPilot() {
       <div className="p-6">
         {activeTab === 'Pilot health' ? (
           <PilotHealth classId={classId} />
+        ) : activeTab === 'Reasoning board' ? (
+          <PilotReasoningBoard classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
