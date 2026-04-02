@@ -161,7 +161,7 @@ export default function PilotStruggleSignals({ classId }: Props) {
   const totalConfirmed = p1Confirmed + p2Confirmed;
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading struggle signal data…</div>;
+    return <ViewSkeleton metrics={false} charts={1} table />;
   }
 
   if (issues.length === 0) {

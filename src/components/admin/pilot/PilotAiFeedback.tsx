@@ -134,7 +134,7 @@ export default function PilotAiFeedback({ classId }: Props) {
   const donutTotal = adjusted.length + submitted.length;
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading AI feedback data…</div>;
+    return <ViewSkeleton metrics charts={2} />;
   }
 
   if (rows.length === 0) {

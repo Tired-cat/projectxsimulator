@@ -282,11 +282,11 @@ export default function PilotReasoningBoard({ classId }: Props) {
   }, [draggedItems, totalSessions]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading reasoning board analytics…</p>
-      </div>
-    );
+    return <ViewSkeleton metrics charts={2} table />;
+  }
+
+  if (totalSessions === 0) {
+    return <EmptyState message="No data yet — this will populate once students start using the simulation." />;
   }
 
   return (

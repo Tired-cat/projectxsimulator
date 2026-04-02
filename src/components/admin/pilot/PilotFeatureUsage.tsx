@@ -300,7 +300,11 @@ export default function PilotFeatureUsage({ classId }: Props) {
   }, [tutorialChartData]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading feature usage data…</div>;
+    return <ViewSkeleton metrics={false} charts={1} table />;
+  }
+
+  if (matrixRows.length === 0 && tutorialChartData.length === 0) {
+    return <EmptyState message="No data yet — this will populate once students start using the simulation." />;
   }
 
   return (
