@@ -66,11 +66,11 @@ export default function PilotStruggleSignals({ classId }: Props) {
       };
 
       const [navRows, subRows, resetRows, allocRows, boardRows] = await Promise.all([
-        chunk<{ session_id: string; tab: string }>('navigation_events', 'session_id, tab', 'session_id', sessionIds),
-        chunk<{ session_id: string; predictive_card_count: number; contextualise_pairs_count: number }>('submissions', 'session_id, predictive_card_count, contextualise_pairs_count', 'session_id', sessionIds),
-        chunk<{ session_id: string; reset_type: string }>('resets', 'session_id, reset_type', 'session_id', sessionIds),
-        chunk<{ session_id: string }>('allocation_events', 'session_id', 'session_id', sessionIds),
-        chunk<{ session_id: string; sequence_number: number | null; evidence_id: string | null }>('board_events', 'session_id, sequence_number, evidence_id', 'session_id', sessionIds),
+        chunkQuery<{ session_id: string; tab: string }>((ids) => supabase.from('navigation_events').select('session_id, tab').in('session_id', ids), sessionIds),
+        chunkQuery<{ session_id: string; predictive_card_count: number; contextualise_pairs_count: number }>((ids) => supabase.from('submissions').select('session_id, predictive_card_count, contextualise_pairs_count').in('session_id', ids), sessionIds),
+        chunkQuery<{ session_id: string; reset_type: string }>((ids) => supabase.from('resets').select('session_id, reset_type').in('session_id', ids), sessionIds),
+        chunkQuery<{ session_id: string }>((ids) => supabase.from('allocation_events').select('session_id').in('session_id', ids), sessionIds),
+        chunkQuery<{ session_id: string; sequence_number: number | null; evidence_id: string | null }>((ids) => supabase.from('board_events').select('session_id, sequence_number, evidence_id').in('session_id', ids), sessionIds),
       ]);
 
       const totalSubmissions = new Set(subRows.map((r) => r.session_id)).size;
