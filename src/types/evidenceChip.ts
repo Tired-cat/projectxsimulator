@@ -15,6 +15,8 @@ export interface EvidenceChip {
   // contextChip is kept for backward compat (= contextChips[0])
   contextChip?: EvidenceChip | null;
   contextChips?: EvidenceChip[];
+  // User-written interpretation of this chip (FR-02)
+  annotation?: string;
 }
 
 export type ReasoningBlockId = 'descriptive' | 'diagnostic' | 'predictive' | 'prescriptive';
@@ -135,6 +137,29 @@ export const QUADRANT_CONNECTORS: Record<ReasoningBlockId, string> = {
   diagnostic: 'This led me to conclude that ',
   prescriptive: 'Based on this, I decided to ',
   predictive: 'Going forward, I expect ',
+};
+
+// Pooled connectors — used by ReasoningNarrative for variety (seeded so deterministic)
+export const QUADRANT_CONNECTOR_POOLS: Record<ReasoningBlockId, string[]> = {
+  descriptive: [''],
+  diagnostic: [
+    'This led me to conclude that ',
+    'Looking deeper, I found that ',
+    'The underlying reason was that ',
+    'This pattern suggested that ',
+  ],
+  prescriptive: [
+    'Based on this, I decided to ',
+    'This insight drove me to ',
+    'I responded by deciding to ',
+    'Acting on this, I chose to ',
+  ],
+  predictive: [
+    'Going forward, I expect ',
+    'My projection is that ',
+    'As a result of this decision, ',
+    'I anticipate that ',
+  ],
 };
 
 export function generateNarrativeSentence(
