@@ -392,6 +392,14 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
           </div>
         </CardContent>
       </Card>
+
+      {/* ── DETAIL PANEL ─────────────────────────── */}
+      {selectedSessionId && (
+        <StudentDetailPanel
+          sessionId={selectedSessionId}
+          onClose={() => onSelectSession(null)}
+        />
+      )}
     </div>
   );
 }
