@@ -133,7 +133,7 @@ async function fetchContextPairs(sessionIds: string[]): Promise<ContextPair[]> {
     .slice(0, 10);
 }
 
-interface FirstDragEvent { quadrant: string | null; evidence_id: string | null; }
+interface FirstDragEvent { quadrant: string | null; evidence_id: string | null; evidence_type: string | null; }
 
 async function fetchFirstDrags(sessionIds: string[]): Promise<FirstDragEvent[]> {
   if (sessionIds.length === 0) return [];
