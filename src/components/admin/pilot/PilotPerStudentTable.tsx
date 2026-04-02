@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import StudentDetailPanel from './StudentDetailPanel';
 
 interface Props {
   classId: string | null;
@@ -391,6 +392,14 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
           </div>
         </CardContent>
       </Card>
+
+      {/* ── DETAIL PANEL ─────────────────────────── */}
+      {selectedSessionId && (
+        <StudentDetailPanel
+          sessionId={selectedSessionId}
+          onClose={() => onSelectSession(null)}
+        />
+      )}
     </div>
   );
 }
