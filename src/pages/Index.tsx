@@ -755,6 +755,13 @@ function ClassCodeGate({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Backfill class_id on any existing session that was created before enrollment
+    await supabase
+      .from('sessions')
+      .update({ class_id: classData.id })
+      .eq('user_id', user.id)
+      .is('class_id', null);
+
     toast({ title: 'Enrolled!', description: 'You have been added to your class.' });
     setEnrolled(true);
   };
