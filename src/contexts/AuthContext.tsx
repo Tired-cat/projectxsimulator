@@ -2,14 +2,14 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
-type AppRole = 'student' | 'professor';
+type AppRole = 'student' | 'professor' | 'admin';
 
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, role: AppRole, displayName?: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, role: 'student' | 'professor', displayName?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -23,6 +23,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchRole = useCallback(async (userId: string) => {
+    // Check admin first via database function
+    const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: userId });
+
+    if (isAdmin) {
+      setRole('admin');
+      return;
+    }
+
+    // Otherwise check user_roles table
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')
@@ -80,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchRole]);
 
-  const signUp = useCallback(async (email: string, password: string, role: AppRole, displayName?: string) => {
+  const signUp = useCallback(async (email: string, password: string, role: 'student' | 'professor', displayName?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,

@@ -9,12 +9,9 @@ interface RoleGuardProps {
   allowed: AllowedRole[];
 }
 
-const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
-
 export function RoleGuard({ children, allowed }: RoleGuardProps) {
   const { user, role, loading } = useAuth();
 
-  // Wait for both auth AND role to be fully resolved
   if (loading || (user && role === null)) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
@@ -30,10 +27,7 @@ export function RoleGuard({ children, allowed }: RoleGuardProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  const isAdmin = user.email === ADMIN_EMAIL;
-  const effectiveRole: AllowedRole = isAdmin ? 'admin' : (role ?? 'student');
-
-  if (!allowed.includes(effectiveRole)) {
+  if (!role || !allowed.includes(role)) {
     return <Navigate to="/unauthorized" replace />;
   }
 
