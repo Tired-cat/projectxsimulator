@@ -1,12 +1,24 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Check, Eye, Search, Zap, TrendingUp } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   REASONING_BLOCKS,
   getSmartInsight,
 } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
+
+const BLOCK_ICONS: Record<ReasoningBlockId, React.ComponentType<{ className?: string }>> = {
+  descriptive: Eye,
+  diagnostic: Search,
+  prescriptive: Zap,
+  predictive: TrendingUp,
+};
+
+const BLOCK_EMPTY_HINTS: Partial<Record<ReasoningBlockId, string>> = {
+  prescriptive: 'What action did you take?',
+  predictive: 'What result do you expect?',
+};
 import type { EvidenceDragData, EvidenceDropData } from '@/lib/evidenceDnd';
 import {
   getBlockDropId,
@@ -63,6 +75,16 @@ export function ReasoningBoard() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-4">
+          {/* Causal flow indicator */}
+          <div className="flex items-center gap-1 text-[9px] text-muted-foreground/60 px-0.5">
+            {(['Observe', 'Diagnose', 'Decide', 'Predict'] as const).map((label, i) => (
+              <span key={label} className="flex items-center gap-1">
+                <span className="px-1.5 py-0.5 rounded bg-muted/60 font-medium">{i + 1} {label}</span>
+                {i < 3 && <span className="text-muted-foreground/40">→</span>}
+              </span>
+            ))}
+          </div>
+
           {/* 4 reasoning blocks */}
           <div className="grid grid-cols-2 gap-3 content-start">
             {REASONING_BLOCKS.map((block, blockIndex) => {
@@ -73,6 +95,7 @@ export function ReasoningBoard() {
                 <BlockDropContainer key={block.id} blockId={block.id}>
                   {({ setNodeRef, isOver }) => {
                     const isHovered = isOver && !!activeDrag;
+                    const BlockIcon = BLOCK_ICONS[block.id];
 
                     return (
                       <div
@@ -102,7 +125,8 @@ export function ReasoningBoard() {
                           {stepNumber}
                         </span>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold" style={{ color: block.color }}>
+                          <div className="flex items-center gap-1 text-xs font-bold" style={{ color: block.color }}>
+                            <BlockIcon className="w-3 h-3 flex-shrink-0" />
                             {block.title}
                           </div>
                           <div className="text-[10px] text-muted-foreground italic truncate">
@@ -132,6 +156,9 @@ export function ReasoningBoard() {
                         style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                       >
                         <span>Drop evidence here</span>
+                        {BLOCK_EMPTY_HINTS[block.id] && (
+                          <span className="text-muted-foreground/60 text-[9px] font-medium">{BLOCK_EMPTY_HINTS[block.id]}</span>
+                        )}
                         <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
                         {block.id === 'predictive' && (
                           <span className="text-muted-foreground/50 italic text-[9px] text-center mt-0.5">
@@ -204,6 +231,8 @@ function ChipCard({
   blockColor: string;
   onRemove: () => void;
 }) {
+  const { updateChipAnnotation } = useReasoningBoard();
+  const [annotating, setAnnotating] = useState(false);
   const insight = getSmartInsight(chip, blockId);
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
@@ -271,6 +300,30 @@ function ChipCard({
             }`}>
               {insight}
             </div>
+          )}
+
+          {/* Annotation — user's written interpretation */}
+          {chip.annotation || annotating ? (
+            <textarea
+              className="w-full mt-1.5 text-[10px] rounded border border-border/50 bg-transparent px-2 py-1 text-foreground/80 placeholder:text-muted-foreground/40 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
+              rows={2}
+              placeholder="Your interpretation..."
+              defaultValue={chip.annotation ?? ''}
+              onBlur={(e) => {
+                updateChipAnnotation(blockId, chip.id, e.target.value.trim());
+                setAnnotating(false);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              autoFocus={annotating}
+            />
+          ) : (
+            <button
+              className="mt-1.5 text-[9px] text-muted-foreground/50 hover:text-primary italic transition-colors text-left w-full"
+              onClick={(e) => { e.stopPropagation(); setAnnotating(true); }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              + Add your interpretation...
+            </button>
           )}
         </div>
 

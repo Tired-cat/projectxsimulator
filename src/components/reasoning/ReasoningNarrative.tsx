@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
-import { QUADRANT_CONNECTORS } from '@/types/evidenceChip';
+import { QUADRANT_CONNECTOR_POOLS } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import { cn } from '@/lib/utils';
 
@@ -171,42 +171,43 @@ function describeChipAlone(chip: EvidenceChip): string {
   const ch = channelOf(chip);
   const val = chip.value;
   const m = (chip.metricName ?? chip.label).toLowerCase();
+  // If student added an annotation, it becomes part of the story sentence
+  const annotationSuffix = chip.annotation ? ` — ${chip.annotation}` : '';
 
   // Product mix chip — qualitative / behavioural
   if (chip.chipKind === 'product') {
     const parts = chip.label.split('—');
     const channel = parts[0]?.trim() || ch;
     const product = parts[1]?.trim() || chip.label;
-    return `${channel} primarily selling ${product} (${val}), pointing to an audience that favours this product tier`;
+    return `${channel} primarily selling ${product} (${val}), pointing to an audience that favours this product tier${annotationSuffix}`;
   }
-
 
   if (m.includes('revenue') || m.includes('profit')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} generating stronger revenue than expected`;
-    if (chip.chipKind === 'delta-decrease') return `${ch} underperforming on revenue`;
-    return `${ch} contributing ${val} in revenue`;
+    if (chip.chipKind === 'delta-increase') return `${ch} generating stronger revenue than expected${annotationSuffix}`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} underperforming on revenue${annotationSuffix}`;
+    return `${ch} contributing ${val} in revenue${annotationSuffix}`;
   }
   if (m.includes('view') || m.includes('impression')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} reaching a broader audience with ${val} views`;
-    if (chip.chipKind === 'delta-decrease') return `${ch} losing reach, down to ${val} views`;
-    return `${ch} generating ${val} views`;
+    if (chip.chipKind === 'delta-increase') return `${ch} reaching a broader audience with ${val} views${annotationSuffix}`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} losing reach, down to ${val} views${annotationSuffix}`;
+    return `${ch} generating ${val} views${annotationSuffix}`;
   }
   if (m.includes('click') || m.includes('conversion')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} driving more engaged traffic`;
-    if (chip.chipKind === 'delta-decrease') return `${ch} seeing reduced click-through`;
-    return `${ch} producing ${val} clicks`;
+    if (chip.chipKind === 'delta-increase') return `${ch} driving more engaged traffic${annotationSuffix}`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} seeing reduced click-through${annotationSuffix}`;
+    return `${ch} producing ${val} clicks${annotationSuffix}`;
   }
   if (m.includes('budget')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} receiving a larger share of the budget`;
-    if (chip.chipKind === 'delta-decrease') return `${ch}'s allocation trimmed back`;
-    if (chip.chipKind === 'baseline') return `${ch}'s original allocation of ${val}`;
-    return `${ch} allocated ${val}`;
+    if (chip.chipKind === 'delta-increase') return `${ch} receiving a larger share of the budget${annotationSuffix}`;
+    if (chip.chipKind === 'delta-decrease') return `${ch}'s allocation trimmed back${annotationSuffix}`;
+    if (chip.chipKind === 'baseline') return `${ch}'s original allocation of ${val}${annotationSuffix}`;
+    return `${ch} allocated ${val}${annotationSuffix}`;
   }
   // fallback
-  if (chip.chipKind === 'delta-increase') return `strong ${metricOf(chip)} growth in ${ch}`;
-  if (chip.chipKind === 'delta-decrease') return `declining ${metricOf(chip)} in ${ch}`;
-  if (chip.chipKind === 'baseline') return `the baseline ${metricOf(chip)} level for ${ch}`;
-  return `${ch}'s ${metricOf(chip)} at ${val}`;
+  if (chip.chipKind === 'delta-increase') return `strong ${metricOf(chip)} growth in ${ch}${annotationSuffix}`;
+  if (chip.chipKind === 'delta-decrease') return `declining ${metricOf(chip)} in ${ch}${annotationSuffix}`;
+  if (chip.chipKind === 'baseline') return `the baseline ${metricOf(chip)} level for ${ch}${annotationSuffix}`;
+  return `${ch}'s ${metricOf(chip)} at ${val}${annotationSuffix}`;
 }
 
 /** Build a relationship sentence between a chip and its context chip */
@@ -264,21 +265,29 @@ const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
     'The data showed me [insight].',
     'Looking at the numbers, I identified [insight].',
     'What stood out immediately was [insight].',
+    'One thing that immediately caught my attention was [insight].',
+    'My first observation was [insight].',
   ],
   diagnostic: [
     'I traced this back to [insight].',
     'The root cause was [insight].',
     '[insight] explained why I was seeing this pattern.',
+    'What explained this was [insight].',
+    'I realised that [insight].',
   ],
   prescriptive: [
     '[insight] drove my decision to act.',
     'I chose to intervene because of [insight].',
     'Acting on [insight], I shifted my budget allocation.',
+    'My response to this was [insight].',
+    'I made the call to [insight] based on what I\'d found.',
   ],
   predictive: [
     'With these changes in place, I expect [insight].',
     'The likely outcome is [insight].',
     'Looking ahead, [insight] shapes my expectation of results.',
+    'I anticipate [insight] as a consequence.',
+    'The expected result is [insight].',
   ],
 };
 
@@ -352,7 +361,7 @@ const BLOCK_STYLE: Record<ReasoningBlockId, { label: string; accent: string; tin
 };
 
 export function ReasoningNarrative() {
-  const { board } = useReasoningBoard();
+  const { board, writtenDiagnosis, setWrittenDiagnosis } = useReasoningBoard();
 
   // At a Glance: data-referenced sentences
   const glanceSentences = useMemo(() => {
@@ -379,7 +388,10 @@ export function ReasoningNarrative() {
         priorChannels.add(`${channelOf(chip)}|${metricOf(chip)}`);
       }
 
-      const connector = QUADRANT_CONNECTORS[blockId];
+      const connectorPool = QUADRANT_CONNECTOR_POOLS[blockId];
+      const connectorSeed = chips.map(c => c.id).join('-') + blockId + 'conn';
+      const connectorIdx = Math.floor(seededRandom(connectorSeed) * connectorPool.length);
+      const connector = connectorPool[connectorIdx];
       const text = connector
         ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
         : sentence;
@@ -462,7 +474,7 @@ export function ReasoningNarrative() {
         </div>
       </div>
 
-      {/* Full Reasoning Story */}
+      {/* Full Reasoning Story + In Your Own Words */}
       <div className="px-3 pb-4">
         <div className="relative rounded-2xl border border-[#E7DCC7] bg-[#FBF6EB] shadow-sm px-5 py-4">
           <span
@@ -493,6 +505,29 @@ export function ReasoningNarrative() {
               </p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* "In Your Own Words" — exposes writtenDiagnosis for qualitative reasoning */}
+      <div className="px-3 pb-5">
+        <div className="rounded-xl border border-border/60 bg-card p-4">
+          <label
+            htmlFor="written-diagnosis"
+            className="block text-xs font-bold text-foreground mb-1 uppercase tracking-wide"
+          >
+            In Your Own Words
+          </label>
+          <p className="text-[10px] text-muted-foreground mb-2">
+            What was your single most important insight from this analysis?
+          </p>
+          <textarea
+            id="written-diagnosis"
+            className="w-full text-sm rounded-lg border border-border bg-transparent px-3 py-2 placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/60 resize-none leading-relaxed"
+            rows={3}
+            placeholder="e.g. Not all attention is equally valuable — Newspaper's low-traffic, high-conversion profile outperforms TikTok's raw reach..."
+            value={writtenDiagnosis}
+            onChange={(e) => setWrittenDiagnosis(e.target.value)}
+          />
         </div>
       </div>
     </div>
