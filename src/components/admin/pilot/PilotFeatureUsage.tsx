@@ -291,6 +291,8 @@ export default function PilotFeatureUsage({ classId }: Props) {
           )}
         </CardContent>
       </Card>
+      {/* ── COMPARISON CHARTS ────────────────────── */}
+      <ComparisonCharts sessions={sessions} subs={subs} subBySession={subBySession} />
     </div>
   );
 }
