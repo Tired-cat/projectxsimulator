@@ -110,7 +110,7 @@ export default function PilotStruggleSignals({ classId }: Props) {
       const pctNoAlloc = totalSubs > 0 ? (submittedNoAlloc / totalSubs) * 100 : 0;
 
       // Row 6
-      const sessMD = new Set(nav.filter((r) => r.tab === 'my_decisions').map((r) => r.session_id));
+      const sessMD = new Set(nav.filter((r) => r.tab === 'my_decisions' || r.tab === 'decisions').map((r) => r.session_id));
       const pctNeverMD = ((total - sessMD.size) / total) * 100;
 
       // Row 7
