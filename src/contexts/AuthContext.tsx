@@ -22,9 +22,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchRoleRef = React.useRef<string | null>(null);
+
   const fetchRole = useCallback(async (userId: string) => {
+    // Deduplicate concurrent calls for the same user
+    if (fetchRoleRef.current === userId) return;
+    fetchRoleRef.current = userId;
+
     // Check admin first via database function
     const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: userId });
+
+    // Guard against stale responses
+    if (fetchRoleRef.current !== userId) return;
 
     if (isAdmin) {
       setRole('admin');
@@ -38,6 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', userId)
       .maybeSingle();
 
+    if (fetchRoleRef.current !== userId) return;
+
     if (error) {
       setRole('student');
       return;
@@ -48,19 +59,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let initialDone = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
         if (!mounted) return;
+        // Skip if getSession already handled the initial load
+        if (!initialDone) return;
 
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
 
         if (nextSession?.user) {
+          fetchRoleRef.current = null; // allow re-fetch
           fetchRole(nextSession.user.id).finally(() => {
             if (mounted) setLoading(false);
           });
         } else {
+          fetchRoleRef.current = null;
           setRole(null);
           setLoading(false);
         }
@@ -75,11 +91,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (initialSession?.user) {
         fetchRole(initialSession.user.id).finally(() => {
-          if (mounted) setLoading(false);
+          if (mounted) {
+            setLoading(false);
+            initialDone = true;
+          }
         });
       } else {
         setRole(null);
         setLoading(false);
+        initialDone = true;
       }
     });
 
