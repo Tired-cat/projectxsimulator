@@ -1,8 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
-const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
-
 /**
  * Post-login redirect component. Placed at /auth-redirect.
  * Sends users to the correct landing page based on their role.
@@ -10,7 +8,6 @@ const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
 export default function AuthRedirect() {
   const { user, role, loading } = useAuth();
 
-  // Wait for both auth AND role to be resolved
   if (loading || (user && role === null)) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
@@ -21,9 +18,7 @@ export default function AuthRedirect() {
 
   if (!user) return <Navigate to="/auth" replace />;
 
-  const isAdmin = user.email === ADMIN_EMAIL;
-
-  if (isAdmin) return <Navigate to="/admin" replace />;
+  if (role === 'admin') return <Navigate to="/admin" replace />;
   if (role === 'professor') return <Navigate to="/dashboard" replace />;
   return <Navigate to="/" replace />;
 }
