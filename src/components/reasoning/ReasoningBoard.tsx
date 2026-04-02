@@ -1,7 +1,18 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Check, Trash2 } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   REASONING_BLOCKS,
   getSmartInsight,
