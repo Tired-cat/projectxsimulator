@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAdminClassFilter } from '@/contexts/AdminClassFilterContext';
 import { supabase } from '@/integrations/supabase/client';
+import PilotHealth from '@/components/admin/pilot/PilotHealth';
 import {
   Select,
   SelectContent,
