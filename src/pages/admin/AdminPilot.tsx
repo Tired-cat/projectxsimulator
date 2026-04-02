@@ -145,6 +145,8 @@ export default function AdminPilot() {
           <PilotAllocationDecisions classId={classId} />
         ) : activeTab === 'Feature usage' ? (
           <PilotFeatureUsage classId={classId} />
+        ) : activeTab === 'AI feedback' ? (
+          <PilotAiFeedback classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
