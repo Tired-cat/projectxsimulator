@@ -53,7 +53,9 @@ const BUCKET_ORDER = ['0-3m', '3-7m', '7-12m', '12-20m', '20-30m', '30+m'];
 const TAB_LABEL_MAP: Record<string, string> = {
   home: 'Home',
   my_decisions: 'My Decisions',
+  decisions: 'My Decisions',
   reasoning_board: 'Reasoning Board',
+  reasoning: 'Reasoning Board',
 };
 
 /* ── small components ───────────────────────────── */
@@ -212,9 +214,20 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
         return seen.size;
       };
 
-      const visitedDecisions = await distinctSessionsIn('navigation_events', 'tab', 'my_decisions');
+      const visitedDecisions = await distinctSessionsIn('navigation_events', 'tab', 'decisions');
       const madeAllocation = await distinctSessionsIn('allocation_events');
-      const visitedReasoning = await distinctSessionsIn('navigation_events', 'tab', 'reasoning_board');
+      // Count reasoning as visited if they navigated to the tab OR placed a card (split-screen use)
+      const visitedReasoning = new Set<string>();
+      for (let i = 0; i < sessionIds.length; i += 100) {
+        const chunk = sessionIds.slice(i, i + 100);
+        const [navRes, boardRes] = await Promise.all([
+          (supabase.from('navigation_events' as any) as any).select('session_id').in('session_id', chunk).eq('tab', 'reasoning'),
+          (supabase.from('board_events' as any) as any).select('session_id').in('session_id', chunk).eq('event_type', 'drag_to_board'),
+        ]);
+        (navRes.data ?? []).forEach((r: any) => visitedReasoning.add(r.session_id));
+        (boardRes.data ?? []).forEach((r: any) => visitedReasoning.add(r.session_id));
+      }
+      const visitedReasoningCount = visitedReasoning.size;
       const placedCard = await distinctSessionsIn('board_events', 'event_type', 'drag_to_board');
       const usedContextualise = await distinctSessionsIn('board_events', 'event_type', 'contextualise');
       const requestedAI = await distinctSessionsIn('ai_feedback_events');
@@ -224,7 +237,7 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
         { label: 'Session started', count: allSessions.length, color: '#6B4F8A' },
         { label: 'Visited My Decisions', count: visitedDecisions, color: '#6B4F8A' },
         { label: 'Made allocation change', count: madeAllocation, color: '#6B4F8A' },
-        { label: 'Visited Reasoning Board', count: visitedReasoning, color: '#6B4F8A' },
+        { label: 'Visited Reasoning Board', count: visitedReasoningCount, color: '#6B4F8A' },
         { label: 'Placed ≥1 card', count: placedCard, color: '#D4A053' },
         { label: 'Used Contextualise', count: usedContextualise, color: '#D4A053' },
         { label: 'Requested AI feedback', count: requestedAI, color: '#4CAF50' },
