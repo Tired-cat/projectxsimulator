@@ -5,6 +5,7 @@ import PilotHealth from '@/components/admin/pilot/PilotHealth';
 import PilotReasoningBoard from '@/components/admin/pilot/PilotReasoningBoard';
 import PilotAllocationDecisions from '@/components/admin/pilot/PilotAllocationDecisions';
 import PilotFeatureUsage from '@/components/admin/pilot/PilotFeatureUsage';
+import PilotAiFeedback from '@/components/admin/pilot/PilotAiFeedback';
 import {
   Select,
   SelectContent,
@@ -144,6 +145,8 @@ export default function AdminPilot() {
           <PilotAllocationDecisions classId={classId} />
         ) : activeTab === 'Feature usage' ? (
           <PilotFeatureUsage classId={classId} />
+        ) : activeTab === 'AI feedback' ? (
+          <PilotAiFeedback classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
