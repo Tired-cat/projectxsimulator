@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EnrollmentRow {
   id: string;
@@ -35,6 +36,10 @@ export default function AdminStudents() {
   const [removing, setRemoving] = useState(false);
   // Assign class
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+  // Delete unenrolled student
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; email: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { session } = useAuth();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -99,6 +104,24 @@ export default function AdminStudents() {
     toast.success('Student removed from class');
     setRemoveTarget(null);
     fetchData();
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!deleteTarget || !session?.access_token) return;
+    setDeleting(true);
+    try {
+      const res = await supabase.functions.invoke('delete-user', {
+        body: { user_id: deleteTarget.id },
+      });
+      if (res.error) throw res.error;
+      toast.success(`${deleteTarget.email} deleted permanently`);
+      setDeleteTarget(null);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete student');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-64 w-full" /></div>;
@@ -209,6 +232,7 @@ export default function AdminStudents() {
                       <TableHead>Display name</TableHead>
                       <TableHead>Assign to class</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="w-[60px]" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -257,6 +281,16 @@ export default function AdminStudents() {
                             Awaiting class code
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget({ id: p.id, email: p.email || 'this student' })}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -280,6 +314,26 @@ export default function AdminStudents() {
             <Button variant="outline" className="flex-1" onClick={() => setRemoveTarget(null)}>Cancel</Button>
             <Button variant="destructive" className="flex-1" onClick={handleRemove} disabled={removing}>
               {removing ? 'Removing…' : 'Remove'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete unenrolled student confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={o => { if (!o) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Permanently delete student
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete <strong>{deleteTarget?.email}</strong> and all associated data (sessions, submissions, events). This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" className="flex-1" onClick={handleDeleteStudent} disabled={deleting}>
+              {deleting ? 'Deleting…' : 'Delete permanently'}
             </Button>
           </div>
         </DialogContent>
