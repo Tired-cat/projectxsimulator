@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Trash2 } from 'lucide-react';
+import { Trash2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface EnrollmentRow {
@@ -33,6 +33,8 @@ export default function AdminStudents() {
   // Remove modal
   const [removeTarget, setRemoveTarget] = useState<{ enrollment: EnrollmentRow; email: string; className: string } | null>(null);
   const [removing, setRemoving] = useState(false);
+  // Assign class
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -205,7 +207,7 @@ export default function AdminStudents() {
                     <TableRow>
                       <TableHead>Email</TableHead>
                       <TableHead>Display name</TableHead>
-                      <TableHead>Registered</TableHead>
+                      <TableHead>Assign to class</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -214,7 +216,42 @@ export default function AdminStudents() {
                       <TableRow key={p.id}>
                         <TableCell className="text-foreground">{p.email || '—'}</TableCell>
                         <TableCell className="text-muted-foreground">{p.display_name || '—'}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">—</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value=""
+                              onValueChange={async (classId) => {
+                                setAssigningUserId(p.id);
+                                const { error } = await supabase
+                                  .from('student_enrollments')
+                                  .insert({ user_id: p.id, class_id: classId } as any);
+                                setAssigningUserId(null);
+                                if (error) {
+                                  if (error.message.includes('duplicate') || error.message.includes('unique')) {
+                                    toast.error('Student is already enrolled in this class');
+                                  } else {
+                                    toast.error(error.message);
+                                  }
+                                  return;
+                                }
+                                const cls = classMap.get(classId);
+                                toast.success(`${p.email} enrolled in ${cls?.name || 'class'}`);
+                                fetchData();
+                              }}
+                            >
+                              <SelectTrigger className="w-[180px] h-8 text-xs" disabled={assigningUserId === p.id}>
+                                <SelectValue placeholder={assigningUserId === p.id ? 'Enrolling…' : 'Select class'} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {classes.map(c => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.name} ({c.class_code})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30 text-xs">
                             Awaiting class code
