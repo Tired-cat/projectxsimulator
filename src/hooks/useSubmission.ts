@@ -69,7 +69,14 @@ export function useSubmission({
       0,
     );
 
-    await supabase.from('submissions').insert({
+    // Query actual feedback rounds from ai_feedback_events
+    const { count: actualFeedbackRounds } = await supabase
+      .from('ai_feedback_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id);
+
+    const submissionData = {
       session_id: sessionId,
       user_id: user.id,
       final_decision: finalDecision,
@@ -87,8 +94,10 @@ export function useSubmission({
       final_instagram_spend: channelSpend.instagram,
       final_facebook_spend: channelSpend.facebook,
       final_newspaper_spend: channelSpend.newspaper,
-      feedback_rounds_used: feedbackRoundsUsed,
-    });
+      feedback_rounds_used: actualFeedbackRounds ?? feedbackRoundsUsed,
+    };
+
+    await supabase.from('submissions').insert(submissionData);
 
     await completeSession();
   }, [sessionId, user, startedAt, finalDecision, cardsOnBoardCount, board, adjustmentsMade, usedAi, forceSave, completeSession, channelSpend, feedbackRoundsUsed, generatedStory]);
