@@ -339,10 +339,35 @@ function generateStorySentence(
   return templates[idx].replace('[insight]', insight);
 }
 
-// ── Layout ──
+// ── Exported helper: build the full reasoning story text from board state ──
 
 // Correct causal chain: Observe → Diagnose → Decide → Predict
 const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
+
+export function buildFullReasoningStory(board: Record<ReasoningBlockId, EvidenceChip[]>): string {
+  const sentences: string[] = [];
+  const priorChannels = new Set<string>();
+
+  for (const blockId of BLOCK_ORDER) {
+    const chips = board[blockId];
+    const sentence = generateStorySentence(chips, blockId, priorChannels);
+    if (!sentence) continue;
+
+    for (const chip of chips) {
+      priorChannels.add(`${channelOf(chip)}|${metricOf(chip)}`);
+    }
+
+    const connector = QUADRANT_CONNECTORS[blockId];
+    const text = connector
+      ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
+      : sentence;
+    sentences.push(text);
+  }
+
+  return sentences.join(' ');
+}
+
+// ── Layout ──
 
 const BLOCK_STYLE: Record<ReasoningBlockId, { label: string; accent: string; tint: string }> = {
   descriptive: { label: 'Descriptive', accent: '#D4A017', tint: 'rgba(212, 160, 23, 0.09)' },
