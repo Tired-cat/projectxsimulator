@@ -238,6 +238,25 @@ export default function PilotReasoningBoard({ classId }: Props) {
     });
   }, [submissions]);
 
+  /* ── most dragged chart data ───────────────────── */
+  const topDragged = useMemo(() => {
+    return draggedItems.slice(0, 12).map(d => ({
+      evidence_id: d.evidence_id,
+      pct: totalSessions > 0 ? Math.round((d.session_count / totalSessions) * 100) : 0,
+      count: d.session_count,
+    }));
+  }, [draggedItems, totalSessions]);
+
+  /* ── rarely dragged items ──────────────────────── */
+  const rarelyDragged = useMemo(() => {
+    const allDraggedIds = new Set(draggedItems.map(d => d.evidence_id));
+    const threshold = totalSessions > 0 ? totalSessions * 0.05 : 0;
+    const rare = draggedItems.filter(d => d.session_count < threshold).map(d => d.evidence_id);
+    // We can't know ALL possible evidence_ids without a master list,
+    // so we show items that appeared but were used by < 5% of sessions
+    return rare;
+  }, [draggedItems, totalSessions]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
