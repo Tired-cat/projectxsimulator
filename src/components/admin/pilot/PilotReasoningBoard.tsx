@@ -340,6 +340,86 @@ export default function PilotReasoningBoard({ classId }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── most dragged evidence items ────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Most dragged evidence items</h3>
+        <Card className="bg-background border-border shadow-sm">
+          <CardContent className="p-4">
+            {topDragged.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No drag events recorded yet.</p>
+            ) : (
+              <div style={{ height: Math.max(topDragged.length * 40 + 80, 200) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topDragged} layout="vertical" margin={{ left: 140, right: 20, top: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} unit="%" />
+                    <YAxis type="category" dataKey="evidence_id" tick={{ fontSize: 11 }} width={130} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      formatter={(value: number) => [`${value}%`, 'Sessions']}
+                    />
+                    <Bar dataKey="pct" fill="#6B4F8A" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── rarely dragged items ───────────────────── */}
+      {rarelyDragged.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Evidence items rarely used</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Used by &lt;5% of sessions — review whether these are visible and labeled clearly.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {rarelyDragged.map(id => (
+              <span key={id} className="px-2.5 py-1 rounded-full bg-muted text-xs text-muted-foreground">
+                {id}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── contextualise pairs table ──────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Top contextualise pairs</h3>
+        <Card className="bg-background border-border shadow-sm">
+          <CardContent className="p-0">
+            {contextPairs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No contextualise events recorded yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Pair</TableHead>
+                    <TableHead className="text-xs text-right w-24">Times</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contextPairs.map((p, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs font-mono">
+                        {p.evidence_id} <span className="text-muted-foreground">↔</span> {p.paired_with}
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-medium">{p.pair_count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
