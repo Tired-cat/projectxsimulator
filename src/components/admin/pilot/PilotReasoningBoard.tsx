@@ -489,7 +489,7 @@ function FirstDragCharts({ firstDrags }: { firstDrags: FirstDragEvent[] }) {
       { name: 'Views first', value: views, color: '#C4622D' },
       { name: 'Revenue first', value: revenue, color: '#4A7C59' },
       { name: 'Profit first', value: profit, color: '#6B4F8A' },
-      { name: 'Budget/Other', value: other, color: '#888780' },
+      { name: 'Budget first', value: other, color: '#D4A053' },
     ].filter(d => d.value > 0);
   }, [firstDrags]);
 
