@@ -21,6 +21,16 @@ interface AiRow {
   diagnostic_cards_after: number | null;
   prescriptive_cards_after: number | null;
   predictive_cards_after: number | null;
+  tiktok_spend_before: number | null;
+  tiktok_spend_after: number | null;
+  newspaper_spend_before: number | null;
+  newspaper_spend_after: number | null;
+}
+
+interface SubRow {
+  session_id: string;
+  final_tiktok_spend: number | null;
+  final_newspaper_spend: number | null;
 }
 
 const QUAD_COLORS: Record<string, string> = {
