@@ -23,6 +23,8 @@ export default function Auth() {
   const [classCode, setClassCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const normalizeClassCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+
   // If already logged in, redirect
   useEffect(() => {
     if (user) navigate('/auth-redirect', { replace: true });
@@ -39,16 +41,18 @@ export default function Auth() {
     e.preventDefault();
     setSubmitting(true);
 
+    const normalizedClassCode = normalizeClassCode(classCode.trim());
+
     if (isSignUp) {
       // Validate class code first
-      if (!classCode.trim()) {
+      if (!normalizedClassCode) {
         toast({ title: 'Class code required', description: 'Please enter the 4-digit class code from your professor.', variant: 'destructive' });
         setSubmitting(false);
         return;
       }
 
       const { data: classRows, error: classError } = await supabase
-        .rpc('lookup_class_by_code', { _class_code: classCode.trim() });
+        .rpc('lookup_class_by_code', { _class_code: normalizedClassCode });
       const classData = classRows?.[0] ?? null;
 
       if (classError || !classData) {
@@ -70,10 +74,10 @@ export default function Auth() {
       const { error } = await signIn(email, password);
       if (error) {
         toast({ title: 'Sign in failed', description: error, variant: 'destructive' });
-      } else if (classCode.trim()) {
+      } else if (normalizedClassCode) {
         // Try to enroll in the class after login
         const { data: classRows } = await supabase
-          .rpc('lookup_class_by_code', { _class_code: classCode.trim() });
+          .rpc('lookup_class_by_code', { _class_code: normalizedClassCode });
         const classData = classRows?.[0] ?? null;
 
         if (classData) {
@@ -174,7 +178,7 @@ export default function Auth() {
                   <Input
                     id="s-code"
                     value={classCode}
-                    onChange={(e) => setClassCode(e.target.value)}
+                    onChange={(e) => setClassCode(normalizeClassCode(e.target.value))}
                     placeholder="e.g. 4821"
                     maxLength={4}
                     className="text-center text-lg tracking-widest font-mono"
