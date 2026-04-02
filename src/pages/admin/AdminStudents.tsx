@@ -318,6 +318,26 @@ export default function AdminStudents() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete unenrolled student confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={o => { if (!o) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Permanently delete student
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete <strong>{deleteTarget?.email}</strong> and all associated data (sessions, submissions, events). This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" className="flex-1" onClick={handleDeleteStudent} disabled={deleting}>
+              {deleting ? 'Deleting…' : 'Delete permanently'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
