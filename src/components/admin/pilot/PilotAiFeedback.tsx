@@ -40,7 +40,7 @@ const QUAD_COLORS: Record<string, string> = {
 export default function PilotAiFeedback({ classId }: Props) {
   const [rows, setRows] = useState<AiRow[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [subs, setSubs] = useState<SubRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
