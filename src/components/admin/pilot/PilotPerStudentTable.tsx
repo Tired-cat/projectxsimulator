@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TableSkeleton } from './PilotSkeletons';
 import StudentDetailPanel from './StudentDetailPanel';
 
 interface Props {
