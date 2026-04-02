@@ -116,7 +116,12 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
 
   const handleSubmitFinal = useCallback(async () => {
     setSubmitting(true);
-    await onSubmitFinal();
+    try {
+      await onSubmitFinal();
+    } catch (err) {
+      console.error('Submit failed:', err);
+      setSubmitting(false);
+    }
   }, [onSubmitFinal]);
 
   const boardBlocks = [
