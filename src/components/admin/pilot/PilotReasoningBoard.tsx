@@ -150,6 +150,9 @@ function MetricCard({ label, value, icon }: { label: string; value: string | num
 export default function PilotReasoningBoard({ classId }: Props) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
+  const [draggedItems, setDraggedItems] = useState<DraggedItem[]>([]);
+  const [contextPairs, setContextPairs] = useState<ContextPair[]>([]);
+  const [totalSessions, setTotalSessions] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -157,13 +160,18 @@ export default function PilotReasoningBoard({ classId }: Props) {
     (async () => {
       setLoading(true);
       const sids = await getSessionIdsForClass(classId);
-      const [subs, resets] = await Promise.all([
+      const [subs, resets, dragged, pairs] = await Promise.all([
         fetchSubmissions(sids),
         fetchResetCounts(sids),
+        fetchDraggedItems(sids),
+        fetchContextPairs(sids),
       ]);
       if (!cancelled) {
         setSubmissions(subs);
         setResetCounts(resets);
+        setDraggedItems(dragged);
+        setContextPairs(pairs);
+        setTotalSessions(sids.length);
         setLoading(false);
       }
     })();
