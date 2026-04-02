@@ -29,7 +29,7 @@ import { ReasoningNarrative } from './ReasoningNarrative';
 
 
 export function ReasoningBoard() {
-  const { board, removeChip } = useReasoningBoard();
+  const { board, removeChip, clearBoard } = useReasoningBoard();
   const [activeDrag, setActiveDrag] = useState<EvidenceDragData | null>(null);
 
   const totalChips = Object.values(board).reduce((s, arr) => s + arr.length, 0);
