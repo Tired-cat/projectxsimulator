@@ -413,6 +413,93 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── funnel flags ─────────────────────────── */}
+      <FunnelFlags steps={funnelSteps} />
     </div>
+  );
+}
+
+/* ── Funnel Flags component ──────────────────────── */
+interface FlagDef {
+  fromLabel: string;
+  toLabel: string;
+  threshold: number; // fraction, e.g. 0.10 = 10%
+  message: (dropped: number, dropPct: number) => string;
+}
+
+const FLAG_DEFS: FlagDef[] = [
+  {
+    fromLabel: 'Enrolled',
+    toLabel: 'Session started',
+    threshold: 0.10,
+    message: (d) =>
+      `${d} student${d !== 1 ? 's' : ''} enrolled but never opened the simulation. Check that the simulation URL was shared correctly and students can log in.`,
+  },
+  {
+    fromLabel: 'Session started',
+    toLabel: 'Visited My Decisions',
+    threshold: 0.10,
+    message: (d) =>
+      `${d} student${d !== 1 ? 's' : ''} opened the simulation but never left the Home page. Students may not know where to start — consider improving Home page guidance.`,
+  },
+  {
+    fromLabel: 'Visited My Decisions',
+    toLabel: 'Visited Reasoning Board',
+    threshold: 0.15,
+    message: (d) =>
+      `${d} student${d !== 1 ? 's' : ''} used My Decisions but never reached the Reasoning Board. The Reasoning Board tab may not be discoverable enough.`,
+  },
+  {
+    fromLabel: 'Visited Reasoning Board',
+    toLabel: 'Placed ≥1 card',
+    threshold: 0.10,
+    message: (d) =>
+      `${d} student${d !== 1 ? 's' : ''} reached the Reasoning Board but never placed a card. The Reason mode button may not be understood.`,
+  },
+  {
+    fromLabel: 'Placed ≥1 card',
+    toLabel: 'Used Contextualise',
+    threshold: 0.35,
+    message: (_d, pct) =>
+      `${pct}% of students who placed evidence never used Contextualise. The pairing mechanic may need more prominence or explanation.`,
+  },
+];
+
+function FunnelFlags({ steps }: { steps: FunnelStep[] }) {
+  const stepMap = new Map(steps.map((s) => [s.label, s.count]));
+
+  const flags: string[] = [];
+  for (const def of FLAG_DEFS) {
+    const from = stepMap.get(def.fromLabel);
+    const to = stepMap.get(def.toLabel);
+    if (from === undefined || to === undefined || from === 0) continue;
+    const dropped = from - to;
+    const dropPct = dropped / from;
+    if (dropPct > def.threshold) {
+      flags.push(def.message(dropped, Math.round(dropPct * 100)));
+    }
+  }
+
+  return (
+    <Card className="border border-border">
+      <CardContent className="py-5 px-5 space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Funnel flags</h3>
+        {flags.length === 0 ? (
+          <div className="rounded-md border-l-4 border-green-500 bg-green-500/5 px-4 py-3">
+            <p className="text-sm text-foreground">No critical drop-offs detected.</p>
+          </div>
+        ) : (
+          flags.map((msg, i) => (
+            <div
+              key={i}
+              className="rounded-md border-l-4 border-amber-500 bg-amber-500/5 px-4 py-3"
+            >
+              <p className="text-sm text-foreground">{msg}</p>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }
