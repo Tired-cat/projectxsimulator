@@ -28,6 +28,7 @@ import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { FeedbackPage } from '@/components/simulation/FeedbackPage';
+import { buildFullReasoningStory } from '@/components/reasoning/ReasoningNarrative';
 import {
   Accordion,
   AccordionContent,
@@ -280,17 +281,9 @@ function SimulationContent() {
     setSubmitted(isCompleted);
   }, [isCompleted]);
 
-  // Compute generated story text from board for submission
+  // Compute generated story text — use the same rich narrative shown in "My Full Reasoning Story"
   const generatedStory = useMemo(() => {
-    const quadrants: (keyof ReasoningBoardState)[] = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
-    const parts: string[] = [];
-    for (const q of quadrants) {
-      const chips = board[q];
-      if (chips.length === 0) continue;
-      const labels = chips.map((c: any) => `${c.label}: ${c.value}`).join('; ');
-      parts.push(`[${q}] ${labels}`);
-    }
-    return parts.join(' | ');
+    return buildFullReasoningStory(board);
   }, [board]);
 
   const { submit } = useSubmission({
