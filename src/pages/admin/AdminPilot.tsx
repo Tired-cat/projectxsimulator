@@ -6,6 +6,7 @@ import PilotReasoningBoard from '@/components/admin/pilot/PilotReasoningBoard';
 import PilotAllocationDecisions from '@/components/admin/pilot/PilotAllocationDecisions';
 import PilotFeatureUsage from '@/components/admin/pilot/PilotFeatureUsage';
 import PilotAiFeedback from '@/components/admin/pilot/PilotAiFeedback';
+import PilotStruggleSignals from '@/components/admin/pilot/PilotStruggleSignals';
 import {
   Select,
   SelectContent,
