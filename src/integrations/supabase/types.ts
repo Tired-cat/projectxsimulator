@@ -759,6 +759,13 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      lookup_class_by_code: {
+        Args: { _class_code: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
     }
     Enums: {
       app_role: "student" | "professor"

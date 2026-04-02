@@ -47,11 +47,9 @@ export default function Auth() {
         return;
       }
 
-      const { data: classData, error: classError } = await supabase
-        .from('classes')
-        .select('id, name')
-        .eq('class_code', classCode.trim())
-        .maybeSingle();
+      const { data: classRows, error: classError } = await supabase
+        .rpc('lookup_class_by_code', { _class_code: classCode.trim() });
+      const classData = classRows?.[0] ?? null;
 
       if (classError || !classData) {
         toast({ title: 'Invalid class code', description: 'No class found with that code. Please check with your professor.', variant: 'destructive' });
@@ -74,11 +72,9 @@ export default function Auth() {
         toast({ title: 'Sign in failed', description: error, variant: 'destructive' });
       } else if (classCode.trim()) {
         // Try to enroll in the class after login
-        const { data: classData } = await supabase
-          .from('classes')
-          .select('id, name')
-          .eq('class_code', classCode.trim())
-          .maybeSingle();
+        const { data: classRows } = await supabase
+          .rpc('lookup_class_by_code', { _class_code: classCode.trim() });
+        const classData = classRows?.[0] ?? null;
 
         if (classData) {
           const { data: { user } } = await supabase.auth.getUser();
