@@ -90,14 +90,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchRole]);
 
   const signUp = useCallback(async (email: string, password: string, role: 'student' | 'professor', displayName?: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { role, display_name: displayName || email.split('@')[0] },
       },
     });
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+    // Supabase returns a fake user with no identities for repeated signups
+    if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+      return { error: 'An account with this email already exists. Please sign in instead.' };
+    }
+    return { error: null };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
