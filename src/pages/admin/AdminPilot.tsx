@@ -7,6 +7,7 @@ import PilotAllocationDecisions from '@/components/admin/pilot/PilotAllocationDe
 import PilotFeatureUsage from '@/components/admin/pilot/PilotFeatureUsage';
 import PilotAiFeedback from '@/components/admin/pilot/PilotAiFeedback';
 import PilotStruggleSignals from '@/components/admin/pilot/PilotStruggleSignals';
+import PilotPerStudentTable from '@/components/admin/pilot/PilotPerStudentTable';
 import {
   Select,
   SelectContent,
