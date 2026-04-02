@@ -5,9 +5,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface Props { classId: string | null; }
 
@@ -36,6 +36,7 @@ async function chunked<T>(
 interface SessionRow {
   id: string;
   tutorial_completed: boolean;
+  tutorial_opened: boolean;
 }
 
 interface SubRow {
@@ -65,6 +66,101 @@ function verdict(delta: number): { label: string; cls: string } {
   return { label: 'Investigate', cls: 'bg-muted text-muted-foreground' };
 }
 
+/* ── Comparison Charts ─────────────────────────── */
+function ComparisonCharts({ sessions, subs, subBySession }: {
+  sessions: SessionRow[];
+  subs: SubRow[];
+  subBySession: Map<string, SubRow>;
+}) {
+  const tutorialData = useMemo(() => {
+    const groups = { Completed: { correct: 0, total: 0 }, Abandoned: { correct: 0, total: 0 }, Skipped: { correct: 0, total: 0 } };
+    sessions.forEach((s) => {
+      const sub = subBySession.get(s.id);
+      if (!sub) return;
+      const bucket: keyof typeof groups = s.tutorial_completed ? 'Completed' : s.tutorial_opened ? 'Abandoned' : 'Skipped';
+      groups[bucket].total++;
+      if (isCorrect(sub)) groups[bucket].correct++;
+    });
+    return [
+      { status: 'Completed', rate: groups.Completed.total > 0 ? (groups.Completed.correct / groups.Completed.total) * 100 : 0, fill: '#4A7C59' },
+      { status: 'Abandoned', rate: groups.Abandoned.total > 0 ? (groups.Abandoned.correct / groups.Abandoned.total) * 100 : 0, fill: '#D4A017' },
+      { status: 'Skipped', rate: groups.Skipped.total > 0 ? (groups.Skipped.correct / groups.Skipped.total) * 100 : 0, fill: '#C4622D' },
+    ];
+  }, [sessions, subBySession]);
+
+  const contextData = useMemo(() => {
+    let usedCorrect = 0, usedTotal = 0, notCorrect = 0, notTotal = 0;
+    subs.forEach((s) => {
+      if (s.contextualise_pairs_count > 0) { usedTotal++; if (isCorrect(s)) usedCorrect++; }
+      else { notTotal++; if (isCorrect(s)) notCorrect++; }
+    });
+    const usedRate = usedTotal > 0 ? (usedCorrect / usedTotal) * 100 : 0;
+    const notRate = notTotal > 0 ? (notCorrect / notTotal) * 100 : 0;
+    return { bars: [{ label: 'Used Contextualise', rate: usedRate, fill: '#4A7C59' }, { label: 'Did not use', rate: notRate, fill: '#C4622D' }], gap: usedRate - notRate };
+  }, [subs]);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Correct decision rate by tutorial status</h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={tutorialData} barCategoryGap="30%">
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis dataKey="status" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} width={40} />
+              <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
+              <Bar dataKey="rate" name="Correct rate" radius={[3, 3, 0, 0]}>
+                {tutorialData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex items-center gap-4 mt-3 justify-center">
+            {[{ label: 'Completed', color: '#4A7C59' }, { label: 'Abandoned', color: '#D4A017' }, { label: 'Skipped', color: '#C4622D' }].map((l) => (
+              <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: l.color }} />
+                {l.label}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Correct decision rate by Contextualise usage</h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={contextData.bars} barCategoryGap="40%">
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} width={40} />
+              <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
+              <Bar dataKey="rate" name="Correct rate" radius={[3, 3, 0, 0]}>
+                {contextData.bars.map((d, i) => <Cell key={i} fill={d.fill} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-xs text-muted-foreground mt-3">
+            Students who used Contextualise were <span className="font-semibold text-foreground">{Math.abs(contextData.gap).toFixed(0)}pp</span> {contextData.gap >= 0 ? 'more' : 'less'} likely to make the correct decision.
+          </p>
+          {contextData.gap >= 20 && (
+            <div className="flex items-start gap-2 mt-2 p-3 rounded-md bg-[#4A7C59]/10 border border-[#4A7C59]/20">
+              <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#4A7C59' }} />
+              <p className="text-xs" style={{ color: '#4A7C59' }}>Contextualise is having a meaningful impact. Consider making it more prominent.</p>
+            </div>
+          )}
+          {contextData.gap < 10 && (
+            <div className="flex items-start gap-2 mt-2 p-3 rounded-md bg-amber-50 border border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800">Contextualise is not significantly changing outcomes. Investigate whether students understand how to use it.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function PilotFeatureUsage({ classId }: Props) {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -80,7 +176,7 @@ export default function PilotFeatureUsage({ classId }: Props) {
       const ids = await getSessionIds(classId);
 
       const [sessData, subData, aiData, boardData, tutData] = await Promise.all([
-        chunked<SessionRow>((c) => supabase.from('sessions').select('id, tutorial_completed').in('id', c), ids),
+        chunked<SessionRow>((c) => supabase.from('sessions').select('id, tutorial_completed, tutorial_opened').in('id', c), ids),
         chunked<SubRow>((c) => supabase.from('submissions').select('session_id, final_tiktok_spend, final_newspaper_spend, contextualise_pairs_count, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count').in('session_id', c), ids),
         chunked<AiFeedbackRow>((c) => supabase.from('ai_feedback_events').select('session_id').in('session_id', c), ids),
         chunked<BoardEventRow>((c) => supabase.from('board_events').select('session_id, evidence_type').in('session_id', c), ids),
@@ -290,6 +386,8 @@ export default function PilotFeatureUsage({ classId }: Props) {
           )}
         </CardContent>
       </Card>
+      {/* ── COMPARISON CHARTS ────────────────────── */}
+      <ComparisonCharts sessions={sessions} subs={subs} subBySession={subBySession} />
     </div>
   );
 }
