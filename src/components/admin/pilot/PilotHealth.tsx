@@ -240,7 +240,7 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
         { label: 'Session started', count: allSessions.length, color: '#6B4F8A' },
         { label: 'Visited My Decisions', count: visitedDecisions, color: '#6B4F8A' },
         { label: 'Made allocation change', count: madeAllocation, color: '#6B4F8A' },
-        { label: 'Visited Reasoning Board', count: visitedReasoning, color: '#6B4F8A' },
+        { label: 'Visited Reasoning Board', count: visitedReasoningCount, color: '#6B4F8A' },
         { label: 'Placed ≥1 card', count: placedCard, color: '#D4A053' },
         { label: 'Used Contextualise', count: usedContextualise, color: '#D4A053' },
         { label: 'Requested AI feedback', count: requestedAI, color: '#4CAF50' },
