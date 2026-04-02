@@ -6,6 +6,7 @@ import PilotReasoningBoard from '@/components/admin/pilot/PilotReasoningBoard';
 import PilotAllocationDecisions from '@/components/admin/pilot/PilotAllocationDecisions';
 import PilotFeatureUsage from '@/components/admin/pilot/PilotFeatureUsage';
 import PilotAiFeedback from '@/components/admin/pilot/PilotAiFeedback';
+import PilotStruggleSignals from '@/components/admin/pilot/PilotStruggleSignals';
 import {
   Select,
   SelectContent,
@@ -147,6 +148,8 @@ export default function AdminPilot() {
           <PilotFeatureUsage classId={classId} />
         ) : activeTab === 'AI feedback' ? (
           <PilotAiFeedback classId={classId} />
+        ) : activeTab === 'Struggle signals' ? (
+          <PilotStruggleSignals classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
