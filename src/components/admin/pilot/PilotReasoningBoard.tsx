@@ -76,6 +76,61 @@ async function fetchResetCounts(sessionIds: string[]): Promise<Record<string, nu
   return counts;
 }
 
+interface DraggedItem { evidence_id: string; session_count: number; }
+interface ContextPair { evidence_id: string; paired_with: string; pair_count: number; }
+
+async function fetchDraggedItems(sessionIds: string[]): Promise<DraggedItem[]> {
+  if (sessionIds.length === 0) return [];
+  const map: Record<string, Set<string>> = {};
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('board_events')
+      .select('evidence_id, session_id')
+      .eq('event_type', 'drag_to_board')
+      .in('session_id', chunk);
+    if (data) {
+      for (const r of data) {
+        if (!r.evidence_id) continue;
+        if (!map[r.evidence_id]) map[r.evidence_id] = new Set();
+        map[r.evidence_id].add(r.session_id);
+      }
+    }
+  }
+  return Object.entries(map)
+    .map(([evidence_id, sessions]) => ({ evidence_id, session_count: sessions.size }))
+    .sort((a, b) => b.session_count - a.session_count);
+}
+
+async function fetchContextPairs(sessionIds: string[]): Promise<ContextPair[]> {
+  if (sessionIds.length === 0) return [];
+  const map: Record<string, number> = {};
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('board_events')
+      .select('evidence_id, paired_with')
+      .eq('event_type', 'contextualise')
+      .in('session_id', chunk);
+    if (data) {
+      for (const r of data) {
+        if (!r.evidence_id || !r.paired_with) continue;
+        const key = `${r.evidence_id}|||${r.paired_with}`;
+        map[key] = (map[key] || 0) + 1;
+      }
+    }
+  }
+  return Object.entries(map)
+    .map(([key, pair_count]) => {
+      const [evidence_id, paired_with] = key.split('|||');
+      return { evidence_id, paired_with, pair_count };
+    })
+    .sort((a, b) => b.pair_count - a.pair_count)
+    .slice(0, 10);
+}
+
 /* ── metric card ────────────────────────────────── */
 function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
   return (
