@@ -143,7 +143,7 @@ async function fetchFirstDrags(sessionIds: string[]): Promise<FirstDragEvent[]> 
     const chunk = sessionIds.slice(i, i + chunkSize);
     const { data } = await supabase
       .from('board_events')
-      .select('quadrant, evidence_id')
+      .select('quadrant, evidence_id, evidence_type')
       .eq('event_type', 'drag_to_board')
       .eq('sequence_number', 1)
       .in('session_id', chunk);
