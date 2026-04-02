@@ -20,7 +20,7 @@ async function getSessionIds(classId: string | null): Promise<string[]> {
 }
 
 async function chunked<T>(
-  fn: (chunk: string[]) => Promise<{ data: T[] | null }>,
+  fn: (chunk: string[]) => PromiseLike<{ data: T[] | null }>,
   ids: string[],
 ): Promise<T[]> {
   if (!ids.length) return [];
