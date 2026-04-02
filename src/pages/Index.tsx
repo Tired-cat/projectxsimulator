@@ -788,6 +788,17 @@ function ClassCodeGate({ children }: { children: ReactNode }) {
             <Button onClick={handleJoin} disabled={joining || code.length !== 4} className="w-full">
               {joining ? 'Joining…' : 'Join class'}
             </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground text-sm"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/auth';
+              }}
+            >
+              <LogOut className="h-3.5 w-3.5 mr-1.5" />
+              Sign out
+            </Button>
           </CardContent>
         </Card>
       </div>
