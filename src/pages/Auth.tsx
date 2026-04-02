@@ -47,11 +47,9 @@ export default function Auth() {
         return;
       }
 
-      const { data: classData, error: classError } = await supabase
-        .from('classes')
-        .select('id, name')
-        .eq('class_code', classCode.trim())
-        .maybeSingle();
+      const { data: classRows, error: classError } = await supabase
+        .rpc('lookup_class_by_code', { _class_code: classCode.trim() });
+      const classData = classRows?.[0] ?? null;
 
       if (classError || !classData) {
         toast({ title: 'Invalid class code', description: 'No class found with that code. Please check with your professor.', variant: 'destructive' });
