@@ -33,6 +33,8 @@ export default function AdminStudents() {
   // Remove modal
   const [removeTarget, setRemoveTarget] = useState<{ enrollment: EnrollmentRow; email: string; className: string } | null>(null);
   const [removing, setRemoving] = useState(false);
+  // Assign class
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
