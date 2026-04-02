@@ -1,4 +1,6 @@
 import { useCallback, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
 import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent, DragOverlay } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
