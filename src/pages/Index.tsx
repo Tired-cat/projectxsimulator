@@ -702,6 +702,100 @@ function SimulationContent() {
   );
 }
 
+function ClassCodeGate({ children }: { children: ReactNode }) {
+  const { user, role } = useAuth();
+  const [checking, setChecking] = useState(true);
+  const [enrolled, setEnrolled] = useState(false);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+
+  useEffect(() => {
+    if (!user || role !== 'student') {
+      setEnrolled(true);
+      setChecking(false);
+      return;
+    }
+    supabase
+      .from('student_enrollments')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .then(({ data }) => {
+        setEnrolled((data?.length ?? 0) > 0);
+        setChecking(false);
+      });
+  }, [user, role]);
+
+  const handleJoin = async () => {
+    if (!user || code.length !== 4) return;
+    setError(null);
+    setJoining(true);
+
+    const { data: classData } = await supabase
+      .from('classes')
+      .select('id')
+      .ilike('class_code', code)
+      .maybeSingle();
+
+    if (!classData) {
+      setError('Class code not found. Check with your professor.');
+      setJoining(false);
+      return;
+    }
+
+    const { error: insertError } = await supabase
+      .from('student_enrollments')
+      .insert({ user_id: user.id, class_id: classData.id });
+
+    setJoining(false);
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+
+    toast({ title: 'Enrolled!', description: 'You have been added to your class.' });
+    setEnrolled(true);
+  };
+
+  if (checking) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!enrolled) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-sm mx-4">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Enter your class code</CardTitle>
+            <CardDescription>Your professor will have shared a 4-character code with you.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              value={code}
+              onChange={e => { setCode(e.target.value.toUpperCase().slice(0, 4)); setError(null); }}
+              placeholder="e.g. AB3K"
+              className="text-center font-mono text-2xl tracking-widest"
+              maxLength={4}
+              autoFocus
+            />
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
+            <Button onClick={handleJoin} disabled={joining || code.length !== 4} className="w-full">
+              {joining ? 'Joining…' : 'Join class'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 const Index = () => {
   const { user, loading, role } = useAuth();
 
@@ -735,13 +829,15 @@ const Index = () => {
   }
 
   return (
-    <TabProvider>
-      <ReasoningBoardProvider>
-        <TutorialProvider>
-          <SimulationContent />
-        </TutorialProvider>
-      </ReasoningBoardProvider>
-    </TabProvider>
+    <ClassCodeGate>
+      <TabProvider>
+        <ReasoningBoardProvider>
+          <TutorialProvider>
+            <SimulationContent />
+          </TutorialProvider>
+        </ReasoningBoardProvider>
+      </TabProvider>
+    </ClassCodeGate>
   );
 };
 
