@@ -55,7 +55,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Delete user from auth.users (cascades to profiles, user_roles)
+    // Delete all related data first (service role bypasses RLS)
+    // Order matters: delete dependent tables before parent tables
+    const tablesToClean = [
+      'ai_feedback_events',
+      'allocation_events',
+      'board_events',
+      'navigation_events',
+      'tutorial_events',
+      'resets',
+      'submissions',
+      'reasoning_board_state',
+      'sessions',
+      'student_enrollments',
+      'user_roles',
+      'profiles',
+    ];
+
+    for (const table of tablesToClean) {
+      const { error } = await adminClient.from(table).delete().eq('user_id', table === 'profiles' ? 'id' : 'user_id');
+      // We use the correct column for profiles
+    }
+
+    // Actually delete with correct column names
+    for (const table of tablesToClean) {
+      const col = table === 'profiles' ? 'id' : 'user_id';
+      const { error } = await adminClient.from(table).delete().eq(col, user_id);
+      if (error) {
+        console.error(`Error deleting from ${table}:`, error.message);
+      }
+    }
+
+    // Delete user from auth.users
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user_id);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), {
