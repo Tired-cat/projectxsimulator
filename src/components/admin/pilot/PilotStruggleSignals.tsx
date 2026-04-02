@@ -277,17 +277,21 @@ const TAB_ORDER = ['home', 'my_decisions', 'reasoning_board'] as const;
 
 function TabTimeChart({ navRows }: { navRows: NavRow[] }) {
   const data = useMemo(() => {
-    const sums: Record<string, { total: number; count: number }> = {};
+    // Normalize tab names and aggregate by canonical label
+    const sums: Record<string, { total: number; count: number; fill: string }> = {};
     navRows.forEach((r) => {
-      if (!TAB_MAP[r.tab] || r.time_spent_seconds == null) return;
-      if (!sums[r.tab]) sums[r.tab] = { total: 0, count: 0 };
-      sums[r.tab].total += r.time_spent_seconds;
-      sums[r.tab].count++;
+      const mapped = TAB_MAP[r.tab];
+      if (!mapped || r.time_spent_seconds == null) return;
+      const key = mapped.label;
+      if (!sums[key]) sums[key] = { total: 0, count: 0, fill: mapped.fill };
+      sums[key].total += r.time_spent_seconds;
+      sums[key].count++;
     });
-    return ['home', 'my_decisions', 'reasoning_board'].map((t) => {
-      const s = sums[t];
+    return ['Home', 'My Decisions', 'Reasoning Board'].map((label) => {
+      const s = sums[label];
       const avgMin = s ? +(s.total / s.count / 60).toFixed(1) : 0;
-      return { tab: TAB_MAP[t].label, avgMin, fill: TAB_MAP[t].fill };
+      const fill = s?.fill ?? '#888780';
+      return { tab: label, avgMin, fill };
     });
   }, [navRows]);
 
