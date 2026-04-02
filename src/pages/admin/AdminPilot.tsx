@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAdminClassFilter } from '@/contexts/AdminClassFilterContext';
 import { supabase } from '@/integrations/supabase/client';
 import PilotHealth from '@/components/admin/pilot/PilotHealth';
+import PilotReasoningBoard from '@/components/admin/pilot/PilotReasoningBoard';
 import {
   Select,
   SelectContent,
@@ -135,6 +136,8 @@ export default function AdminPilot() {
       <div className="p-6">
         {activeTab === 'Pilot health' ? (
           <PilotHealth classId={classId} />
+        ) : activeTab === 'Reasoning board' ? (
+          <PilotReasoningBoard classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}

@@ -1,0 +1,260 @@
+import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
+import { LayoutGrid, Grid2x2, Link2, RotateCcw, AlertTriangle } from 'lucide-react';
+
+/* ── types ──────────────────────────────────────── */
+interface Props {
+  classId: string | null;
+}
+
+interface SubmissionRow {
+  session_id: string;
+  descriptive_card_count: number;
+  diagnostic_card_count: number;
+  prescriptive_card_count: number;
+  predictive_card_count: number;
+  contextualise_pairs_count: number;
+}
+
+const QUADRANTS = [
+  { key: 'descriptive_card_count' as const, label: 'Descriptive', color: '#D4A017' },
+  { key: 'diagnostic_card_count' as const, label: 'Diagnostic', color: '#C4622D' },
+  { key: 'prescriptive_card_count' as const, label: 'Prescriptive', color: '#4A7C59' },
+  { key: 'predictive_card_count' as const, label: 'Predictive', color: '#6B4F8A' },
+] as const;
+
+type QuadKey = typeof QUADRANTS[number]['key'];
+
+/* ── helpers ────────────────────────────────────── */
+async function getSessionIdsForClass(classId: string | null): Promise<string[]> {
+  let query = supabase.from('sessions').select('id');
+  if (classId) query = query.eq('class_id', classId);
+  const { data } = await query;
+  return (data ?? []).map((s) => s.id);
+}
+
+async function fetchSubmissions(sessionIds: string[]): Promise<SubmissionRow[]> {
+  if (sessionIds.length === 0) return [];
+  const rows: SubmissionRow[] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('submissions')
+      .select('session_id, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count, contextualise_pairs_count')
+      .in('session_id', chunk);
+    if (data) rows.push(...(data as SubmissionRow[]));
+  }
+  return rows;
+}
+
+async function fetchResetCounts(sessionIds: string[]): Promise<Record<string, number>> {
+  if (sessionIds.length === 0) return {};
+  const counts: Record<string, number> = {};
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('resets')
+      .select('session_id')
+      .eq('reset_type', 'board_reset')
+      .in('session_id', chunk);
+    if (data) {
+      for (const r of data) {
+        counts[r.session_id] = (counts[r.session_id] || 0) + 1;
+      }
+    }
+  }
+  return counts;
+}
+
+/* ── metric card ────────────────────────────────── */
+function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
+  return (
+    <Card className="bg-background border-border shadow-sm">
+      <CardContent className="p-4 flex items-start gap-3">
+        <div className="p-2 rounded-md bg-muted/50 text-muted-foreground">{icon}</div>
+        <div>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-2xl font-bold font-[var(--font-heading)] text-foreground leading-tight mt-0.5">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── main component ─────────────────────────────── */
+export default function PilotReasoningBoard({ classId }: Props) {
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const sids = await getSessionIdsForClass(classId);
+      const [subs, resets] = await Promise.all([
+        fetchSubmissions(sids),
+        fetchResetCounts(sids),
+      ]);
+      if (!cancelled) {
+        setSubmissions(subs);
+        setResetCounts(resets);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [classId]);
+
+  /* ── derived metrics ───────────────────────────── */
+  const n = submissions.length;
+
+  const avgCardsPlaced = useMemo(() => {
+    if (n === 0) return '0.0';
+    const total = submissions.reduce((s, r) =>
+      s + r.descriptive_card_count + r.diagnostic_card_count + r.prescriptive_card_count + r.predictive_card_count, 0);
+    return (total / n).toFixed(1);
+  }, [submissions, n]);
+
+  const allFourPct = useMemo(() => {
+    if (n === 0) return '0%';
+    const filled = submissions.filter(r =>
+      r.descriptive_card_count > 0 && r.diagnostic_card_count > 0 &&
+      r.prescriptive_card_count > 0 && r.predictive_card_count > 0).length;
+    return `${Math.round((filled / n) * 100)}%`;
+  }, [submissions, n]);
+
+  const usedContextPct = useMemo(() => {
+    if (n === 0) return '0%';
+    const used = submissions.filter(r => r.contextualise_pairs_count > 0).length;
+    return `${Math.round((used / n) * 100)}%`;
+  }, [submissions, n]);
+
+  const avgBoardResets = useMemo(() => {
+    const sessionIds = [...new Set(submissions.map(s => s.session_id))];
+    if (sessionIds.length === 0) return '0.0';
+    const total = sessionIds.reduce((s, id) => s + (resetCounts[id] || 0), 0);
+    return (total / sessionIds.length).toFixed(1);
+  }, [submissions, resetCounts]);
+
+  /* ── quadrant stats ────────────────────────────── */
+  const quadrantStats = useMemo(() => {
+    return QUADRANTS.map(q => {
+      const avg = n === 0 ? 0 : submissions.reduce((s, r) => s + r[q.key], 0) / n;
+      const filledCount = n === 0 ? 0 : submissions.filter(r => r[q.key] > 0).length;
+      const filledPct = n === 0 ? 0 : Math.round((filledCount / n) * 100);
+      return { ...q, avg: avg.toFixed(1), filledPct };
+    });
+  }, [submissions, n]);
+
+  /* ── distribution chart data ───────────────────── */
+  const distData = useMemo(() => {
+    const buckets = ['0 cards', '1 card', '2 cards', '3+ cards'];
+    return buckets.map((bucket, bi) => {
+      const row: Record<string, string | number> = { bucket };
+      for (const q of QUADRANTS) {
+        const count = submissions.filter(r => {
+          const v = r[q.key];
+          if (bi === 0) return v === 0;
+          if (bi === 1) return v === 1;
+          if (bi === 2) return v === 2;
+          return v >= 3;
+        }).length;
+        row[q.label] = count;
+      }
+      return row;
+    });
+  }, [submissions]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-sm text-muted-foreground animate-pulse">Loading reasoning board analytics…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* ── top row metric cards ───────────────────── */}
+      <div className="grid grid-cols-4 gap-4">
+        <MetricCard label="Avg cards placed" value={avgCardsPlaced} icon={<LayoutGrid className="h-4 w-4" />} />
+        <MetricCard label="All 4 quadrants filled" value={allFourPct} icon={<Grid2x2 className="h-4 w-4" />} />
+        <MetricCard label="Used Contextualise" value={usedContextPct} icon={<Link2 className="h-4 w-4" />} />
+        <MetricCard label="Avg board resets" value={avgBoardResets} icon={<RotateCcw className="h-4 w-4" />} />
+      </div>
+
+      {/* ── quadrant fill rate blocks ──────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Quadrant fill rate</h3>
+        <div className="grid grid-cols-4 gap-4">
+          {quadrantStats.map(q => (
+            <Card key={q.key} className="bg-background border-border shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: q.color }} />
+                  <span className="text-xs font-medium text-foreground">{q.label}</span>
+                  {q.label === 'Predictive' && q.filledPct < 60 && (
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 ml-auto" />
+                  )}
+                </div>
+                <p className="text-2xl font-bold font-[var(--font-heading)] text-foreground">{q.avg}</p>
+                <p className="text-xs text-muted-foreground">avg cards</p>
+                <p className={cn(
+                  'text-xs font-medium mt-1',
+                  q.filledPct >= 80 ? 'text-emerald-600' : q.filledPct >= 60 ? 'text-foreground' : 'text-amber-600'
+                )}>
+                  {q.filledPct}% of students filled
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* ── quadrant distribution chart ────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Quadrant distribution</h3>
+        <Card className="bg-background border-border shadow-sm">
+          <CardContent className="p-4">
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={distData} barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="bucket" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  {QUADRANTS.map(q => (
+                    <Bar key={q.label} dataKey={q.label} fill={q.color} radius={[3, 3, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* inline legend */}
+            <div className="flex items-center justify-center gap-5 mt-2">
+              {QUADRANTS.map(q => (
+                <div key={q.label} className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: q.color }} />
+                  <span className="text-xs text-muted-foreground">{q.label}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
