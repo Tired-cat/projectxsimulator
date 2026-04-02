@@ -232,6 +232,7 @@ export default function AdminStudents() {
                       <TableHead>Display name</TableHead>
                       <TableHead>Assign to class</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="w-[60px]" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
