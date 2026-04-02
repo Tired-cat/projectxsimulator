@@ -87,7 +87,7 @@ export default function PilotStruggleSignals({ classId }: Props) {
       const subSessions = new Set(sub.map((r) => r.session_id));
 
       // Row 1
-      const sessRB = new Set(nav.filter((r) => r.tab === 'reasoning_board').map((r) => r.session_id));
+      const sessRB = new Set(nav.filter((r) => r.tab === 'reasoning_board' || r.tab === 'reasoning').map((r) => r.session_id));
       const pctNeverRB = ((total - sessRB.size) / total) * 100;
 
       // Row 2
