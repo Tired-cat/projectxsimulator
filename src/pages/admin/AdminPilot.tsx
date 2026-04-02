@@ -133,7 +133,11 @@ export default function AdminPilot() {
 
       {/* ── content area ─────────────────────────── */}
       <div className="p-6">
-        <TabPlaceholder tab={activeTab} />
+        {activeTab === 'Pilot health' ? (
+          <PilotHealth classId={classId} />
+        ) : (
+          <TabPlaceholder tab={activeTab} />
+        )}
       </div>
     </div>
   );
