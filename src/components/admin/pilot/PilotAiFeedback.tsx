@@ -83,6 +83,7 @@ export default function PilotAiFeedback({ classId }: Props) {
 
       if (!cancelled) {
         setRows(aiRows);
+        setSubs(subRows);
         setCompletedCount(cc ?? 0);
         setLoading(false);
       }
