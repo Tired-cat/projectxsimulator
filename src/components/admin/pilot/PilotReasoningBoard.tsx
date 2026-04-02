@@ -476,17 +476,20 @@ function FirstDragCharts({ firstDrags }: { firstDrags: FirstDragEvent[] }) {
   const framingData = useMemo(() => {
     let views = 0, revenue = 0, profit = 0, other = 0;
     for (const d of firstDrags) {
-      const eid = d.evidence_id || '';
-      if (eid.includes('_views') || eid.includes('_view')) views++;
-      else if (eid.includes('_revenue')) revenue++;
+      const eid = (d.evidence_id || '').toLowerCase();
+      const etype = (d.evidence_type || '').toLowerCase();
+      // Channel bar metrics
+      if (eid.includes('_clicks') || eid.includes('_views') || eid.includes('_view')) views++;
+      else if (eid.includes('_revenue') || etype === 'product_mix') revenue++;
       else if (eid.includes('_profit')) profit++;
+      else if (eid.includes('_budget')) other++; // budget/spend is neither views nor revenue
       else other++;
     }
     return [
       { name: 'Views first', value: views, color: '#C4622D' },
       { name: 'Revenue first', value: revenue, color: '#4A7C59' },
       { name: 'Profit first', value: profit, color: '#6B4F8A' },
-      { name: 'Other', value: other, color: '#888780' },
+      { name: 'Budget/Other', value: other, color: '#888780' },
     ].filter(d => d.value > 0);
   }, [firstDrags]);
 
