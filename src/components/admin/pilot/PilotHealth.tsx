@@ -195,15 +195,16 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
 
       /* ── 5) funnel steps ─────────────────────── */
       const distinctSessionsIn = async (
-        table: 'navigation_events' | 'allocation_events' | 'board_events' | 'ai_feedback_events',
-        filters?: { column: string; value: string }
+        table: string,
+        filterCol?: string,
+        filterVal?: string
       ): Promise<number> => {
         if (sessionIds.length === 0) return 0;
         const seen = new Set<string>();
         for (let i = 0; i < sessionIds.length; i += 100) {
           const chunk = sessionIds.slice(i, i + 100);
-          let q = supabase.from(table).select('session_id').in('session_id', chunk);
-          if (filters) q = q.eq(filters.column as any, filters.value);
+          let q = (supabase.from(table as any) as any).select('session_id').in('session_id', chunk);
+          if (filterCol && filterVal) q = q.eq(filterCol, filterVal);
           const { data } = await q;
           (data ?? []).forEach((r: any) => seen.add(r.session_id));
         }
