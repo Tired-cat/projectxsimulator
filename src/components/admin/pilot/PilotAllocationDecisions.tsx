@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { ViewSkeleton, EmptyState } from './PilotSkeletons';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -189,7 +190,11 @@ export default function PilotAllocationDecisions({ classId }: Props) {
   }, [allocEvents]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading allocation data…</div>;
+    return <ViewSkeleton metrics charts={2} />;
+  }
+
+  if (total === 0) {
+    return <EmptyState message="No data yet — this will populate once students start using the simulation." />;
   }
 
   return (

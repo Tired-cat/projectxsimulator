@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TableSkeleton } from './PilotSkeletons';
 import StudentDetailPanel from './StudentDetailPanel';
 
 interface Props {
@@ -234,7 +235,7 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
   }, [sortKey]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading student data…</div>;
+    return <TableSkeleton rows={8} cols={9} />;
   }
 
   const DECISION_COLORS: Record<string, string> = {
