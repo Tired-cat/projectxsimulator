@@ -5,6 +5,7 @@ interface ClassOption {
   id: string;
   name: string;
   class_code: string;
+  section_code: string;
 }
 
 interface AdminClassFilterValue {
