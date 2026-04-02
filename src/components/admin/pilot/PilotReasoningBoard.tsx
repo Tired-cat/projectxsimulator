@@ -3,9 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { LayoutGrid, Grid2x2, Link2, RotateCcw, AlertTriangle } from 'lucide-react';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 
 /* ── types ──────────────────────────────────────── */
 interface Props {
@@ -73,6 +76,61 @@ async function fetchResetCounts(sessionIds: string[]): Promise<Record<string, nu
   return counts;
 }
 
+interface DraggedItem { evidence_id: string; session_count: number; }
+interface ContextPair { evidence_id: string; paired_with: string; pair_count: number; }
+
+async function fetchDraggedItems(sessionIds: string[]): Promise<DraggedItem[]> {
+  if (sessionIds.length === 0) return [];
+  const map: Record<string, Set<string>> = {};
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('board_events')
+      .select('evidence_id, session_id')
+      .eq('event_type', 'drag_to_board')
+      .in('session_id', chunk);
+    if (data) {
+      for (const r of data) {
+        if (!r.evidence_id) continue;
+        if (!map[r.evidence_id]) map[r.evidence_id] = new Set();
+        map[r.evidence_id].add(r.session_id);
+      }
+    }
+  }
+  return Object.entries(map)
+    .map(([evidence_id, sessions]) => ({ evidence_id, session_count: sessions.size }))
+    .sort((a, b) => b.session_count - a.session_count);
+}
+
+async function fetchContextPairs(sessionIds: string[]): Promise<ContextPair[]> {
+  if (sessionIds.length === 0) return [];
+  const map: Record<string, number> = {};
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('board_events')
+      .select('evidence_id, paired_with')
+      .eq('event_type', 'contextualise')
+      .in('session_id', chunk);
+    if (data) {
+      for (const r of data) {
+        if (!r.evidence_id || !r.paired_with) continue;
+        const key = `${r.evidence_id}|||${r.paired_with}`;
+        map[key] = (map[key] || 0) + 1;
+      }
+    }
+  }
+  return Object.entries(map)
+    .map(([key, pair_count]) => {
+      const [evidence_id, paired_with] = key.split('|||');
+      return { evidence_id, paired_with, pair_count };
+    })
+    .sort((a, b) => b.pair_count - a.pair_count)
+    .slice(0, 10);
+}
+
 /* ── metric card ────────────────────────────────── */
 function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
   return (
@@ -92,6 +150,9 @@ function MetricCard({ label, value, icon }: { label: string; value: string | num
 export default function PilotReasoningBoard({ classId }: Props) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
+  const [draggedItems, setDraggedItems] = useState<DraggedItem[]>([]);
+  const [contextPairs, setContextPairs] = useState<ContextPair[]>([]);
+  const [totalSessions, setTotalSessions] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -99,13 +160,18 @@ export default function PilotReasoningBoard({ classId }: Props) {
     (async () => {
       setLoading(true);
       const sids = await getSessionIdsForClass(classId);
-      const [subs, resets] = await Promise.all([
+      const [subs, resets, dragged, pairs] = await Promise.all([
         fetchSubmissions(sids),
         fetchResetCounts(sids),
+        fetchDraggedItems(sids),
+        fetchContextPairs(sids),
       ]);
       if (!cancelled) {
         setSubmissions(subs);
         setResetCounts(resets);
+        setDraggedItems(dragged);
+        setContextPairs(pairs);
+        setTotalSessions(sids.length);
         setLoading(false);
       }
     })();
@@ -171,6 +237,25 @@ export default function PilotReasoningBoard({ classId }: Props) {
       return row;
     });
   }, [submissions]);
+
+  /* ── most dragged chart data ───────────────────── */
+  const topDragged = useMemo(() => {
+    return draggedItems.slice(0, 12).map(d => ({
+      evidence_id: d.evidence_id,
+      pct: totalSessions > 0 ? Math.round((d.session_count / totalSessions) * 100) : 0,
+      count: d.session_count,
+    }));
+  }, [draggedItems, totalSessions]);
+
+  /* ── rarely dragged items ──────────────────────── */
+  const rarelyDragged = useMemo(() => {
+    const allDraggedIds = new Set(draggedItems.map(d => d.evidence_id));
+    const threshold = totalSessions > 0 ? totalSessions * 0.05 : 0;
+    const rare = draggedItems.filter(d => d.session_count < threshold).map(d => d.evidence_id);
+    // We can't know ALL possible evidence_ids without a master list,
+    // so we show items that appeared but were used by < 5% of sessions
+    return rare;
+  }, [draggedItems, totalSessions]);
 
   if (loading) {
     return (
@@ -252,6 +337,86 @@ export default function PilotReasoningBoard({ classId }: Props) {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── most dragged evidence items ────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Most dragged evidence items</h3>
+        <Card className="bg-background border-border shadow-sm">
+          <CardContent className="p-4">
+            {topDragged.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No drag events recorded yet.</p>
+            ) : (
+              <div style={{ height: Math.max(topDragged.length * 40 + 80, 200) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topDragged} layout="vertical" margin={{ left: 140, right: 20, top: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} unit="%" />
+                    <YAxis type="category" dataKey="evidence_id" tick={{ fontSize: 11 }} width={130} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      formatter={(value: number) => [`${value}%`, 'Sessions']}
+                    />
+                    <Bar dataKey="pct" fill="#6B4F8A" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── rarely dragged items ───────────────────── */}
+      {rarelyDragged.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Evidence items rarely used</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Used by &lt;5% of sessions — review whether these are visible and labeled clearly.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {rarelyDragged.map(id => (
+              <span key={id} className="px-2.5 py-1 rounded-full bg-muted text-xs text-muted-foreground">
+                {id}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── contextualise pairs table ──────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Top contextualise pairs</h3>
+        <Card className="bg-background border-border shadow-sm">
+          <CardContent className="p-0">
+            {contextPairs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No contextualise events recorded yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Pair</TableHead>
+                    <TableHead className="text-xs text-right w-24">Times</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contextPairs.map((p, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs font-mono">
+                        {p.evidence_id} <span className="text-muted-foreground">↔</span> {p.paired_with}
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-medium">{p.pair_count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
