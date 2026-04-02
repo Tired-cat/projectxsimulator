@@ -443,6 +443,169 @@ export default function PilotReasoningBoard({ classId }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── first drag donut charts ────────────────── */}
+      <FirstDragCharts firstDrags={firstDrags} />
     </div>
+  );
+}
+
+/* ── First drag charts sub-component ────────────── */
+const QUAD_COLORS: Record<string, string> = {
+  descriptive: '#D4A017',
+  diagnostic: '#C4622D',
+  prescriptive: '#4A7C59',
+  predictive: '#6B4F8A',
+};
+
+function FirstDragCharts({ firstDrags }: { firstDrags: FirstDragEvent[] }) {
+  const quadrantData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const d of firstDrags) {
+      const q = (d.quadrant || 'unknown').toLowerCase();
+      counts[q] = (counts[q] || 0) + 1;
+    }
+    return Object.entries(counts).map(([name, value]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      value,
+      color: QUAD_COLORS[name] || '#888780',
+    }));
+  }, [firstDrags]);
+
+  const framingData = useMemo(() => {
+    let views = 0, revenue = 0, profit = 0, other = 0;
+    for (const d of firstDrags) {
+      const eid = d.evidence_id || '';
+      if (eid.includes('_views') || eid.includes('_view')) views++;
+      else if (eid.includes('_revenue')) revenue++;
+      else if (eid.includes('_profit')) profit++;
+      else other++;
+    }
+    return [
+      { name: 'Views first', value: views, color: '#C4622D' },
+      { name: 'Revenue first', value: revenue, color: '#4A7C59' },
+      { name: 'Profit first', value: profit, color: '#6B4F8A' },
+      { name: 'Other', value: other, color: '#888780' },
+    ].filter(d => d.value > 0);
+  }, [firstDrags]);
+
+  const total = firstDrags.length;
+  const viewsPct = total > 0
+    ? Math.round((framingData.find(d => d.name === 'Views first')?.value || 0) / total * 100)
+    : 0;
+
+  if (total === 0) return null;
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        {/* LEFT — first drag quadrant */}
+        <Card className="bg-background border-border shadow-sm">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-foreground">Where students placed their first card</h4>
+            <p className="text-xs text-muted-foreground mb-4">
+              Descriptive should dominate — other quadrants first = student skipped the observation step
+            </p>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={quadrantData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {quadrantData.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 mt-2">
+              {quadrantData.map(d => (
+                <div key={d.name} className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
+                  <span className="text-xs text-muted-foreground">{d.name} ({d.value})</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* RIGHT — framing trap */}
+        <Card className="bg-background border-border shadow-sm">
+          <CardContent className="p-4">
+            <h4 className="text-sm font-semibold text-foreground">First evidence type dragged</h4>
+            <p className="text-xs text-muted-foreground mb-4">
+              If views-first &gt;30% — students are anchoring on the wrong metric. Default tab framing needs changing.
+            </p>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={framingData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {framingData.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 mt-2">
+              {framingData.map(d => (
+                <div key={d.name} className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
+                  <span className="text-xs text-muted-foreground">{d.name} ({d.value})</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* views-first flag */}
+      {viewsPct > 30 && (
+        <Card className="border-l-4 border-l-red-500 bg-red-50/50 shadow-sm">
+          <CardContent className="p-4 flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Framing trap detected</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {viewsPct}% of students dragged a views metric first. Students are anchoring on impressions instead of revenue or profit — consider changing the default tab or adding guidance.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </>
   );
 }
