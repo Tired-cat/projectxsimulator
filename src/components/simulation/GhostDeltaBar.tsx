@@ -61,7 +61,7 @@ export function GhostDeltaBar({
       label: `${channel.name} ${metricLabel}`,
       value: displayValue,
       context: `${metricLabel} • Channel Performance`,
-      sourceId: `${channelId}-bar-${viewMode}`,
+      sourceId: `${channelId}_${viewMode}`,
       chipKind: 'metric',
       channelName: channel.name,
       metricName: metricLabel.toLowerCase(),
