@@ -63,14 +63,14 @@ export default function Auth() {
 
       const { error } = await signUp(email, password, 'student', displayName);
       if (error) {
-        // Detect "already registered" scenario
-        if (error.toLowerCase().includes('already registered') || error.toLowerCase().includes('already been registered')) {
+        if (error.toLowerCase().includes('already exists')) {
           toast({
             title: 'Account already exists',
-            description: 'An account with this email already exists. Please switch to "Sign in" and enter your class code to enroll.',
+            description: 'An account with this email already exists. Please sign in below and enter your class code to enroll.',
             variant: 'destructive',
           });
           setIsSignUp(false);
+          // Keep class code so they can sign in with it
         } else {
           toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
         }
