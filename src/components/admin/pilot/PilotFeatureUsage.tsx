@@ -19,13 +19,16 @@ async function getSessionIds(classId: string | null): Promise<string[]> {
   return (data ?? []).map((s) => s.id);
 }
 
-async function chunkedIn<T>(table: string, select: string, sessionIds: string[]): Promise<T[]> {
-  if (!sessionIds.length) return [];
+async function chunked<T>(
+  fn: (chunk: string[]) => Promise<{ data: T[] | null }>,
+  ids: string[],
+): Promise<T[]> {
+  if (!ids.length) return [];
   const rows: T[] = [];
-  for (let i = 0; i < sessionIds.length; i += 100) {
-    const chunk = sessionIds.slice(i, i + 100);
-    const { data } = await supabase.from(table).select(select).in('session_id', chunk);
-    if (data) rows.push(...(data as T[]));
+  for (let i = 0; i < ids.length; i += 100) {
+    const c = ids.slice(i, i + 100);
+    const { data } = await fn(c);
+    if (data) rows.push(...data);
   }
   return rows;
 }
@@ -76,13 +79,12 @@ export default function PilotFeatureUsage({ classId }: Props) {
       setLoading(true);
       const ids = await getSessionIds(classId);
 
-      // fetch all in parallel
       const [sessData, subData, aiData, boardData, tutData] = await Promise.all([
-        chunkedIn<SessionRow>('sessions', 'id, tutorial_completed', ids),
-        chunkedIn<SubRow>('submissions', 'session_id, final_tiktok_spend, final_newspaper_spend, contextualise_pairs_count, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count', ids),
-        chunkedIn<AiFeedbackRow>('ai_feedback_events', 'session_id', ids),
-        chunkedIn<BoardEventRow>('board_events', 'session_id, evidence_type', ids),
-        chunkedIn<TutorialEventRow>('tutorial_events', 'session_id, step_number, action', ids),
+        chunked<SessionRow>((c) => supabase.from('sessions').select('id, tutorial_completed').in('id', c), ids),
+        chunked<SubRow>((c) => supabase.from('submissions').select('session_id, final_tiktok_spend, final_newspaper_spend, contextualise_pairs_count, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count').in('session_id', c), ids),
+        chunked<AiFeedbackRow>((c) => supabase.from('ai_feedback_events').select('session_id').in('session_id', c), ids),
+        chunked<BoardEventRow>((c) => supabase.from('board_events').select('session_id, evidence_type').in('session_id', c), ids),
+        chunked<TutorialEventRow>((c) => supabase.from('tutorial_events').select('session_id, step_number, action').in('session_id', c), ids),
       ]);
 
       if (!cancelled) {
