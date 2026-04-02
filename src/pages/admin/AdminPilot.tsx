@@ -7,6 +7,7 @@ import PilotAllocationDecisions from '@/components/admin/pilot/PilotAllocationDe
 import PilotFeatureUsage from '@/components/admin/pilot/PilotFeatureUsage';
 import PilotAiFeedback from '@/components/admin/pilot/PilotAiFeedback';
 import PilotStruggleSignals from '@/components/admin/pilot/PilotStruggleSignals';
+import PilotPerStudentTable from '@/components/admin/pilot/PilotPerStudentTable';
 import {
   Select,
   SelectContent,
@@ -46,6 +47,7 @@ export default function AdminPilot() {
   const { classId, setClassId, classes, loading: classesLoading } = useAdminClassFilter();
   const [activeTab, setActiveTab] = useState<PilotTab>('Pilot health');
   const [studentCount, setStudentCount] = useState<number | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   /* fetch student count for selected class */
   useEffect(() => {
@@ -150,6 +152,8 @@ export default function AdminPilot() {
           <PilotAiFeedback classId={classId} />
         ) : activeTab === 'Struggle signals' ? (
           <PilotStruggleSignals classId={classId} />
+        ) : activeTab === 'Per-student table' ? (
+          <PilotPerStudentTable classId={classId} selectedSessionId={selectedSessionId} onSelectSession={setSelectedSessionId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
