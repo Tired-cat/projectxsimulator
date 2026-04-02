@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts';
+import { AlertTriangle, CheckCircle, AlertCircle, Clock, RotateCcw } from 'lucide-react';
 
 interface Props { classId: string | null; }
 
@@ -16,9 +20,13 @@ interface IssueRow {
   note?: string;
 }
 
+interface NavRow { session_id: string; tab: string; time_spent_seconds: number | null; }
+interface SubRow { session_id: string; predictive_card_count: number; contextualise_pairs_count: number; }
+interface ResetRow { session_id: string; reset_type: string; cards_cleared: number | null; }
+interface BoardRow { session_id: string; sequence_number: number | null; evidence_id: string | null; }
+
 function getStatus(pct: number, threshold: number, invertCheck?: boolean): Status {
   if (invertCheck) {
-    // For Row 8: confirmed if pct < threshold
     if (pct < threshold) return 'confirmed';
     if (pct < threshold + 5) return 'borderline';
     return 'under';
@@ -29,100 +37,96 @@ function getStatus(pct: number, threshold: number, invertCheck?: boolean): Statu
 }
 
 const STATUS_CONFIG = {
-  confirmed: { color: '#DC2626', bg: 'bg-red-50', border: 'border-red-200', label: 'Confirmed', dot: 'bg-red-500' },
-  borderline: { color: '#D97706', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Borderline', dot: 'bg-amber-500' },
-  under: { color: '#16A34A', bg: 'bg-green-50', border: 'border-green-200', label: 'Under threshold', dot: 'bg-green-500' },
+  confirmed: { color: '#DC2626', label: 'Confirmed', dot: 'bg-red-500' },
+  borderline: { color: '#D97706', label: 'Borderline', dot: 'bg-amber-500' },
+  under: { color: '#16A34A', label: 'Under threshold', dot: 'bg-green-500' },
 };
 
 export default function PilotStruggleSignals({ classId }: Props) {
   const [loading, setLoading] = useState(true);
   const [issues, setIssues] = useState<IssueRow[]>([]);
+  const [navRows, setNavRows] = useState<NavRow[]>([]);
+  const [boardRows, setBoardRows] = useState<BoardRow[]>([]);
+  const [resetRows, setResetRows] = useState<ResetRow[]>([]);
+  const [totalSessions, setTotalSessions] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
 
-      // 1. Get session IDs for class
       let sq = supabase.from('sessions').select('id');
       if (classId) sq = sq.eq('class_id', classId);
       const { data: sessData } = await sq;
       const sessionIds = (sessData ?? []).map((s) => s.id);
-      const totalSessions = sessionIds.length;
+      const total = sessionIds.length;
 
-      if (totalSessions === 0) {
-        if (!cancelled) { setIssues([]); setLoading(false); }
+      if (total === 0) {
+        if (!cancelled) { setIssues([]); setTotalSessions(0); setLoading(false); }
         return;
       }
 
-      // 2. Fetch all needed data in parallel (chunked)
-      const chunkQuery = async <T,>(queryFn: (ids: string[]) => any, ids: string[]): Promise<T[]> => {
-        const results: T[] = [];
+      const cq = async <T,>(fn: (ids: string[]) => any, ids: string[]): Promise<T[]> => {
+        const res: T[] = [];
         for (let i = 0; i < ids.length; i += 100) {
-          const { data } = await queryFn(ids.slice(i, i + 100));
-          if (data) results.push(...(data as T[]));
+          const { data } = await fn(ids.slice(i, i + 100));
+          if (data) res.push(...(data as T[]));
         }
-        return results;
+        return res;
       };
 
-      const [navRows, subRows, resetRows, allocRows, boardRows] = await Promise.all([
-        chunkQuery<{ session_id: string; tab: string }>((ids) => supabase.from('navigation_events').select('session_id, tab').in('session_id', ids), sessionIds),
-        chunkQuery<{ session_id: string; predictive_card_count: number; contextualise_pairs_count: number }>((ids) => supabase.from('submissions').select('session_id, predictive_card_count, contextualise_pairs_count').in('session_id', ids), sessionIds),
-        chunkQuery<{ session_id: string; reset_type: string }>((ids) => supabase.from('resets').select('session_id, reset_type').in('session_id', ids), sessionIds),
-        chunkQuery<{ session_id: string }>((ids) => supabase.from('allocation_events').select('session_id').in('session_id', ids), sessionIds),
-        chunkQuery<{ session_id: string; sequence_number: number | null; evidence_id: string | null }>((ids) => supabase.from('board_events').select('session_id, sequence_number, evidence_id').in('session_id', ids), sessionIds),
+      const [nav, sub, rst, alloc, brd] = await Promise.all([
+        cq<NavRow>((ids) => supabase.from('navigation_events').select('session_id, tab, time_spent_seconds').in('session_id', ids), sessionIds),
+        cq<SubRow>((ids) => supabase.from('submissions').select('session_id, predictive_card_count, contextualise_pairs_count').in('session_id', ids), sessionIds),
+        cq<ResetRow>((ids) => supabase.from('resets').select('session_id, reset_type, cards_cleared').in('session_id', ids), sessionIds),
+        cq<{ session_id: string }>((ids) => supabase.from('allocation_events').select('session_id').in('session_id', ids), sessionIds),
+        cq<BoardRow>((ids) => supabase.from('board_events').select('session_id, sequence_number, evidence_id').in('session_id', ids), sessionIds),
       ]);
 
-      const totalSubmissions = new Set(subRows.map((r) => r.session_id)).size;
-      const submissionSessions = new Set(subRows.map((r) => r.session_id));
+      const totalSubs = new Set(sub.map((r) => r.session_id)).size;
+      const subSessions = new Set(sub.map((r) => r.session_id));
 
-      // Row 1: Never reached Reasoning Board
-      const sessionsWithRB = new Set(navRows.filter((r) => r.tab === 'reasoning_board').map((r) => r.session_id));
-      const pctNeverRB = ((totalSessions - sessionsWithRB.size) / totalSessions) * 100;
+      // Row 1
+      const sessRB = new Set(nav.filter((r) => r.tab === 'reasoning_board').map((r) => r.session_id));
+      const pctNeverRB = ((total - sessRB.size) / total) * 100;
 
-      // Row 2: Left Predictive empty
-      const predEmpty = subRows.filter((r) => r.predictive_card_count === 0);
-      const pctPredEmpty = totalSubmissions > 0 ? (new Set(predEmpty.map((r) => r.session_id)).size / totalSubmissions) * 100 : 0;
+      // Row 2
+      const pctPredEmpty = totalSubs > 0 ? (new Set(sub.filter((r) => r.predictive_card_count === 0).map((r) => r.session_id)).size / totalSubs) * 100 : 0;
 
-      // Row 3: Never used Contextualise
-      const ctxZero = subRows.filter((r) => r.contextualise_pairs_count === 0);
-      const pctCtxZero = totalSubmissions > 0 ? (new Set(ctxZero.map((r) => r.session_id)).size / totalSubmissions) * 100 : 0;
+      // Row 3
+      const pctCtxZero = totalSubs > 0 ? (new Set(sub.filter((r) => r.contextualise_pairs_count === 0).map((r) => r.session_id)).size / totalSubs) * 100 : 0;
 
-      // Row 4: Board reset 2+ times
-      const resetCounts = new Map<string, number>();
-      resetRows.filter((r) => r.reset_type === 'board_reset').forEach((r) => {
-        resetCounts.set(r.session_id, (resetCounts.get(r.session_id) ?? 0) + 1);
+      // Row 4
+      const rstCounts = new Map<string, number>();
+      rst.filter((r) => r.reset_type === 'board_reset').forEach((r) => {
+        rstCounts.set(r.session_id, (rstCounts.get(r.session_id) ?? 0) + 1);
       });
-      const resetTwice = [...resetCounts.values()].filter((c) => c >= 2).length;
-      const pctResetTwice = (resetTwice / totalSessions) * 100;
+      const resetTwice = [...rstCounts.values()].filter((c) => c >= 2).length;
+      const pctResetTwice = (resetTwice / total) * 100;
 
-      // Row 5: Submitted with 0 allocation changes
-      const sessionsWithAlloc = new Set(allocRows.map((r) => r.session_id));
-      const submittedNoAlloc = [...submissionSessions].filter((sid) => !sessionsWithAlloc.has(sid)).length;
-      const pctNoAlloc = totalSubmissions > 0 ? (submittedNoAlloc / totalSubmissions) * 100 : 0;
+      // Row 5
+      const sessWithAlloc = new Set(alloc.map((r) => r.session_id));
+      const submittedNoAlloc = [...subSessions].filter((sid) => !sessWithAlloc.has(sid)).length;
+      const pctNoAlloc = totalSubs > 0 ? (submittedNoAlloc / totalSubs) * 100 : 0;
 
-      // Row 6: Never visited My Decisions
-      const sessionsWithMD = new Set(navRows.filter((r) => r.tab === 'my_decisions').map((r) => r.session_id));
-      const pctNeverMD = ((totalSessions - sessionsWithMD.size) / totalSessions) * 100;
+      // Row 6
+      const sessMD = new Set(nav.filter((r) => r.tab === 'my_decisions').map((r) => r.session_id));
+      const pctNeverMD = ((total - sessMD.size) / total) * 100;
 
-      // Row 7: Views item dragged first (framing trap)
-      const sessionsWithBoard = new Set(boardRows.map((r) => r.session_id));
-      const firstDragPerSession = new Map<string, { seq: number; evidenceId: string }>();
-      boardRows.forEach((r) => {
+      // Row 7
+      const sessWithBoard = new Set(brd.map((r) => r.session_id));
+      const firstDrag = new Map<string, { seq: number; eid: string }>();
+      brd.forEach((r) => {
         if (r.sequence_number == null || !r.evidence_id) return;
-        const existing = firstDragPerSession.get(r.session_id);
-        if (!existing || r.sequence_number < existing.seq) {
-          firstDragPerSession.set(r.session_id, { seq: r.sequence_number, evidenceId: r.evidence_id });
-        }
+        const ex = firstDrag.get(r.session_id);
+        if (!ex || r.sequence_number < ex.seq) firstDrag.set(r.session_id, { seq: r.sequence_number, eid: r.evidence_id });
       });
-      const viewsFirst = [...firstDragPerSession.values()].filter((v) => v.evidenceId.includes('_views')).length;
-      const pctViewsFirst = sessionsWithBoard.size > 0 ? (viewsFirst / sessionsWithBoard.size) * 100 : 0;
+      const viewsFirst = [...firstDrag.values()].filter((v) => v.eid.includes('_views')).length;
+      const pctViewsFirst = sessWithBoard.size > 0 ? (viewsFirst / sessWithBoard.size) * 100 : 0;
 
-      // Row 8: Pro Chair TikTok never dragged (BUG-02)
-      const sessionsWithProChairTT = new Set(
-        boardRows.filter((r) => r.evidence_id === 'pro_chair_tiktok').map((r) => r.session_id)
-      );
-      const pctDraggedProChair = sessionsWithBoard.size > 0 ? (sessionsWithProChairTT.size / sessionsWithBoard.size) * 100 : 0;
+      // Row 8
+      const sessProChair = new Set(brd.filter((r) => r.evidence_id === 'pro_chair_tiktok').map((r) => r.session_id));
+      const pctProChair = sessWithBoard.size > 0 ? (sessProChair.size / sessWithBoard.size) * 100 : 0;
 
       const results: IssueRow[] = [
         { issue: 'Never reached Reasoning Board', pctAffected: pctNeverRB, threshold: 10, status: getStatus(pctNeverRB, 10), priority: 'P1' },
@@ -133,18 +137,20 @@ export default function PilotStruggleSignals({ classId }: Props) {
         { issue: 'Never visited My Decisions', pctAffected: pctNeverMD, threshold: 15, status: getStatus(pctNeverMD, 15), priority: 'P2' },
         { issue: 'Views item dragged first (framing trap)', pctAffected: pctViewsFirst, threshold: 30, status: getStatus(pctViewsFirst, 30), priority: 'P1' },
         {
-          issue: 'Pro Chair TikTok never dragged (BUG-02)',
-          pctAffected: pctDraggedProChair,
-          threshold: 5,
-          status: getStatus(pctDraggedProChair, 5, true),
-          priority: 'P1',
-          note: pctDraggedProChair >= 5
-            ? `${pctDraggedProChair.toFixed(1)}% of students dragged Pro Chair TikTok — BUG-02 may have been partially fixed. Verify.`
-            : undefined,
+          issue: 'Pro Chair TikTok never dragged (BUG-02)', pctAffected: pctProChair, threshold: 5,
+          status: getStatus(pctProChair, 5, true), priority: 'P1',
+          note: pctProChair >= 5 ? `${pctProChair.toFixed(1)}% of students dragged Pro Chair TikTok — BUG-02 may have been partially fixed. Verify.` : undefined,
         },
       ];
 
-      if (!cancelled) { setIssues(results); setLoading(false); }
+      if (!cancelled) {
+        setIssues(results);
+        setNavRows(nav);
+        setBoardRows(brd);
+        setResetRows(rst);
+        setTotalSessions(total);
+        setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
   }, [classId]);
@@ -212,13 +218,9 @@ export default function PilotStruggleSignals({ classId }: Props) {
                         </div>
                       </td>
                       <td className="py-2.5 px-4 text-center">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            row.priority === 'P1'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-amber-100 text-amber-700'
-                          }`}
-                        >
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          row.priority === 'P1' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
                           {row.priority}
                         </span>
                       </td>
@@ -250,6 +252,183 @@ export default function PilotStruggleSignals({ classId }: Props) {
           <p className="text-sm font-semibold text-green-800">No issues confirmed at scale. All signals are under threshold.</p>
         </div>
       )}
+
+      {/* ── THREE CHARTS ─────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <TabTimeChart navRows={navRows} />
+        <FirstEvidenceDonut boardRows={boardRows} />
+      </div>
+
+      <ResetStats resetRows={resetRows} totalSessions={totalSessions} />
+    </div>
+  );
+}
+
+/* ── Tab Time Chart ────────────────────────────── */
+const TAB_MAP: Record<string, { label: string; fill: string }> = {
+  home: { label: 'Home', fill: '#888780' },
+  my_decisions: { label: 'My Decisions', fill: '#D4A017' },
+  reasoning_board: { label: 'Reasoning Board', fill: '#6B4F8A' },
+};
+
+function TabTimeChart({ navRows }: { navRows: NavRow[] }) {
+  const data = useMemo(() => {
+    const sums: Record<string, { total: number; count: number }> = {};
+    navRows.forEach((r) => {
+      if (!TAB_MAP[r.tab] || r.time_spent_seconds == null) return;
+      if (!sums[r.tab]) sums[r.tab] = { total: 0, count: 0 };
+      sums[r.tab].total += r.time_spent_seconds;
+      sums[r.tab].count++;
+    });
+    return ['home', 'my_decisions', 'reasoning_board'].map((t) => {
+      const s = sums[t];
+      const avgMin = s ? +(s.total / s.count / 60).toFixed(1) : 0;
+      return { tab: TAB_MAP[t].label, avgMin, fill: TAB_MAP[t].fill };
+    });
+  }, [navRows]);
+
+  const homeAvg = data.find((d) => d.tab === 'Home')?.avgMin ?? 0;
+  const rbAvg = data.find((d) => d.tab === 'Reasoning Board')?.avgMin ?? 0;
+
+  return (
+    <Card>
+      <CardContent className="pt-5 pb-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Average time spent per tab</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={data} barCategoryGap="25%">
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis dataKey="tab" tick={{ fontSize: 11 }} />
+            <YAxis tickFormatter={(v: number) => `${v}m`} tick={{ fontSize: 11 }} width={35} />
+            <Tooltip formatter={(v: number) => `${v} min`} />
+            <Bar dataKey="avgMin" name="Avg time" radius={[3, 3, 0, 0]}>
+              {data.map((d, i) => <Cell key={i} fill={d.fill} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        {homeAvg > 3 && (
+          <div className="flex items-start gap-2 mt-3 p-3 rounded-md bg-amber-50 border border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">Students are spending a long time on the Home page before starting. Orientation guidance may be needed.</p>
+          </div>
+        )}
+        {rbAvg > 0 && rbAvg < 4 && (
+          <div className="flex items-start gap-2 mt-3 p-3 rounded-md bg-amber-50 border border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">Students spend less than 4 minutes on the Reasoning Board on average — they may be rushing through it.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── First Evidence Donut ──────────────────────── */
+function classifyEvidence(eid: string): string {
+  if (eid.includes('_views')) return 'Views';
+  if (eid.includes('_revenue')) return 'Revenue';
+  if (eid.includes('_profit') || eid.includes('_margin')) return 'Profit';
+  return 'Other';
+}
+
+const DONUT_COLORS: Record<string, string> = {
+  Views: '#C4622D', Revenue: '#4A7C59', Profit: '#6B4F8A', Other: '#888780',
+};
+
+function FirstEvidenceDonut({ boardRows }: { boardRows: BoardRow[] }) {
+  const data = useMemo(() => {
+    const firstDrag = new Map<string, { seq: number; eid: string }>();
+    boardRows.forEach((r) => {
+      if (r.sequence_number == null || !r.evidence_id) return;
+      const ex = firstDrag.get(r.session_id);
+      if (!ex || r.sequence_number < ex.seq) firstDrag.set(r.session_id, { seq: r.sequence_number, eid: r.evidence_id });
+    });
+    const counts: Record<string, number> = { Views: 0, Revenue: 0, Profit: 0, Other: 0 };
+    [...firstDrag.values()].forEach((v) => { counts[classifyEvidence(v.eid)]++; });
+    return Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .map(([name, value]) => ({ name, value, color: DONUT_COLORS[name] }));
+  }, [boardRows]);
+
+  const total = data.reduce((s, d) => s + d.value, 0);
+
+  return (
+    <Card>
+      <CardContent className="pt-5 pb-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">First evidence type dragged — views vs. revenue</h3>
+        {total === 0 ? (
+          <p className="text-xs text-muted-foreground py-8 text-center">No board events data available.</p>
+        ) : (
+          <>
+            <div className="flex justify-center">
+              <PieChart width={200} height={200}>
+                <Pie data={data} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2} stroke="none">
+                  {data.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Pie>
+                <Tooltip formatter={(v: number) => `${v} (${total > 0 ? ((v / total) * 100).toFixed(0) : 0}%)`} />
+              </PieChart>
+            </div>
+            <div className="flex flex-col gap-2 mt-3">
+              {data.map((d) => (
+                <div key={d.name} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: d.color }} />
+                  <span>{d.name} first: {d.value} ({total > 0 ? ((d.value / total) * 100).toFixed(0) : 0}%)</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Reset Stats ───────────────────────────────── */
+function ResetStats({ resetRows, totalSessions }: { resetRows: ResetRow[]; totalSessions: number }) {
+  const stats = useMemo(() => {
+    const boardResets = resetRows.filter((r) => r.reset_type === 'board_reset');
+    const allocResets = resetRows.filter((r) => r.reset_type === 'allocation_reset');
+
+    const boardResetCount = boardResets.length;
+    const allocResetCount = allocResets.length;
+
+    const sessionsWithBoard2 = new Map<string, number>();
+    boardResets.forEach((r) => sessionsWithBoard2.set(r.session_id, (sessionsWithBoard2.get(r.session_id) ?? 0) + 1));
+    const reset2Plus = [...sessionsWithBoard2.values()].filter((c) => c >= 2).length;
+
+    const cardsCleared = boardResets.filter((r) => r.cards_cleared != null).map((r) => r.cards_cleared!);
+    const avgCards = cardsCleared.length > 0 ? +(cardsCleared.reduce((a, b) => a + b, 0) / cardsCleared.length).toFixed(1) : 0;
+
+    const pctReset2 = totalSessions > 0 ? (reset2Plus / totalSessions) * 100 : 0;
+
+    return { boardResetCount, allocResetCount, reset2Plus, avgCards, pctReset2 };
+  }, [resetRows, totalSessions]);
+
+  const CARDS = [
+    { label: 'Total board resets', value: stats.boardResetCount, icon: RotateCcw, color: '#C4622D' },
+    { label: 'Total allocation resets', value: stats.allocResetCount, icon: RotateCcw, color: '#888780' },
+    { label: 'Students who reset board 2+ times', value: stats.reset2Plus, icon: AlertTriangle, color: stats.pctReset2 > 15 ? '#D97706' : '#888780', flagged: stats.pctReset2 > 15 },
+    { label: 'Avg cards cleared per board reset', value: stats.avgCards, icon: Clock, color: '#6B4F8A' },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">Reset heatmap</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {CARDS.map((c) => (
+          <Card key={c.label} className={c.flagged ? 'border-amber-300 bg-amber-50/50' : ''}>
+            <CardContent className="py-4 text-center">
+              <c.icon className="h-5 w-5 mx-auto mb-2" style={{ color: c.color }} />
+              <p className="text-2xl font-bold" style={{ color: c.color }}>{c.value}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{c.label}</p>
+              {c.flagged && (
+                <p className="text-[10px] text-amber-700 font-medium mt-1">
+                  {stats.pctReset2.toFixed(0)}% of sessions — above 15% threshold
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
