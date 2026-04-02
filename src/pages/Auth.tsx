@@ -63,7 +63,17 @@ export default function Auth() {
 
       const { error } = await signUp(email, password, 'student', displayName);
       if (error) {
-        toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
+        // Detect "already registered" scenario
+        if (error.toLowerCase().includes('already registered') || error.toLowerCase().includes('already been registered')) {
+          toast({
+            title: 'Account already exists',
+            description: 'An account with this email already exists. Please switch to "Sign in" and enter your class code to enroll.',
+            variant: 'destructive',
+          });
+          setIsSignUp(false);
+        } else {
+          toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
+        }
       } else {
         // Enroll after signup — we need to wait for auth state, so store class info
         localStorage.setItem('pending_enrollment_class_id', classData.id);
