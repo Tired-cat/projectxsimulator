@@ -25,7 +25,7 @@ export function AdminClassFilterProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     supabase
       .from('classes')
-      .select('id, name, class_code')
+      .select('id, name, class_code, section_code')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) setClasses(data as ClassOption[]);
