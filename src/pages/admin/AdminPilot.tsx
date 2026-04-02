@@ -148,6 +148,8 @@ export default function AdminPilot() {
           <PilotFeatureUsage classId={classId} />
         ) : activeTab === 'AI feedback' ? (
           <PilotAiFeedback classId={classId} />
+        ) : activeTab === 'Struggle signals' ? (
+          <PilotStruggleSignals classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
