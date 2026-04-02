@@ -268,8 +268,12 @@ export default function PilotStruggleSignals({ classId }: Props) {
 const TAB_MAP: Record<string, { label: string; fill: string }> = {
   home: { label: 'Home', fill: '#888780' },
   my_decisions: { label: 'My Decisions', fill: '#D4A017' },
+  decisions: { label: 'My Decisions', fill: '#D4A017' },
   reasoning_board: { label: 'Reasoning Board', fill: '#6B4F8A' },
+  reasoning: { label: 'Reasoning Board', fill: '#6B4F8A' },
 };
+
+const TAB_ORDER = ['home', 'my_decisions', 'reasoning_board'] as const;
 
 function TabTimeChart({ navRows }: { navRows: NavRow[] }) {
   const data = useMemo(() => {
