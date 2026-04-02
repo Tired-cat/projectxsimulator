@@ -1,7 +1,18 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Check, Trash2 } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   REASONING_BLOCKS,
   getSmartInsight,
@@ -18,7 +29,7 @@ import { ReasoningNarrative } from './ReasoningNarrative';
 
 
 export function ReasoningBoard() {
-  const { board, removeChip } = useReasoningBoard();
+  const { board, removeChip, clearBoard } = useReasoningBoard();
   const [activeDrag, setActiveDrag] = useState<EvidenceDragData | null>(null);
 
   const totalChips = Object.values(board).reduce((s, arr) => s + arr.length, 0);
@@ -42,8 +53,31 @@ export function ReasoningBoard() {
             </p>
           </div>
           {totalChips > 0 && (
-            <div className="ml-auto px-2.5 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-              {totalChips} {totalChips === 1 ? 'chip' : 'chips'}
+            <div className="ml-auto flex items-center gap-2">
+              <div className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+                {totalChips} {totalChips === 1 ? 'chip' : 'chips'}
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Clear all cards">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear Reasoning Board?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove all {totalChips} evidence {totalChips === 1 ? 'card' : 'cards'} from your board. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearBoard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Clear Board
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </div>
