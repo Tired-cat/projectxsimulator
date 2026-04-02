@@ -53,7 +53,9 @@ const BUCKET_ORDER = ['0-3m', '3-7m', '7-12m', '12-20m', '20-30m', '30+m'];
 const TAB_LABEL_MAP: Record<string, string> = {
   home: 'Home',
   my_decisions: 'My Decisions',
+  decisions: 'My Decisions',
   reasoning_board: 'Reasoning Board',
+  reasoning: 'Reasoning Board',
 };
 
 /* ── small components ───────────────────────────── */
