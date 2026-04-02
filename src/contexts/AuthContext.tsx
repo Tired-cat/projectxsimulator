@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchRoleRef = React.useRef<string | null>(null);
+  const fetchRoleRef = useRef<string | null>(null);
 
   const fetchRole = useCallback(async (userId: string) => {
     // Deduplicate concurrent calls for the same user
