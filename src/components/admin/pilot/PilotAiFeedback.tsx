@@ -87,10 +87,10 @@ export default function PilotAiFeedback({ classId }: Props) {
     const withAfter = rows.filter((r) => r.post_feedback_action === 'adjusted' && r.descriptive_cards_after != null);
     if (!withAfter.length) return [];
     const quads = ['Descriptive', 'Diagnostic', 'Prescriptive', 'Predictive'] as const;
-    const keys = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
-    return quads.map((q, i) => {
-      const k = keys[i];
-      const sum = withAfter.reduce((s, r) => s + ((r[`${k}_cards_after` as keyof AiRow] as number) - r[`${k}_cards_before` as keyof AiRow] as number), 0);
+    return quads.map((q) => {
+      const beforeKey = `${q.toLowerCase()}_cards_before` as keyof AiRow;
+      const afterKey = `${q.toLowerCase()}_cards_after` as keyof AiRow;
+      const sum = withAfter.reduce((s, r) => s + ((r[afterKey] as number ?? 0) - (r[beforeKey] as number)), 0);
       return { quadrant: q, delta: +(sum / withAfter.length).toFixed(2), fill: QUAD_COLORS[q] };
     });
   }, [rows]);
