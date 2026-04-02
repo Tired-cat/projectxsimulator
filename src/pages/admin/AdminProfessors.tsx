@@ -92,30 +92,55 @@ export default function AdminProfessors() {
   }, [professors, classes, enrollments, submissions]);
 
   const handleCreate = async () => {
-    if (!email.trim() || !displayName.trim()) return;
+    const trimmedEmail = email.trim();
+    const trimmedName = displayName.trim();
+    if (!trimmedEmail || !trimmedName) return;
+
+    // Client-side email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+
     setFormError(null);
     setCreating(true);
 
     const password = generatePassword();
 
-    const { data, error } = await supabase.functions.invoke('create-professor', {
-      body: {
-        email: email.trim(),
-        display_name: displayName.trim(),
-        institution: institution.trim() || 'RIT Dubai',
-        password,
-      },
-    });
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-professor`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            email: trimmedEmail,
+            display_name: trimmedName,
+            institution: institution.trim() || 'RIT Dubai',
+            password,
+          }),
+        }
+      );
 
-    setCreating(false);
+      const data = await response.json();
+      setCreating(false);
 
-    if (error || data?.error) {
-      const msg = data?.error || error?.message || 'Failed to create account';
-      if (msg.toLowerCase().includes('already exists')) {
-        setFormError('An account with this email already exists.');
-      } else {
-        setFormError(msg);
+      if (!response.ok || data?.error) {
+        const msg = data?.error || 'Failed to create account';
+        if (msg.toLowerCase().includes('already exists')) {
+          setFormError('An account with this email already exists.');
+        } else {
+          setFormError(msg);
+        }
+        return;
       }
+    } catch (err: any) {
+      setCreating(false);
+      setFormError(err?.message || 'Network error');
       return;
     }
 
