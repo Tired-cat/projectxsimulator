@@ -36,6 +36,7 @@ async function chunked<T>(
 interface SessionRow {
   id: string;
   tutorial_completed: boolean;
+  tutorial_opened: boolean;
 }
 
 interface SubRow {
