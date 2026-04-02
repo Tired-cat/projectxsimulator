@@ -139,6 +139,8 @@ export default function AdminPilot() {
           <PilotHealth classId={classId} />
         ) : activeTab === 'Reasoning board' ? (
           <PilotReasoningBoard classId={classId} />
+        ) : activeTab === 'Allocation decisions' ? (
+          <PilotAllocationDecisions classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
