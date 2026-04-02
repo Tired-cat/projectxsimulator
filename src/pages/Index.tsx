@@ -734,13 +734,12 @@ function ClassCodeGate({ children }: { children: ReactNode }) {
     setError(null);
     setJoining(true);
 
-    const { data: classData } = await supabase
-      .from('classes')
-      .select('id')
-      .ilike('class_code', code)
-      .maybeSingle();
+    const { data: classRows, error: lookupError } = await supabase
+      .rpc('lookup_class_by_code', { _class_code: code.trim().toUpperCase() });
 
-    if (!classData) {
+    const classData = classRows?.[0] ?? null;
+
+    if (lookupError || !classData) {
       setError('Class code not found. Check with your professor.');
       setJoining(false);
       return;
