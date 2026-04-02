@@ -65,9 +65,20 @@ export default function PilotAiFeedback({ classId }: Props) {
         const chunk = ids.slice(i, i + 100);
         const { data } = await supabase
           .from('ai_feedback_events')
-          .select('session_id, post_feedback_action, time_adjusting_seconds, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after')
+          .select('session_id, post_feedback_action, time_adjusting_seconds, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after, tiktok_spend_before, tiktok_spend_after, newspaper_spend_before, newspaper_spend_after')
           .in('session_id', chunk);
         if (data) aiRows.push(...(data as AiRow[]));
+      }
+
+      // fetch submissions
+      const subRows: SubRow[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        const { data } = await supabase
+          .from('submissions')
+          .select('session_id, final_tiktok_spend, final_newspaper_spend')
+          .in('session_id', chunk);
+        if (data) subRows.push(...(data as SubRow[]));
       }
 
       if (!cancelled) {
