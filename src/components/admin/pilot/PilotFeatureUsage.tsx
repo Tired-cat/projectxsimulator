@@ -161,7 +161,7 @@ function ComparisonCharts({ sessions, subs, subBySession }: {
   );
 }
 
-
+export default function PilotFeatureUsage({ classId }: Props) {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
