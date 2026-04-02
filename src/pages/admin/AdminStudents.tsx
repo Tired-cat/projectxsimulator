@@ -77,6 +77,12 @@ export default function AdminStudents() {
     return m;
   }, [submissions]);
 
+  const enrolledUserIds = useMemo(() => new Set(enrollments.map(e => e.user_id)), [enrollments]);
+
+  const unenrolledStudents = useMemo(() => {
+    return profiles.filter(p => !enrolledUserIds.has(p.id));
+  }, [profiles, enrolledUserIds]);
+
   const filtered = useMemo(() => {
     if (classFilter === 'all') return enrollments;
     return enrollments.filter(e => e.class_id === classFilter);
@@ -183,6 +189,46 @@ export default function AdminStudents() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Unenrolled students section */}
+      {unenrolledStudents.length > 0 && (
+        <>
+          <h3 className="text-lg font-semibold text-muted-foreground flex items-center gap-2">
+            Registered but not enrolled
+            <Badge variant="secondary" className="text-xs">{unenrolledStudents.length}</Badge>
+          </h3>
+          <Card className="border border-dashed border-border">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Display name</TableHead>
+                      <TableHead>Registered</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unenrolledStudents.map(p => (
+                      <TableRow key={p.id}>
+                        <TableCell className="text-foreground">{p.email || '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.display_name || '—'}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">—</TableCell>
+                        <TableCell>
+                          <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30 text-xs">
+                            Awaiting class code
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Remove confirmation */}
       <Dialog open={!!removeTarget} onOpenChange={o => { if (!o) setRemoveTarget(null); }}>
