@@ -244,3 +244,134 @@ export default function PilotAiFeedback({ classId }: Props) {
     </div>
   );
 }
+
+/* ── Feedback vs No Feedback Outcome ───────────── */
+function FeedbackOutcomeChart({ rows, subs }: { rows: AiRow[]; subs: SubRow[] }) {
+  const data = useMemo(() => {
+    const feedbackSessions = new Set(rows.map((r) => r.session_id));
+    let usedCorrect = 0, usedTotal = 0, skippedCorrect = 0, skippedTotal = 0;
+    subs.forEach((s) => {
+      const correct = (s.final_tiktok_spend ?? 9000) < 9000 && (s.final_newspaper_spend ?? 1000) > 1000;
+      if (feedbackSessions.has(s.session_id)) {
+        usedTotal++; if (correct) usedCorrect++;
+      } else {
+        skippedTotal++; if (correct) skippedCorrect++;
+      }
+    });
+    const usedRate = usedTotal > 0 ? (usedCorrect / usedTotal) * 100 : 0;
+    const skippedRate = skippedTotal > 0 ? (skippedCorrect / skippedTotal) * 100 : 0;
+    return { bars: [
+      { label: 'Used AI feedback', rate: +usedRate.toFixed(1), fill: '#4A7C59' },
+      { label: 'Skipped AI feedback', rate: +skippedRate.toFixed(1), fill: '#888780' },
+    ], gap: usedRate - skippedRate };
+  }, [rows, subs]);
+
+  return (
+    <Card>
+      <CardContent className="pt-5 pb-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Correct decision rate — feedback users vs. non-users</h3>
+        <ResponsiveContainer width="100%" height={120}>
+          <BarChart data={data.bars} layout="vertical" barCategoryGap="30%">
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+            <XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} />
+            <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={140} />
+            <Tooltip formatter={(v: number) => `${v}%`} />
+            <Bar dataKey="rate" name="Correct rate" radius={[0, 3, 3, 0]}>
+              {data.bars.map((d, i) => <Cell key={i} fill={d.fill} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <p className="text-xs text-muted-foreground mt-3">
+          Gap: <span className="font-semibold text-foreground">{Math.abs(data.gap).toFixed(0)}pp</span> {data.gap >= 0 ? 'in favour of feedback users' : 'in favour of non-users'}.
+        </p>
+        {data.gap >= 15 && (
+          <div className="flex items-start gap-2 mt-2 p-3 rounded-md bg-[#4A7C59]/10 border border-[#4A7C59]/20">
+            <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#4A7C59' }} />
+            <p className="text-xs" style={{ color: '#4A7C59' }}>AI feedback is improving decision quality. Students who used it were {Math.abs(data.gap).toFixed(0)}pp more likely to get it right.</p>
+          </div>
+        )}
+        {data.gap < 5 && (
+          <div className="flex items-start gap-2 mt-2 p-3 rounded-md bg-amber-50 border border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">AI feedback is not significantly changing decision outcomes. Review what the feedback is saying to students.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Allocation Delta After Feedback ───────────── */
+function AllocationDeltaChart({ rows }: { rows: AiRow[] }) {
+  const data = useMemo(() => {
+    const adjusted = rows.filter((r) => r.post_feedback_action === 'adjusted' && r.tiktok_spend_after != null);
+    if (!adjusted.length) return null;
+    const avgTkBefore = adjusted.reduce((s, r) => s + (r.tiktok_spend_before ?? 9000), 0) / adjusted.length;
+    const avgTkAfter = adjusted.reduce((s, r) => s + (r.tiktok_spend_after ?? 9000), 0) / adjusted.length;
+    const avgNpBefore = adjusted.reduce((s, r) => s + (r.newspaper_spend_before ?? 1000), 0) / adjusted.length;
+    const avgNpAfter = adjusted.reduce((s, r) => s + (r.newspaper_spend_after ?? 1000), 0) / adjusted.length;
+    const tkDecreased = avgTkAfter < avgTkBefore;
+    const npIncreased = avgNpAfter > avgNpBefore;
+    return {
+      bars: [
+        { channel: 'TikTok', before: Math.round(avgTkBefore), after: Math.round(avgTkAfter), afterColor: '#C4622D' },
+        { channel: 'Newspaper', before: Math.round(avgNpBefore), after: Math.round(avgNpAfter), afterColor: '#4A7C59' },
+      ],
+      correct: tkDecreased && npIncreased,
+    };
+  }, [rows]);
+
+  if (!data) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-xs text-muted-foreground">No adjusted sessions with spend data available.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const chartData = data.bars.map((b) => ({ channel: b.channel, before: b.before, after: b.after }));
+
+  return (
+    <Card>
+      <CardContent className="pt-5 pb-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Average spend before vs. after feedback — did feedback push toward the correct allocation?</h3>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={chartData} barCategoryGap="30%">
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis dataKey="channel" tick={{ fontSize: 11 }} />
+            <YAxis domain={[0, 10000]} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} width={45} />
+            <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
+            <Bar dataKey="before" name="Before feedback" fill="#888780" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="after" name="After feedback" radius={[3, 3, 0, 0]}>
+              {data.bars.map((b, i) => <Cell key={i} fill={b.afterColor} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="flex items-center gap-4 mt-3 justify-center">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: '#888780' }} /> Before feedback
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: '#C4622D' }} /> After (TikTok)
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: '#4A7C59' }} /> After (Newspaper)
+          </div>
+        </div>
+        {data.correct ? (
+          <div className="flex items-start gap-2 mt-3 p-3 rounded-md bg-[#4A7C59]/10 border border-[#4A7C59]/20">
+            <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#4A7C59' }} />
+            <p className="text-xs" style={{ color: '#4A7C59' }}>Feedback is pushing students toward the correct allocation.</p>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 mt-3 p-3 rounded-md bg-amber-50 border border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">Feedback is not consistently changing allocation decisions.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
