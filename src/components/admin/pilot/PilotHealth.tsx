@@ -211,11 +211,11 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
         return seen.size;
       };
 
-      const visitedDecisions = await distinctSessionsIn('navigation_events', { column: 'tab', value: 'my_decisions' });
+      const visitedDecisions = await distinctSessionsIn('navigation_events', 'tab', 'my_decisions');
       const madeAllocation = await distinctSessionsIn('allocation_events');
-      const visitedReasoning = await distinctSessionsIn('navigation_events', { column: 'tab', value: 'reasoning_board' });
-      const placedCard = await distinctSessionsIn('board_events', { column: 'event_type', value: 'drag_to_board' });
-      const usedContextualise = await distinctSessionsIn('board_events', { column: 'event_type', value: 'contextualise' });
+      const visitedReasoning = await distinctSessionsIn('navigation_events', 'tab', 'reasoning_board');
+      const placedCard = await distinctSessionsIn('board_events', 'event_type', 'drag_to_board');
+      const usedContextualise = await distinctSessionsIn('board_events', 'event_type', 'contextualise');
       const requestedAI = await distinctSessionsIn('ai_feedback_events');
 
       const fSteps: FunnelStep[] = [
