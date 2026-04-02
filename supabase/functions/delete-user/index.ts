@@ -77,9 +77,9 @@ Deno.serve(async (req) => {
     const { error: profileErr } = await adminClient.from('profiles').delete().eq('id', user_id);
     if (profileErr) console.error('Error deleting profile:', profileErr.message);
 
-    // Delete user from auth.users
+    // Delete user from auth.users (ignore "not found" — may already be gone)
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user_id);
-    if (deleteError) {
+    if (deleteError && !deleteError.message.includes('not found')) {
       return new Response(JSON.stringify({ error: deleteError.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
