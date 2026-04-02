@@ -72,11 +72,9 @@ export default function Auth() {
         toast({ title: 'Sign in failed', description: error, variant: 'destructive' });
       } else if (classCode.trim()) {
         // Try to enroll in the class after login
-        const { data: classData } = await supabase
-          .from('classes')
-          .select('id, name')
-          .eq('class_code', classCode.trim())
-          .maybeSingle();
+        const { data: classRows } = await supabase
+          .rpc('lookup_class_by_code', { _class_code: classCode.trim() });
+        const classData = classRows?.[0] ?? null;
 
         if (classData) {
           const { data: { user } } = await supabase.auth.getUser();
