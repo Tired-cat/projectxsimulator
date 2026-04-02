@@ -548,8 +548,12 @@ function SimulationContent() {
     <>
       {/* Submitted banner */}
       {submitted && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-success/10 border-b border-success/30 px-4 py-2 text-center text-sm font-medium text-success">
-          ✅ Your work has been submitted. The simulation is now locked.
+        <div className="fixed top-0 left-0 right-0 z-50 bg-success/10 border-b border-success/30 px-4 py-2 flex items-center justify-center gap-4 text-sm font-medium text-success">
+          <span>✅ Your work has been submitted. The simulation is now locked.</span>
+          <Button size="sm" variant="outline" onClick={signOut} className="gap-1.5 text-muted-foreground border-success/30 hover:bg-success/10">
+            <LogOut className="h-3.5 w-3.5" />
+            Sign Out
+          </Button>
         </div>
       )}
 
