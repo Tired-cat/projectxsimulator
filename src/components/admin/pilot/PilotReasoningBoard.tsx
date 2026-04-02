@@ -132,6 +132,25 @@ async function fetchContextPairs(sessionIds: string[]): Promise<ContextPair[]> {
     .slice(0, 10);
 }
 
+interface FirstDragEvent { quadrant: string | null; evidence_id: string | null; }
+
+async function fetchFirstDrags(sessionIds: string[]): Promise<FirstDragEvent[]> {
+  if (sessionIds.length === 0) return [];
+  const rows: FirstDragEvent[] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('board_events')
+      .select('quadrant, evidence_id')
+      .eq('event_type', 'drag_to_board')
+      .eq('sequence_number', 1)
+      .in('session_id', chunk);
+    if (data) rows.push(...(data as FirstDragEvent[]));
+  }
+  return rows;
+}
+
 /* ── metric card ────────────────────────────────── */
 function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
   return (
