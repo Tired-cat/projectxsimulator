@@ -56,10 +56,10 @@ export default function PilotStruggleSignals({ classId }: Props) {
       }
 
       // 2. Fetch all needed data in parallel (chunked)
-      const chunk = async <T,>(table: string, select: string, field: string, ids: string[]): Promise<T[]> => {
+      const chunkQuery = async <T,>(queryFn: (ids: string[]) => any, ids: string[]): Promise<T[]> => {
         const results: T[] = [];
         for (let i = 0; i < ids.length; i += 100) {
-          const { data } = await supabase.from(table).select(select).in(field, ids.slice(i, i + 100));
+          const { data } = await queryFn(ids.slice(i, i + 100));
           if (data) results.push(...(data as T[]));
         }
         return results;
