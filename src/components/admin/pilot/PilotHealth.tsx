@@ -309,13 +309,11 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
     'text-red-500';
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 rounded-lg bg-muted/30 animate-pulse" />
-        ))}
-      </div>
-    );
+    return <ViewSkeleton metrics charts={2} />;
+  }
+
+  if (enrolled === 0) {
+    return <EmptyState message="No data yet — this will populate once students start using the simulation." />;
   }
 
   return (
