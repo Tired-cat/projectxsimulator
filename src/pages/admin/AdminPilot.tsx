@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PilotHealth from '@/components/admin/pilot/PilotHealth';
 import PilotReasoningBoard from '@/components/admin/pilot/PilotReasoningBoard';
 import PilotAllocationDecisions from '@/components/admin/pilot/PilotAllocationDecisions';
+import PilotFeatureUsage from '@/components/admin/pilot/PilotFeatureUsage';
 import {
   Select,
   SelectContent,
