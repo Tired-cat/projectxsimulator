@@ -203,9 +203,13 @@ export default function PilotPerStudentTable({ classId }: Props) {
           else decision = 'Incorrect';
         }
 
+        const board = boardMap.get(session.id);
+
         return {
           userId, sessionId: session.id, email, durationMin, tutorial,
           cards, quadrants,
+          annotations: board?.annotationCount ?? 0,
+          diagnosis: board?.hasDiagnosis ?? false,
           allocChanges: allocCounts.get(session.id) ?? 0,
           feedback: feedbackSessions.has(session.id),
           decision,
