@@ -72,26 +72,15 @@ export default function AdminPilot() {
     return `${cls.name} — ${cls.section_code} (${cls.class_code})`;
   }, [classId, classes]);
 
-  const activeView = (() => {
-    switch (activeTab) {
-      case 'Pilot health':
-        return <PilotHealth classId={classId} />;
-      case 'Reasoning board':
-        return <PilotReasoningBoard classId={classId} />;
-      case 'Allocation decisions':
-        return <PilotAllocationDecisions classId={classId} />;
-      case 'Feature usage':
-        return <PilotFeatureUsage classId={classId} />;
-      case 'AI feedback':
-        return <PilotAiFeedback classId={classId} />;
-      case 'Struggle signals':
-        return <PilotStruggleSignals classId={classId} />;
-      case 'Per-student table':
-        return <PilotPerStudentTable classId={classId} />;
-      default:
-        return <TabPlaceholder tab={activeTab} />;
-    }
-  })();
+  // Track which tabs have been visited so we mount them lazily but keep them alive
+  const [visitedTabs, setVisitedTabs] = useState<Set<PilotTab>>(new Set(['Pilot health']));
+
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      return new Set(prev).add(activeTab);
+    });
+  }, [activeTab]);
 
   return (
     <div className="space-y-0 -m-6">
@@ -152,7 +141,13 @@ export default function AdminPilot() {
 
       <div className="p-6">
         <Suspense fallback={<RouteLoader label="Loading pilot analytics…" />}>
-          {activeView}
+          {visitedTabs.has('Pilot health') && <div className={activeTab !== 'Pilot health' ? 'hidden' : ''}><PilotHealth classId={classId} /></div>}
+          {visitedTabs.has('Reasoning board') && <div className={activeTab !== 'Reasoning board' ? 'hidden' : ''}><PilotReasoningBoard classId={classId} /></div>}
+          {visitedTabs.has('Allocation decisions') && <div className={activeTab !== 'Allocation decisions' ? 'hidden' : ''}><PilotAllocationDecisions classId={classId} /></div>}
+          {visitedTabs.has('Feature usage') && <div className={activeTab !== 'Feature usage' ? 'hidden' : ''}><PilotFeatureUsage classId={classId} /></div>}
+          {visitedTabs.has('AI feedback') && <div className={activeTab !== 'AI feedback' ? 'hidden' : ''}><PilotAiFeedback classId={classId} /></div>}
+          {visitedTabs.has('Struggle signals') && <div className={activeTab !== 'Struggle signals' ? 'hidden' : ''}><PilotStruggleSignals classId={classId} /></div>}
+          {visitedTabs.has('Per-student table') && <div className={activeTab !== 'Per-student table' ? 'hidden' : ''}><PilotPerStudentTable classId={classId} /></div>}
         </Suspense>
       </div>
     </div>
