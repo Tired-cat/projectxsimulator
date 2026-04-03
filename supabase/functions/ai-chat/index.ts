@@ -53,14 +53,25 @@ function buildContextString(context: any): string {
 
   if (context.board) {
     const b = context.board;
+    let hasAnnotations = false;
     for (const block of ["descriptive", "diagnostic", "predictive", "prescriptive"]) {
       const chips = b[block] || [];
       if (chips.length > 0) {
-        const chipLabels = chips.map((c: any) => `"${c.label}: ${c.value}"`).join(", ");
-        parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} block: ${chipLabels}`);
+        const chipLines = chips.map((c: any) => {
+          const base = `- ${c.label}: ${c.value}`;
+          if (c.annotation && c.annotation.trim().length > 0) {
+            hasAnnotations = true;
+            return `${base} [Student's note: "${c.annotation.trim()}"]`;
+          }
+          return base;
+        });
+        parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} quadrant:\n${chipLines.join("\n")}`);
       } else {
-        parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} block: (empty)`);
+        parts.push(`${block.charAt(0).toUpperCase() + block.slice(1)} quadrant: (empty)`);
       }
+    }
+    if (hasAnnotations) {
+      parts.unshift("Where students have added notes explaining their reasoning, use those notes to give more specific feedback. Address the student's interpretation directly — confirm if they're on the right track or gently correct misconceptions.");
     }
   }
 
