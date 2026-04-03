@@ -88,7 +88,7 @@ export function ReasoningBoard() {
               Click <strong>Reason</strong> on <strong>Channel Performance</strong> or <strong>Product Mix</strong>, then drag evidence here.
             </p>
             <p className="text-xs text-muted-foreground">
-              Place evidence in any block — no set order required.
+              Follow the order: Descriptive → Diagnostic → Prescriptive → Predictive.
             </p>
           </div>
         )}
