@@ -246,8 +246,6 @@ function ChipCard({
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
-  const contextItems = chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : []);
-  const hasContext = contextItems.length > 0;
 
   const [showAnnotation, setShowAnnotation] = useState(false);
   const [draft, setDraft] = useState(chip.annotation ?? '');
