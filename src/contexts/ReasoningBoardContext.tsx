@@ -8,6 +8,7 @@ interface ReasoningBoardContextValue {
   removeChip: (blockId: ReasoningBlockId, chipId: string) => void;
   moveChip: (fromBlock: ReasoningBlockId, toBlock: ReasoningBlockId, chipId: string) => void;
   contextualiseChip: (blockId: ReasoningBlockId, targetChipId: string, contextChip: EvidenceChip) => void;
+  updateChipAnnotation: (blockId: ReasoningBlockId, chipId: string, annotation: string) => void;
   clearBoard: () => void;
   draggingChip: EvidenceChip | null;
   setDraggingChip: (chip: EvidenceChip | null) => void;
@@ -99,6 +100,15 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateChipAnnotation = useCallback((blockId: ReasoningBlockId, chipId: string, annotation: string) => {
+    setBoard(prev => ({
+      ...prev,
+      [blockId]: prev[blockId].map(chip =>
+        chip.id === chipId ? { ...chip, annotation } : chip
+      ),
+    }));
+  }, []);
+
   const clearBoard = useCallback(() => {
     setBoard(prev => {
       const totalCards = Object.values(prev).reduce((s, arr) => s + arr.length, 0);
@@ -115,6 +125,7 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       removeChip,
       moveChip,
       contextualiseChip,
+      updateChipAnnotation,
       clearBoard,
       draggingChip,
       setDraggingChip,
