@@ -513,7 +513,7 @@ function ReasoningStoryBlocks({ generatedStory, cards = [] }: { generatedStory: 
     const QUAD_LABEL_MAP: Record<string, string> = { descriptive: 'Descriptive', diagnostic: 'Diagnostic', predictive: 'Predictive', prescriptive: 'Prescriptive' };
     const byQ: Record<string, typeof cards> = {};
     for (const c of cards) {
-      const q = (c.quadrant || '').toLowerCase();
+      const q = ((c as any)._quadrant || '').toLowerCase();
       if (!byQ[q]) byQ[q] = [];
       byQ[q].push(c);
     }
