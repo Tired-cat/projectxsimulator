@@ -228,6 +228,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           parsedCards = raw as BoardCard[];
         }
         setBoardCards(parsedCards);
+        setWrittenDiagnosis((boardRes.data as any)?.written_diagnosis ?? null);
         setBoardEvents((boardEventsRes.data ?? []) as BoardEvent[]);
 
         setLoading(false);
