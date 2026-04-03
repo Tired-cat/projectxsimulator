@@ -7,7 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { LayoutGrid, Grid2x2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { LayoutGrid, Grid2x2, RotateCcw, AlertTriangle, MessageSquareText, FileText, CheckCircle } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
