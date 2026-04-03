@@ -301,7 +301,94 @@ export default function PilotReasoningBoard({ classId }: Props) {
     return rare;
   }, [draggedItems, totalSessions]);
 
-  if (loading) {
+  /* ── contextual notes metrics ────────────────── */
+  const parseChipsFromCards = (cards: any): { quadrant: string; hasAnnotation: boolean }[] => {
+    const chips: { quadrant: string; hasAnnotation: boolean }[] = [];
+    if (cards && typeof cards === 'object' && !Array.isArray(cards)) {
+      for (const [quadrant, arr] of Object.entries(cards)) {
+        if (Array.isArray(arr)) {
+          for (const c of arr) {
+            chips.push({ quadrant, hasAnnotation: !!(c?.annotation && String(c.annotation).trim()) });
+          }
+        }
+      }
+    }
+    return chips;
+  };
+
+  const contextNotesMetrics = useMemo(() => {
+    if (boardStates.length === 0) return null;
+    const total = boardStates.length;
+    let sessionsWithAnnotations = 0;
+    let totalAnnotations = 0;
+    let sessionsWithDiagnosis = 0;
+
+    // Per-quadrant: { quadrant: { totalChips, annotatedChips } }
+    const quadrantStats: Record<string, { totalChips: number; annotatedChips: number }> = {
+      descriptive: { totalChips: 0, annotatedChips: 0 },
+      diagnostic: { totalChips: 0, annotatedChips: 0 },
+      prescriptive: { totalChips: 0, annotatedChips: 0 },
+      predictive: { totalChips: 0, annotatedChips: 0 },
+    };
+
+    for (const bs of boardStates) {
+      const chips = parseChipsFromCards(bs.cards);
+      const annotatedCount = chips.filter(c => c.hasAnnotation).length;
+      if (annotatedCount > 0) sessionsWithAnnotations++;
+      totalAnnotations += annotatedCount;
+      if (bs.written_diagnosis && bs.written_diagnosis.trim()) sessionsWithDiagnosis++;
+
+      for (const chip of chips) {
+        if (quadrantStats[chip.quadrant]) {
+          quadrantStats[chip.quadrant].totalChips++;
+          if (chip.hasAnnotation) quadrantStats[chip.quadrant].annotatedChips++;
+        }
+      }
+    }
+
+    const usedPct = Math.round((sessionsWithAnnotations / total) * 100);
+    const avgAnnotations = (totalAnnotations / total).toFixed(1);
+    const diagnosisPct = Math.round((sessionsWithDiagnosis / total) * 100);
+
+    const quadrantRateData = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'].map(q => ({
+      quadrant: q.charAt(0).toUpperCase() + q.slice(1),
+      rate: quadrantStats[q].totalChips > 0
+        ? Math.round((quadrantStats[q].annotatedChips / quadrantStats[q].totalChips) * 100)
+        : 0,
+      color: QUAD_COLORS[q] || '#888780',
+    }));
+
+    // Diagnosis vs correct decision
+    const subMap = new Map(submissions.map(s => [s.session_id, s]));
+    let diagCorrect = 0, diagTotal = 0, noDiagCorrect = 0, noDiagTotal = 0;
+    for (const bs of boardStates) {
+      const sub = subMap.get(bs.session_id);
+      if (!sub) continue;
+      const isCorrect = (sub.final_tiktok_spend ?? 9000) < 9000 && (sub.final_newspaper_spend ?? 1000) > 1000;
+      if (bs.written_diagnosis && bs.written_diagnosis.trim()) {
+        diagTotal++;
+        if (isCorrect) diagCorrect++;
+      } else {
+        noDiagTotal++;
+        if (isCorrect) noDiagCorrect++;
+      }
+    }
+    const diagCorrectPct = diagTotal > 0 ? Math.round((diagCorrect / diagTotal) * 100) : 0;
+    const noDiagCorrectPct = noDiagTotal > 0 ? Math.round((noDiagCorrect / noDiagTotal) * 100) : 0;
+    const gap = diagCorrectPct - noDiagCorrectPct;
+
+    return {
+      usedPct, avgAnnotations, diagnosisPct,
+      quadrantRateData,
+      diagnosisDecisionData: [
+        { label: 'Had written diagnosis', pct: diagCorrectPct, color: '#4A7C59' },
+        { label: 'No written diagnosis', pct: noDiagCorrectPct, color: '#888780' },
+      ],
+      gap,
+    };
+  }, [boardStates, submissions]);
+
+
     return <ViewSkeleton metrics charts={2} table />;
   }
 
