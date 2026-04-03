@@ -883,8 +883,12 @@ function AiFeedbackTab({ data }: { data: AiFeedback | null }) {
 }
 function NavigationTab({ events }: { events: NavEvent[] }) {
   if (!events.length) {
-    return <p className="text-xs text-muted-foreground py-4">No navigation data captured.</p>;
+    return <p className="text-xs text-muted-foreground py-4 italic">No navigation data was captured for this session.</p>;
   }
+
+  const TAB_LABELS: Record<string, string> = {
+    home: 'Home', my_decisions: 'My Decisions', reasoning_board: 'Reasoning Board',
+  };
 
   const formatDuration = (secs: number | null) => {
     if (secs == null) return '—';
@@ -893,33 +897,85 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
     return `${m}m ${s}s`;
   };
 
-  const formatTimeStr = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const formatTimeStr = (iso: string | null) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
+  function getNote(e: NavEvent): string {
+    const tab = e.tab.toLowerCase();
+    const visit = e.visit_number ?? 1;
+    const secs = e.time_spent_seconds;
+    if (tab === 'home' && visit === 1) return 'Session started';
+    if (tab === 'reasoning_board' && visit === 1) return 'First visit to board';
+    if (tab === 'my_decisions' && visit > 1) return 'Returned to check data';
+    if (secs != null && secs > 600) return 'Long time here — may have been stuck or very engaged';
+    if (secs != null && secs < 60 && tab === 'reasoning_board') return 'Very brief board visit';
+    return '';
+  }
+
+  const totalSeconds = events.reduce((sum, e) => sum + (e.time_spent_seconds ?? 0), 0);
+
+  // Pattern observations
+  const observations: { text: string; amber?: boolean }[] = [];
+  const decisionVisits = events.filter(e => e.tab.toLowerCase() === 'my_decisions').length;
+  const hasBoard = events.some(e => e.tab.toLowerCase() === 'reasoning_board');
+  if (decisionVisits > 1) {
+    observations.push({ text: `This student returned to My Decisions ${decisionVisits} times — they cross-referenced data while building their reasoning board.` });
+  }
+  if (!hasBoard) {
+    observations.push({ text: 'This student never reached the Reasoning Board tab.', amber: true });
+  }
+  const firstBoardIdx = events.findIndex(e => e.tab.toLowerCase() === 'reasoning_board');
+  const firstDecisionsIdx = events.findIndex(e => e.tab.toLowerCase() === 'my_decisions');
+  if (firstBoardIdx !== -1 && (firstDecisionsIdx === -1 || firstBoardIdx < firstDecisionsIdx)) {
+    observations.push({ text: 'This student went to the Reasoning Board before exploring My Decisions — they may have missed important data.', amber: true });
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Tab</th>
-            <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Entered at</th>
-            <th className="text-right py-2 px-3 font-semibold text-muted-foreground">Time spent</th>
-            <th className="text-center py-2 px-3 font-semibold text-muted-foreground">Visit #</th>
-          </tr>
-        </thead>
-        <tbody>
-          {events.map((e, i) => (
-            <tr key={i} className="border-b border-border/30 last:border-0">
-              <td className="py-1.5 px-3 font-medium text-foreground capitalize">{e.tab.replace(/_/g, ' ')}</td>
-              <td className="py-1.5 px-3 text-muted-foreground">{formatTimeStr(e.entered_at)}</td>
-              <td className="py-1.5 px-3 text-right text-muted-foreground">{formatDuration(e.time_spent_seconds)}</td>
-              <td className="py-1.5 px-3 text-center text-muted-foreground">{e.visit_number ?? '—'}</td>
+    <div className="space-y-4">
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px]">
+          <thead>
+            <tr className="bg-muted/40">
+              <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Tab</th>
+              <th className="text-center py-1.5 px-3 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Visit #</th>
+              <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Time in</th>
+              <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Time out</th>
+              <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Duration</th>
+              <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Notes</th>
             </tr>
+          </thead>
+          <tbody>
+            {events.map((e, i) => {
+              const tabLabel = TAB_LABELS[e.tab.toLowerCase()] ?? e.tab.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+              const note = getNote(e);
+              return (
+                <tr key={i} className={i % 2 === 1 ? 'bg-muted/20' : ''}>
+                  <td className="py-[7px] px-3 font-medium text-foreground">{tabLabel}</td>
+                  <td className="py-[7px] px-3 text-center text-muted-foreground">{e.visit_number ?? '—'}</td>
+                  <td className="py-[7px] px-3 text-muted-foreground">{formatTimeStr(e.entered_at)}</td>
+                  <td className="py-[7px] px-3 text-muted-foreground">{formatTimeStr(e.exited_at)}</td>
+                  <td className="py-[7px] px-3 text-right text-muted-foreground">{formatDuration(e.time_spent_seconds)}</td>
+                  <td className="py-[7px] px-3 text-muted-foreground italic">{note}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-[10px] text-muted-foreground">Total tracked: {formatDuration(totalSeconds)}</p>
+
+      {observations.length > 0 && (
+        <div className="space-y-1.5">
+          {observations.map((obs, i) => (
+            <p key={i} className="text-[10px] leading-relaxed" style={{ color: obs.amber ? '#D4A017' : undefined }}>
+              {obs.amber ? '⚠ ' : '• '}{obs.text}
+            </p>
           ))}
-        </tbody>
-      </table>
+        </div>
+      )}
     </div>
   );
 }
