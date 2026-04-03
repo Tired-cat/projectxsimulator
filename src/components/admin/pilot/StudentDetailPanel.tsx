@@ -580,7 +580,7 @@ function ReasoningStoryBlocks({ generatedStory, cards = [] }: { generatedStory: 
     return <p className="text-[11px] text-muted-foreground italic">No reasoning story was generated for this submission.</p>;
   }
 
-  const rawChunks = generatedStory.split(/\.\s+/).map(s => s.trim()).filter(s => s.length > 0);
+  const rawChunks = storyToUse.split(/\.\s+/).map(s => s.trim()).filter(s => s.length > 0);
 
   // Normalize to exactly 4 blocks
   let blocks: string[];
