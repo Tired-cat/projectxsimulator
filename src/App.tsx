@@ -1,17 +1,20 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { RoleGuard } from "@/components/RoleGuard";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import AuthRedirect from "./pages/AuthRedirect";
-import ProfessorDashboard from "./pages/ProfessorDashboard";
-import AdminPanel from "./pages/AdminPanel";
-import Unauthorized from "./pages/Unauthorized";
-import NotFound from "./pages/NotFound";
+import { Suspense, lazy } from 'react';
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { RoleGuard } from '@/components/RoleGuard';
+import { RouteLoader } from '@/components/RouteLoader';
+
+const Index = lazy(() => import('./pages/Index'));
+const Auth = lazy(() => import('./pages/Auth'));
+const AuthRedirect = lazy(() => import('./pages/AuthRedirect'));
+const ProfessorDashboard = lazy(() => import('./pages/ProfessorDashboard'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const Unauthorized = lazy(() => import('./pages/Unauthorized'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const queryClient = new QueryClient();
 
@@ -23,41 +26,68 @@ const App = () => (
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/auth-redirect" element={<AuthRedirect />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-
-            {/* Student route */}
+            <Route
+              path="/auth"
+              element={
+                <Suspense fallback={<RouteLoader fullScreen />}>
+                  <Auth />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/auth-redirect"
+              element={
+                <Suspense fallback={<RouteLoader fullScreen />}>
+                  <AuthRedirect />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/unauthorized"
+              element={
+                <Suspense fallback={<RouteLoader fullScreen />}>
+                  <Unauthorized />
+                </Suspense>
+              }
+            />
             <Route
               path="/"
               element={
                 <RoleGuard allowed={['student']}>
-                  <Index />
+                  <Suspense fallback={<RouteLoader fullScreen />}>
+                    <Index />
+                  </Suspense>
                 </RoleGuard>
               }
             />
-
-            {/* Professor routes */}
             <Route
               path="/dashboard/*"
               element={
                 <RoleGuard allowed={['professor']}>
-                  <ProfessorDashboard />
+                  <Suspense fallback={<RouteLoader fullScreen />}>
+                    <ProfessorDashboard />
+                  </Suspense>
                 </RoleGuard>
               }
             />
-
-            {/* Admin route */}
             <Route
               path="/admin/*"
               element={
                 <RoleGuard allowed={['admin']}>
-                  <AdminPanel />
+                  <Suspense fallback={<RouteLoader fullScreen />}>
+                    <AdminPanel />
+                  </Suspense>
                 </RoleGuard>
               }
             />
-
-            <Route path="*" element={<NotFound />} />
+            <Route
+              path="*"
+              element={
+                <Suspense fallback={<RouteLoader fullScreen />}>
+                  <NotFound />
+                </Suspense>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
