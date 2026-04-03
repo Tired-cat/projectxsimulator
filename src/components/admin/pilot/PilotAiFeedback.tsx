@@ -53,11 +53,6 @@ export default function PilotAiFeedback({ classId }: Props) {
       const { data: sessData } = await sq;
       const ids = (sessData ?? []).map((s) => s.id);
 
-      // completed sessions count
-      let cq = supabase.from('sessions').select('id', { count: 'exact', head: true }).eq('is_completed', true);
-      if (classId) cq = cq.eq('class_id', classId);
-      const { count: cc } = await cq;
-
       // fetch ai_feedback_events
       const aiRows: AiRow[] = [];
       for (let i = 0; i < ids.length; i += 100) {
@@ -69,21 +64,8 @@ export default function PilotAiFeedback({ classId }: Props) {
         if (data) aiRows.push(...(data as AiRow[]));
       }
 
-      // fetch submissions
-      const subRows: SubRow[] = [];
-      for (let i = 0; i < ids.length; i += 100) {
-        const chunk = ids.slice(i, i + 100);
-        const { data } = await supabase
-          .from('submissions')
-          .select('session_id, final_tiktok_spend, final_newspaper_spend')
-          .in('session_id', chunk);
-        if (data) subRows.push(...(data as SubRow[]));
-      }
-
       if (!cancelled) {
         setRows(aiRows);
-        setSubs(subRows);
-        setCompletedCount(cc ?? 0);
         setLoading(false);
       }
     })();
