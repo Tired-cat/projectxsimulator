@@ -167,19 +167,21 @@ export default function Auth() {
                   <Label htmlFor="s-pass">Password</Label>
                   <Input id="s-pass" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="s-code">Class Code</Label>
-                  <Input
-                    id="s-code"
-                    value={classCode}
-                    onChange={(e) => setClassCode(normalizeClassCode(e.target.value))}
-                    placeholder="e.g. 4821"
-                    maxLength={4}
-                    className="text-center text-lg tracking-widest font-mono"
-                    required={isSignUp}
-                  />
-                  <p className="text-xs text-muted-foreground">Enter the 4-digit code from your professor</p>
-                </div>
+                {isSignUp && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="s-code">Class Code</Label>
+                    <Input
+                      id="s-code"
+                      value={classCode}
+                      onChange={(e) => setClassCode(normalizeClassCode(e.target.value))}
+                      placeholder="e.g. 4821"
+                      maxLength={4}
+                      className="text-center text-lg tracking-widest font-mono"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">Enter the 4-digit code from your professor</p>
+                  </div>
+                )}
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? 'Please wait…' : isSignUp ? 'Create Account' : 'Sign In'}
                 </Button>
