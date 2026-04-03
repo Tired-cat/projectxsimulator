@@ -156,6 +156,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
   const [boardResets, setBoardResets] = useState(0);
   const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [boardEvents, setBoardEvents] = useState<BoardEvent[]>([]);
+  const [writtenDiagnosis, setWrittenDiagnosis] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DetailTab>('reasoning');
 
@@ -190,7 +191,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .eq('session_id', sessionId)
           .eq('reset_type', 'board_reset'),
         supabase.from('reasoning_board_state')
-          .select('cards')
+          .select('cards, written_diagnosis')
           .eq('session_id', sessionId)
           .maybeSingle(),
         supabase.from('board_events')
@@ -227,6 +228,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           parsedCards = raw as BoardCard[];
         }
         setBoardCards(parsedCards);
+        setWrittenDiagnosis((boardRes.data as any)?.written_diagnosis ?? null);
         setBoardEvents((boardEventsRes.data ?? []) as BoardEvent[]);
 
         setLoading(false);
@@ -338,7 +340,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
 
       {/* ── TAB CONTENT ──────────────────────────────── */}
       <div className="pt-1">
-        {activeTab === 'reasoning' && <ReasoningBoardTab cards={boardCards} generatedStory={sub?.generated_story ?? null} />}
+        {activeTab === 'reasoning' && <ReasoningBoardTab cards={boardCards} generatedStory={sub?.generated_story ?? null} writtenDiagnosis={writtenDiagnosis} />}
         {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} sub={sub} sessionId={sessionId} />}
         {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
@@ -368,7 +370,7 @@ function formatEvidenceId(id: string): string {
 const QUADRANT_ORDER = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
 
 
-function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; generatedStory: string | null }) {
+function ReasoningBoardTab({ cards, generatedStory, writtenDiagnosis }: { cards: BoardCard[]; generatedStory: string | null; writtenDiagnosis: string | null }) {
   const byQuadrant = useMemo(() => {
     const map: Record<string, BoardCard[]> = {
       descriptive: [], diagnostic: [], prescriptive: [], predictive: [],
@@ -432,6 +434,11 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
                         {card.value && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">{card.value}</p>
                         )}
+                        {card.annotation && (
+                          <p className="text-[10px] italic text-foreground/60 mt-1 leading-snug border-t border-border/30 pt-1">
+                            "{card.annotation}"
+                          </p>
+                        )}
                         {contextCards.length > 0 && contextCards.map((ctx, ci) => (
                           <div key={ci} className="flex items-center gap-1 mt-1.5">
                             <span className="inline-flex items-center gap-0">
@@ -452,6 +459,33 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
           );
         })}
       </div>
+
+      {/* Written Diagnosis */}
+      {writtenDiagnosis && writtenDiagnosis.trim().length > 0 && (
+        <>
+          <hr className="border-border" />
+          <div>
+            <p className="text-xs font-medium text-foreground mb-1">Written Diagnosis</p>
+            <p className="text-[10px] text-muted-foreground mb-2 italic">Auto-generated from annotations</p>
+            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
+              {writtenDiagnosis.split('\n').filter(l => l.trim()).map((line, i) => {
+                const match = line.match(/^(Descriptive|Diagnostic|Prescriptive|Predictive):\s*"(.+)"$/i);
+                if (match) {
+                  const qKey = match[1].toLowerCase();
+                  const color = QUAD_COLORS[qKey] || 'inherit';
+                  return (
+                    <p key={i} className="text-[11px] leading-snug">
+                      <span className="font-semibold" style={{ color }}>{match[1]}:</span>{' '}
+                      <span className="text-foreground/80 italic">"{match[2]}"</span>
+                    </p>
+                  );
+                }
+                return <p key={i} className="text-[11px] text-foreground/80">{line}</p>;
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Reasoning Story */}
       <hr className="border-border" />
