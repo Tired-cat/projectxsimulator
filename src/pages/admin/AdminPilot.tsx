@@ -145,6 +145,7 @@ export default function AdminPilot() {
         <Suspense fallback={<RouteLoader label="Loading pilot analytics…" />}>
           {visitedTabs.has('Pilot health') && <div className={activeTab !== 'Pilot health' ? 'hidden' : ''}><PilotHealth classId={classId} /></div>}
           {visitedTabs.has('Reasoning board') && <div className={activeTab !== 'Reasoning board' ? 'hidden' : ''}><PilotReasoningBoard classId={classId} /></div>}
+          {visitedTabs.has('Annotation quality') && <div className={activeTab !== 'Annotation quality' ? 'hidden' : ''}><PilotAnnotationQuality classId={classId} /></div>}
           {visitedTabs.has('Allocation decisions') && <div className={activeTab !== 'Allocation decisions' ? 'hidden' : ''}><PilotAllocationDecisions classId={classId} /></div>}
           {visitedTabs.has('Feature usage') && <div className={activeTab !== 'Feature usage' ? 'hidden' : ''}><PilotFeatureUsage classId={classId} /></div>}
           {visitedTabs.has('AI feedback') && <div className={activeTab !== 'AI feedback' ? 'hidden' : ''}><PilotAiFeedback classId={classId} /></div>}
