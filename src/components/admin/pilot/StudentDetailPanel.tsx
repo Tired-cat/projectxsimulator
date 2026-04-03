@@ -434,6 +434,11 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
                         {card.value && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">{card.value}</p>
                         )}
+                        {card.annotation && (
+                          <p className="text-[10px] italic text-foreground/60 mt-1 leading-snug border-t border-border/30 pt-1">
+                            "{card.annotation}"
+                          </p>
+                        )}
                         {contextCards.length > 0 && contextCards.map((ctx, ci) => (
                           <div key={ci} className="flex items-center gap-1 mt-1.5">
                             <span className="inline-flex items-center gap-0">
