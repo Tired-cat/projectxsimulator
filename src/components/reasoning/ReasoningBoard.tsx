@@ -181,6 +181,7 @@ export function ReasoningBoard() {
                             chip={chip}
                             blockId={block.id}
                             blockColor={block.color}
+                            chipIndex={index}
                             onRemove={() => removeChip(block.id, chip.id)}
                           />
                         ))}
