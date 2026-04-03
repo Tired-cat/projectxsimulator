@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check, Trash2 } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Check, Trash2, Pencil } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   AlertDialog,
@@ -238,12 +238,20 @@ function ChipCard({
   blockColor: string;
   onRemove: () => void;
 }) {
+  const { updateChipAnnotation } = useReasoningBoard();
   const insight = getSmartInsight(chip, blockId);
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
   const contextItems = chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : []);
   const hasContext = contextItems.length > 0;
+
+  const [showAnnotation, setShowAnnotation] = useState(false);
+  const [draft, setDraft] = useState(chip.annotation ?? '');
+
+  useEffect(() => {
+    setDraft(chip.annotation ?? '');
+  }, [chip.annotation]);
 
   const {
     attributes,
