@@ -72,26 +72,15 @@ export default function AdminPilot() {
     return `${cls.name} — ${cls.section_code} (${cls.class_code})`;
   }, [classId, classes]);
 
-  const activeView = (() => {
-    switch (activeTab) {
-      case 'Pilot health':
-        return <PilotHealth classId={classId} />;
-      case 'Reasoning board':
-        return <PilotReasoningBoard classId={classId} />;
-      case 'Allocation decisions':
-        return <PilotAllocationDecisions classId={classId} />;
-      case 'Feature usage':
-        return <PilotFeatureUsage classId={classId} />;
-      case 'AI feedback':
-        return <PilotAiFeedback classId={classId} />;
-      case 'Struggle signals':
-        return <PilotStruggleSignals classId={classId} />;
-      case 'Per-student table':
-        return <PilotPerStudentTable classId={classId} />;
-      default:
-        return <TabPlaceholder tab={activeTab} />;
-    }
-  })();
+  // Track which tabs have been visited so we mount them lazily but keep them alive
+  const [visitedTabs, setVisitedTabs] = useState<Set<PilotTab>>(new Set(['Pilot health']));
+
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      return new Set(prev).add(activeTab);
+    });
+  }, [activeTab]);
 
   return (
     <div className="space-y-0 -m-6">
