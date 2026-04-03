@@ -258,20 +258,36 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         <StatCard label="Board resets" value={String(boardResets)} />
       </div>
 
-      {/* ── TABS ─────────────────────────────────────── */}
-      <Tabs defaultValue="board">
-        <TabsList className="h-8 mb-4">
-          <TabsTrigger value="board" className="text-xs px-3 h-7">Board state</TabsTrigger>
-          <TabsTrigger value="alloc" className="text-xs px-3 h-7">Allocation path</TabsTrigger>
-          <TabsTrigger value="ai" className="text-xs px-3 h-7">AI feedback</TabsTrigger>
-          <TabsTrigger value="nav" className="text-xs px-3 h-7">Navigation</TabsTrigger>
-        </TabsList>
+      {/* ── TAB BAR ────────────────────────────────── */}
+      <div className="border-b border-border">
+        <div className="flex">
+          {DETAIL_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'text-xs py-2 px-3.5 cursor-pointer transition-colors whitespace-nowrap',
+                activeTab === tab.id
+                  ? 'text-[#6B4F8A] border-b-2 border-[#6B4F8A] font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <TabsContent value="board"><BoardStateTab sub={sub} /></TabsContent>
-        <TabsContent value="alloc"><AllocationPathTab events={allocEvents} /></TabsContent>
-        <TabsContent value="ai"><AiFeedbackTab data={aiFeedback} /></TabsContent>
-        <TabsContent value="nav"><NavigationTab events={navEvents} /></TabsContent>
-      </Tabs>
+      {/* ── TAB CONTENT ──────────────────────────────── */}
+      <div className="pt-1">
+        {activeTab === 'reasoning' && <BoardStateTab sub={sub} />}
+        {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} />}
+        {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
+        {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
+        {activeTab === 'sequence' && (
+          <p className="text-xs text-muted-foreground py-4">Loading Board sequence...</p>
+        )}
+      </div>
     </div>
   );
 }
