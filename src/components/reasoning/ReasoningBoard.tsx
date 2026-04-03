@@ -349,30 +349,33 @@ function ChipCard({
 
       {/* Annotation popover */}
       {showAnnotation && canAnnotate && (
-        <div className="px-2.5 pb-2 pt-1" onPointerDown={(e) => e.stopPropagation()}>
+        <div
+          className="px-2.5 pb-2 pt-1"
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           <p className="text-[9px] text-muted-foreground/70 mb-1">
             Why does this data point matter? What does it tell you?
           </p>
           <textarea
-            className="w-full text-[10px] rounded border border-border/60 bg-background px-2 py-1 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
+            className="w-full text-[10px] rounded border border-border/60 bg-background px-2 py-1.5 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
             rows={2}
             maxLength={160}
             placeholder="My interpretation..."
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, 150))}
-            onBlur={() => {
-              updateChipAnnotation(blockId, chip.id, draft.trim());
-              setShowAnnotation(false);
-            }}
             onPointerDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
             autoFocus
           />
-          <div className="flex justify-between items-center mt-0.5">
+          <div className="flex justify-between items-center mt-1">
             <span className="text-[9px] text-muted-foreground/50">{150 - draft.length} chars left</span>
             <button
               className="text-[9px] text-primary hover:underline"
               onPointerDown={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 updateChipAnnotation(blockId, chip.id, draft.trim());
                 setShowAnnotation(false);
               }}
