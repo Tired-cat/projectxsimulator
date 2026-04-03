@@ -369,6 +369,53 @@ function formatEvidenceId(id: string): string {
 /* ── Tab 1: Reasoning Board ─────────────────────── */
 const QUADRANT_ORDER = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
 
+/* ── Parsed AI Feedback display ────────────────── */
+const FEEDBACK_FIELDS: { key: string; label: string; required?: boolean }[] = [
+  { key: 'budgetFeedback', label: 'Budget allocation', required: true },
+  { key: 'reasoningFeedback', label: 'Reasoning board', required: true },
+  { key: 'diagnosisFeedback', label: 'Written diagnosis' },
+  { key: 'overallNudge', label: 'Overall', required: true },
+];
+
+function ParsedAiFeedback({ rawText }: { rawText: string }) {
+  let parsed: Record<string, string> | null = null;
+  try {
+    const obj = JSON.parse(rawText);
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) parsed = obj;
+  } catch { /* not JSON */ }
+
+  if (!parsed) {
+    return (
+      <div className="rounded-r-lg py-3 px-3.5 border-l-[3px] bg-muted/30 border-l-muted-foreground/30">
+        <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/80">{rawText}</p>
+        <p className="text-[10px] text-muted-foreground mt-2 italic">Response could not be parsed.</p>
+      </div>
+    );
+  }
+
+  const hasDiagnosis = parsed.diagnosisFeedback && parsed.diagnosisFeedback.trim() !== '';
+
+  return (
+    <div className="space-y-3">
+      {FEEDBACK_FIELDS.map((f) => {
+        const content = parsed![f.key];
+        if (!content || content.trim() === '') return null;
+        return (
+          <div key={f.key}>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{f.label}</p>
+            <div className="rounded-r-lg py-2.5 px-3.5 border-l-[3px]" style={{ backgroundColor: '#EEEDFE', borderLeftColor: '#6B4F8A' }}>
+              <p className="text-xs leading-relaxed" style={{ color: '#3C3489' }}>{content}</p>
+            </div>
+          </div>
+        );
+      })}
+      {!hasDiagnosis && (
+        <p className="text-[10px] text-muted-foreground italic">No diagnosis feedback — student had no annotations when feedback was requested.</p>
+      )}
+    </div>
+  );
+}
+
 
 function ReasoningBoardTab({ cards, generatedStory, writtenDiagnosis }: { cards: BoardCard[]; generatedStory: string | null; writtenDiagnosis: string | null }) {
   const byQuadrant = useMemo(() => {
