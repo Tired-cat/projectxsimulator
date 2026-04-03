@@ -23,7 +23,6 @@ interface StudentRow {
   tutorial: 'Completed' | 'Abandoned' | 'Skipped';
   cards: number | null;
   quadrants: number | null;
-  contextualise: number | null;
   allocChanges: number;
   feedback: boolean;
   decision: 'Correct' | 'Partial' | 'Incorrect' | 'No change' | null;
@@ -154,7 +153,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
           return {
             userId, sessionId: null, email,
             durationMin: null, tutorial: 'Skipped' as const,
-            cards: null, quadrants: null, contextualise: null,
+            cards: null, quadrants: null,
             allocChanges: 0, feedback: false, decision: null,
           };
         }
@@ -173,13 +172,12 @@ export default function PilotPerStudentTable({ classId }: Props) {
         const sub = subMap.get(session.id);
         let cards: number | null = null;
         let quadrants: number | null = null;
-        let contextualise: number | null = null;
         let decision: StudentRow['decision'] = null;
 
         if (sub) {
           cards = sub.descriptive_card_count + sub.diagnostic_card_count + sub.prescriptive_card_count + sub.predictive_card_count;
           quadrants = [sub.descriptive_card_count, sub.diagnostic_card_count, sub.prescriptive_card_count, sub.predictive_card_count].filter((c) => c > 0).length;
-          contextualise = sub.contextualise_pairs_count;
+
 
           const tkCorrect = (sub.final_tiktok_spend ?? 9000) <= 9000;
           const npCorrect = (sub.final_newspaper_spend ?? 1000) >= 1000;
@@ -194,7 +192,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
 
         return {
           userId, sessionId: session.id, email, durationMin, tutorial,
-          cards, quadrants, contextualise,
+          cards, quadrants,
           allocChanges: allocCounts.get(session.id) ?? 0,
           feedback: feedbackSessions.has(session.id),
           decision,
@@ -328,7 +326,6 @@ export default function PilotPerStudentTable({ classId }: Props) {
     { key: 'tutorial', label: 'Tutorial', align: 'center' },
     { key: 'cards', label: 'Cards', align: 'right' },
     { key: 'quadrants', label: 'Quadrants', align: 'center' },
-    { key: 'contextualise', label: 'Contextualise', align: 'right' },
     { key: 'allocChanges', label: 'Alloc. changes', align: 'right' },
     { key: 'feedback', label: 'Feedback', align: 'center' },
     { key: 'decision', label: 'Decision', align: 'center' },
@@ -427,7 +424,6 @@ export default function PilotPerStudentTable({ classId }: Props) {
                     </td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.cards ?? '—'}</td>
                     <td className="py-2 px-3 text-center text-muted-foreground">{row.quadrants != null ? `${row.quadrants}/4` : '—'}</td>
-                    <td className="py-2 px-3 text-right text-muted-foreground">{row.contextualise ?? '—'}</td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.sessionId ? row.allocChanges : '—'}</td>
                     <td className="py-2 px-3 text-center">
                       {row.sessionId == null ? '—' : (

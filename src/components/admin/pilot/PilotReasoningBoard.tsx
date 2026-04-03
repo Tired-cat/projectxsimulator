@@ -7,7 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { LayoutGrid, Grid2x2, Link2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { LayoutGrid, Grid2x2, RotateCcw, AlertTriangle } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -172,7 +172,7 @@ export default function PilotReasoningBoard({ classId }: Props) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
   const [draggedItems, setDraggedItems] = useState<DraggedItem[]>([]);
-  const [contextPairs, setContextPairs] = useState<ContextPair[]>([]);
+  
   const [firstDrags, setFirstDrags] = useState<FirstDragEvent[]>([]);
   const [totalSessions, setTotalSessions] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -182,18 +182,16 @@ export default function PilotReasoningBoard({ classId }: Props) {
     (async () => {
       setLoading(true);
       const sids = await getSessionIdsForClass(classId);
-      const [subs, resets, dragged, pairs, firsts] = await Promise.all([
+      const [subs, resets, dragged, firsts] = await Promise.all([
         fetchSubmissions(sids),
         fetchResetCounts(sids),
         fetchDraggedItems(sids),
-        fetchContextPairs(sids),
         fetchFirstDrags(sids),
       ]);
       if (!cancelled) {
         setSubmissions(subs);
         setResetCounts(resets);
         setDraggedItems(dragged);
-        setContextPairs(pairs);
         setFirstDrags(firsts);
         setTotalSessions(sids.length);
         setLoading(false);
@@ -220,11 +218,8 @@ export default function PilotReasoningBoard({ classId }: Props) {
     return `${Math.round((filled / n) * 100)}%`;
   }, [submissions, n]);
 
-  const usedContextPct = useMemo(() => {
-    if (n === 0) return '0%';
-    const used = submissions.filter(r => r.contextualise_pairs_count > 0).length;
-    return `${Math.round((used / n) * 100)}%`;
-  }, [submissions, n]);
+
+
 
   const avgBoardResets = useMemo(() => {
     const sessionIds = [...new Set(submissions.map(s => s.session_id))];
@@ -292,10 +287,9 @@ export default function PilotReasoningBoard({ classId }: Props) {
   return (
     <div className="space-y-6">
       {/* ── top row metric cards ───────────────────── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <MetricCard label="Avg cards placed" value={avgCardsPlaced} icon={<LayoutGrid className="h-4 w-4" />} />
         <MetricCard label="All 4 quadrants filled" value={allFourPct} icon={<Grid2x2 className="h-4 w-4" />} />
-        <MetricCard label="Used Contextualise" value={usedContextPct} icon={<Link2 className="h-4 w-4" />} />
         <MetricCard label="Avg board resets" value={avgBoardResets} icon={<RotateCcw className="h-4 w-4" />} />
       </div>
 
@@ -413,37 +407,6 @@ export default function PilotReasoningBoard({ classId }: Props) {
           </div>
         </div>
       )}
-
-      {/* ── contextualise pairs table ──────────────── */}
-      <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3">Top contextualise pairs</h3>
-        <Card className="bg-background border-border shadow-sm">
-          <CardContent className="p-0">
-            {contextPairs.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No contextualise events recorded yet.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Pair</TableHead>
-                    <TableHead className="text-xs text-right w-24">Times</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contextPairs.map((p, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs font-mono">
-                        {p.evidence_id} <span className="text-muted-foreground">↔</span> {p.paired_with}
-                      </TableCell>
-                      <TableCell className="text-xs text-right font-medium">{p.pair_count}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       {/* ── first drag donut charts ────────────────── */}
       <FirstDragCharts firstDrags={firstDrags} />
