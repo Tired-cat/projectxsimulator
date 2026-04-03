@@ -360,14 +360,14 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
     return map;
   }, [cards]);
 
-  if (cards.length === 0) {
-    return <p className="text-xs text-muted-foreground py-4 italic">No evidence was placed on the reasoning board.</p>;
-  }
-
   const storySentences = useMemo(() => {
     if (!generatedStory) return [];
     return generatedStory.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
   }, [generatedStory]);
+
+  if (cards.length === 0) {
+    return <p className="text-xs text-muted-foreground py-4 italic">No evidence was placed on the reasoning board.</p>;
+  }
 
   return (
     <div className="space-y-5">
