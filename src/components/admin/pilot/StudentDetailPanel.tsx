@@ -320,7 +320,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
       {/* ── TAB CONTENT ──────────────────────────────── */}
       <div className="pt-1">
         {activeTab === 'reasoning' && <ReasoningBoardTab cards={boardCards} generatedStory={sub?.generated_story ?? null} />}
-        {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} />}
+        {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} sub={sub} sessionId={sessionId} />}
         {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
         {activeTab === 'sequence' && (
