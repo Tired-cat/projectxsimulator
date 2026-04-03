@@ -1,4 +1,6 @@
-import { useCallback, useState, useEffect, useMemo, ReactNode } from 'react';
+import { useCallback, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
 import { DndContext, DragEndEvent, DragStartEvent, DragCancelEvent, DragOverlay } from '@dnd-kit/core';
 import { useMarketingSimulation } from '@/hooks/useMarketingSimulation';
@@ -16,8 +18,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSession } from '@/hooks/useSession';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSubmission } from '@/hooks/useSubmission';
+import { useNavigationTracking } from '@/hooks/useNavigationTracking';
 import { supabase } from '@/integrations/supabase/client';
-import Auth from '@/pages/Auth';
+
 import type { PanelId } from '@/types/workspaceTypes';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS, INITIAL_SPEND, calculateMixedRevenue as calcRevenue, CHANNEL_IDS } from '@/lib/marketingConstants';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
@@ -27,6 +30,7 @@ import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { FeedbackPage } from '@/components/simulation/FeedbackPage';
+import { buildFullReasoningStory } from '@/components/reasoning/ReasoningNarrative';
 import {
   Accordion,
   AccordionContent,
@@ -44,7 +48,7 @@ import {
 
 
 function SimulationContent() {
-  const { openTab } = useTabs();
+  const { openTab, activeTabId } = useTabs();
   const { user, signOut, role } = useAuth();
   const { board, addChip, moveChip, contextualiseChip, writtenDiagnosis, loadBoard } = useReasoningBoard();
   const [activeDragHtml, setActiveDragHtml] = useState<string | null>(null);
@@ -52,6 +56,9 @@ function SimulationContent() {
   const [usedAi, setUsedAi] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasFeedback, setHasFeedback] = useState(false);
+  const [feedbackEventId, setFeedbackEventId] = useState<string | null>(null);
+  const [showFeedbackConfirm, setShowFeedbackConfirm] = useState(false);
+  const feedbackShownAtRef = useRef<number | null>(null);
 
   // --- @dnd-kit onDragEnd handler (central dispatcher) ---
   const chipFromPayload = useCallback((payload: ExternalEvidencePayload) => {
@@ -59,32 +66,16 @@ function SimulationContent() {
     return createEvidenceChip(label, value, context, sourceId, rest);
   }, []);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveDragHtml(null);
-    setActiveDragSize(null);
-    const { active, over } = event;
-    const dragData = active.data.current as EvidenceDragData | undefined;
-    const dropData = over?.data.current as EvidenceDropData | undefined;
+  // --- Board event tracking (refs + pure helpers defined early, functions using sessionId defined after useSession) ---
+  const boardSeqRef = useRef(0);
 
-    if (!dragData || !dropData) return;
-
-    if (dropData.kind === 'reasoning-block') {
-      if (dragData.kind === 'board-chip') {
-        moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
-      } else {
-        addChip(dropData.blockId, chipFromPayload(dragData.payload));
-      }
-      return;
-    }
-
-    if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
-      const incoming = chipFromPayload(dragData.payload);
-      // Prevent a chip from being contextualised with itself (same sourceId)
-      const targetChip = board[dropData.blockId]?.find(c => c.id === dropData.targetChipId);
-      if (targetChip && targetChip.sourceId === incoming.sourceId) return;
-      contextualiseChip(dropData.blockId, dropData.targetChipId, incoming);
-    }
-  }, [addChip, moveChip, contextualiseChip, chipFromPayload]);
+  const mapChipKindToEvidenceType = useCallback((payload: ExternalEvidencePayload): string => {
+    if (payload.chipKind === 'product') return 'product_mix';
+    const metric = payload.metricName?.toLowerCase() ?? '';
+    if (metric.includes('revenue')) return 'revenue_bar';
+    if (metric.includes('profit')) return 'profit_bar';
+    return 'channel_bar';
+  }, []);
   const handleDragStart = useCallback((event: DragStartEvent) => {
     let node = (event.activatorEvent as PointerEvent)?.target as HTMLElement | null;
     if (node) {
@@ -104,7 +95,7 @@ function SimulationContent() {
 
   const {
     channelSpend,
-    updateChannelSpend,
+    updateChannelSpend: rawUpdateChannelSpend,
     remainingBudget,
     totalSpent,
     channelMetrics,
@@ -115,7 +106,138 @@ function SimulationContent() {
 
   const { sessionId, isCompleted, startedAt, completedAt, loading: sessionLoading, completeSession } = useSession();
 
-  // Load saved board state when session is ready
+  // Track tab navigation events
+  useNavigationTracking(activeTabId, sessionId, user?.id ?? null);
+
+  // --- Allocation event tracking ---
+  const allocationSeqRef = useRef(0);
+  const spendBeforeDragRef = useRef<ChannelSpend | null>(null);
+
+  // Capture spend snapshot before a drag starts
+  useEffect(() => {
+    const handler = () => {
+      spendBeforeDragRef.current = { ...channelSpend };
+    };
+    window.addEventListener('allocation:drag-start', handler);
+    return () => window.removeEventListener('allocation:drag-start', handler);
+  }, [channelSpend]);
+
+  const updateChannelSpend = useCallback(
+    (channelId: keyof ChannelSpend, value: number) => {
+      const previousValue = spendBeforeDragRef.current
+        ? spendBeforeDragRef.current[channelId]
+        : channelSpend[channelId];
+
+      rawUpdateChannelSpend(channelId, value);
+
+      // Only log if value actually changed
+      if (value !== previousValue && sessionId && user) {
+        allocationSeqRef.current += 1;
+        supabase.from('allocation_events').insert({
+          session_id: sessionId,
+          user_id: user.id,
+          channel: channelId,
+          previous_value: previousValue,
+          new_value: value,
+          sequence_number: allocationSeqRef.current,
+        }).then(() => {});
+      }
+
+      spendBeforeDragRef.current = null;
+    },
+    [rawUpdateChannelSpend, channelSpend, sessionId, user],
+  );
+
+  // --- Board event logging (needs sessionId) ---
+  const logBoardEvent = useCallback((
+    eventType: string,
+    evidenceType: string | null,
+    evidenceId: string | null,
+    quadrant: string,
+    pairedWith?: string | null,
+  ) => {
+    if (!sessionId || !user) return;
+    boardSeqRef.current += 1;
+    supabase.from('board_events').insert({
+      session_id: sessionId,
+      user_id: user.id,
+      event_type: eventType,
+      evidence_type: evidenceType,
+      evidence_id: evidenceId,
+      quadrant,
+      paired_with: pairedWith ?? null,
+      sequence_number: boardSeqRef.current,
+    }).then(() => {});
+  }, [sessionId, user]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragHtml(null);
+    setActiveDragSize(null);
+    const { active, over } = event;
+    const dragData = active.data.current as EvidenceDragData | undefined;
+    const dropData = over?.data.current as EvidenceDropData | undefined;
+
+    if (!dragData || !dropData) return;
+
+    if (dropData.kind === 'reasoning-block') {
+      if (dragData.kind === 'board-chip') {
+        moveChip(dragData.fromBlock, dropData.blockId, dragData.chip.id);
+        logBoardEvent('move_on_board', null, dragData.chip.sourceId, dropData.blockId);
+      } else {
+        addChip(dropData.blockId, chipFromPayload(dragData.payload));
+        logBoardEvent(
+          'drag_to_board',
+          mapChipKindToEvidenceType(dragData.payload),
+          dragData.payload.sourceId,
+          dropData.blockId,
+        );
+      }
+      return;
+    }
+
+    if (dropData.kind === 'context-target' && dragData.kind === 'external-chip') {
+      const incoming = chipFromPayload(dragData.payload);
+      const targetChip = board[dropData.blockId]?.find(c => c.id === dropData.targetChipId);
+      if (targetChip && targetChip.sourceId === incoming.sourceId) return;
+      contextualiseChip(dropData.blockId, dropData.targetChipId, incoming);
+      logBoardEvent(
+        'contextualise',
+        mapChipKindToEvidenceType(dragData.payload),
+        dragData.payload.sourceId,
+        dropData.blockId,
+        targetChip?.sourceId ?? null,
+      );
+    }
+  }, [addChip, moveChip, contextualiseChip, chipFromPayload, logBoardEvent, mapChipKindToEvidenceType, board]);
+
+  // Listen for remove_card and clear_board events from ReasoningBoardContext
+  useEffect(() => {
+    if (!sessionId || !user) return;
+
+    const handleRemove = (e: Event) => {
+      const { evidenceId, quadrant } = (e as CustomEvent).detail;
+      logBoardEvent('remove_card', null, evidenceId, quadrant);
+    };
+
+    const handleClear = (e: Event) => {
+      const { cardsCleared } = (e as CustomEvent).detail;
+      logBoardEvent('clear_board', null, null, 'all');
+      supabase.from('resets').insert({
+        session_id: sessionId,
+        user_id: user.id,
+        reset_type: 'board_reset',
+        cards_cleared: cardsCleared,
+      }).then(() => {});
+    };
+
+    window.addEventListener('board:remove-chip', handleRemove);
+    window.addEventListener('board:clear', handleClear);
+    return () => {
+      window.removeEventListener('board:remove-chip', handleRemove);
+      window.removeEventListener('board:clear', handleClear);
+    };
+  }, [sessionId, user, logBoardEvent]);
+
   useEffect(() => {
     if (!sessionId || !user) return;
 
@@ -132,7 +254,25 @@ function SimulationContent() {
           const cards = data.cards as unknown as ReasoningBoardState;
           // Only load if it has the right shape
           if (cards.descriptive && cards.diagnostic && cards.predictive && cards.prescriptive) {
-            loadBoard(cards, data.written_diagnosis || '');
+            let diagnosis = data.written_diagnosis || '';
+            // Regenerate diagnosis from annotations if it wasn't saved
+            if (!diagnosis) {
+              const QUADRANT_ORDER: Array<keyof ReasoningBoardState> = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
+              const QUADRANT_LABELS: Record<string, string> = {
+                descriptive: 'Descriptive', diagnostic: 'Diagnostic',
+                predictive: 'Predictive', prescriptive: 'Prescriptive',
+              };
+              const lines: string[] = [];
+              for (const q of QUADRANT_ORDER) {
+                for (const c of (cards[q] || [])) {
+                  if (c.annotation && c.annotation.trim().length > 0) {
+                    lines.push(`${QUADRANT_LABELS[q]}: "${c.annotation.trim()}"`);
+                  }
+                }
+              }
+              diagnosis = lines.join('\n');
+            }
+            loadBoard(cards, diagnosis);
           }
         } catch {
           // Invalid shape, start fresh
@@ -161,6 +301,11 @@ function SimulationContent() {
     setSubmitted(isCompleted);
   }, [isCompleted]);
 
+  // Compute generated story text — use the same rich narrative shown in "My Full Reasoning Story"
+  const generatedStory = useMemo(() => {
+    return buildFullReasoningStory(board);
+  }, [board]);
+
   const { submit } = useSubmission({
     sessionId,
     startedAt,
@@ -171,24 +316,147 @@ function SimulationContent() {
     usedAi,
     forceSave,
     completeSession,
+    channelSpend,
+    feedbackRoundsUsed: hasFeedback ? 1 : 0,
+    generatedStory,
   });
 
   const handleSubmit = useCallback(async () => {
     setShowSubmitDialog(false);
-    await submit();
-    setSubmitted(true);
-    toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
-  }, [submit]);
 
-  const handleShowFeedback = useCallback(() => {
+    try {
+      // If submitting from the feedback page (or after adjusting), update ai_feedback_events
+      if (feedbackEventId) {
+        const contextPairsCount = Object.values(board).reduce(
+          (sum, chips) => sum + chips.filter((c: any) => c.pairedWith).length,
+          0,
+        );
+        const updatePayload: Record<string, any> = {
+          board_state_after: board as any,
+          descriptive_cards_after: board.descriptive?.length ?? 0,
+          diagnostic_cards_after: board.diagnostic?.length ?? 0,
+          prescriptive_cards_after: board.prescriptive?.length ?? 0,
+          predictive_cards_after: board.predictive?.length ?? 0,
+          contextualise_pairs_after: contextPairsCount,
+          tiktok_spend_after: channelSpend.tiktok,
+          instagram_spend_after: channelSpend.instagram,
+          facebook_spend_after: channelSpend.facebook,
+          newspaper_spend_after: channelSpend.newspaper,
+        };
+        // If submitting directly from feedback page (not after adjusting)
+        if (showFeedback && feedbackShownAtRef.current) {
+          const timeAdjusting = Math.round((Date.now() - feedbackShownAtRef.current) / 1000);
+          updatePayload.post_feedback_action = 'submitted_immediately';
+          updatePayload.action_taken_at = new Date().toISOString();
+          updatePayload.time_adjusting_seconds = timeAdjusting;
+        }
+        await supabase
+          .from('ai_feedback_events')
+          .update(updatePayload)
+          .eq('id', feedbackEventId);
+      }
+
+      await submit();
+      setSubmitted(true);
+      toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
+    } catch (err) {
+      console.error('Submit error:', err);
+      toast({ title: 'Submit failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
+    }
+  }, [submit, feedbackEventId, board, channelSpend, showFeedback]);
+
+  // Check on mount if feedback already exists for this session
+  useEffect(() => {
+    if (!sessionId || !user) return;
+    supabase
+      .from('ai_feedback_events')
+      .select('id, ai_feedback_text')
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id)
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setHasFeedback(true);
+          setUsedAi(true);
+          setFeedbackEventId(data[0].id);
+        }
+      });
+  }, [sessionId, user]);
+
+  const handleShowFeedback = useCallback(async () => {
     setUsedAi(true);
-    setShowFeedback(true);
-  }, []);
 
-  const handleReturnFromFeedback = useCallback(() => {
+    // If feedback row already exists, just show it
+    if (feedbackEventId) {
+      setShowFeedback(true);
+      return;
+    }
+
+    // First time: insert before-state row
+    if (!sessionId || !user) return;
+
+    const contextPairsCount = Object.values(board).reduce(
+      (sum, chips) => sum + chips.filter((c: any) => c.pairedWith).length,
+      0,
+    );
+
+    const { data: inserted } = await supabase
+      .from('ai_feedback_events')
+      .insert({
+        session_id: sessionId,
+        user_id: user.id,
+        feedback_round: 1,
+        board_state_before: board as any,
+        descriptive_cards_before: board.descriptive?.length ?? 0,
+        diagnostic_cards_before: board.diagnostic?.length ?? 0,
+        prescriptive_cards_before: board.prescriptive?.length ?? 0,
+        predictive_cards_before: board.predictive?.length ?? 0,
+        contextualise_pairs_before: contextPairsCount,
+        tiktok_spend_before: channelSpend.tiktok,
+        instagram_spend_before: channelSpend.instagram,
+        facebook_spend_before: channelSpend.facebook,
+        newspaper_spend_before: channelSpend.newspaper,
+      })
+      .select('id')
+      .single();
+
+    if (inserted) {
+      setFeedbackEventId(inserted.id);
+    }
+
+    setShowFeedback(true);
+  }, [feedbackEventId, sessionId, user, board, channelSpend]);
+
+  const handleReturnFromFeedback = useCallback(async () => {
+    // Record 'adjusted' action with timing + after-state snapshot
+    if (feedbackEventId && feedbackShownAtRef.current) {
+      const timeAdjusting = Math.round((Date.now() - feedbackShownAtRef.current) / 1000);
+      const contextPairsCount = Object.values(board).reduce(
+        (sum, chips) => sum + chips.filter((c: any) => c.contextChips?.length > 0 || c.contextChip).length,
+        0,
+      );
+      await supabase
+        .from('ai_feedback_events')
+        .update({
+          post_feedback_action: 'adjusted',
+          action_taken_at: new Date().toISOString(),
+          time_adjusting_seconds: timeAdjusting,
+          board_state_after: board as any,
+          descriptive_cards_after: board.descriptive?.length ?? 0,
+          diagnostic_cards_after: board.diagnostic?.length ?? 0,
+          prescriptive_cards_after: board.prescriptive?.length ?? 0,
+          predictive_cards_after: board.predictive?.length ?? 0,
+          contextualise_pairs_after: contextPairsCount,
+          tiktok_spend_after: channelSpend.tiktok,
+          instagram_spend_after: channelSpend.instagram,
+          facebook_spend_after: channelSpend.facebook,
+          newspaper_spend_after: channelSpend.newspaper,
+        })
+        .eq('id', feedbackEventId);
+    }
     setHasFeedback(true);
     setShowFeedback(false);
-  }, []);
+  }, [feedbackEventId, board, channelSpend]);
 
   // Dispatch tutorial event when budget diverges from initial allocation
   useEffect(() => {
@@ -298,35 +566,35 @@ function SimulationContent() {
     <>
       {/* Submitted banner */}
       {submitted && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-success/10 border-b border-success/30 px-4 py-2 text-center text-sm font-medium text-success">
-          ✅ Your work has been submitted. The simulation is now locked.
+        <div className="fixed top-0 left-0 right-0 z-50 bg-success/10 border-b border-success/30 px-4 py-2 flex items-center justify-center gap-4 text-sm font-medium text-success">
+          <span>✅ Your work has been submitted. The simulation is now locked.</span>
+          <Button size="sm" variant="outline" onClick={signOut} className="gap-1.5 text-muted-foreground border-success/30 hover:bg-success/10">
+            <LogOut className="h-3.5 w-3.5" />
+            Sign Out
+          </Button>
         </div>
       )}
 
       {/* Top bar with user info */}
       <div className={`fixed ${submitted ? 'top-9' : 'top-0'} right-0 z-40 flex items-center gap-2 p-2`}>
-        {!submitted && !hasFeedback && totalChips > 0 && (
-          <Button
-            size="sm"
-            variant="default"
-            onClick={handleShowFeedback}
-            className="gap-1.5"
-          >
-            <Send className="h-3.5 w-3.5" />
-            Get Feedback
-          </Button>
-        )}
-        {!submitted && hasFeedback && !showFeedback && (
-          <Button
-            size="sm"
-            variant="default"
-            onClick={() => setShowFeedback(true)}
-            className="gap-1.5"
-          >
-            <Send className="h-3.5 w-3.5" />
-            Return to Feedback
-          </Button>
-        )}
+        {!submitted && !showFeedback && (hasFeedback || totalChips > 0) && (() => {
+          const allQuadrantsFilled = board.descriptive.length > 0 && board.diagnostic.length > 0 && board.predictive.length > 0 && board.prescriptive.length > 0;
+          const isDisabled = !hasFeedback && !allQuadrantsFilled;
+          return (
+            <Button
+              data-tutorial="feedback-button"
+              size="sm"
+              variant="default"
+              onClick={hasFeedback ? handleShowFeedback : () => setShowFeedbackConfirm(true)}
+              disabled={isDisabled}
+              className="gap-1.5"
+              title={isDisabled ? 'Place at least 1 evidence card in each of the 4 reasoning quadrants' : undefined}
+            >
+              <Send className="h-3.5 w-3.5" />
+              {hasFeedback ? 'View Feedback' : 'Get Feedback'}
+            </Button>
+          );
+        })()}
         <Button size="sm" variant="ghost" onClick={signOut} className="gap-1.5 text-muted-foreground">
           <LogOut className="h-3.5 w-3.5" />
           Sign Out
@@ -339,6 +607,8 @@ function SimulationContent() {
           <SimulationHome
             onStartDecisions={handleStartDecisions}
             currentRevenue={totals.totalRevenue}
+            sessionId={sessionId}
+            userId={user?.id ?? null}
           />
         }
         decisionsContent={
@@ -350,7 +620,17 @@ function SimulationContent() {
             remainingBudget={remainingBudget}
             hasUserModified={hasUserModified}
             totalSpent={totalSpent}
-            onReset={submitted ? () => {} : resetSimulation}
+            onReset={submitted ? () => {} : () => {
+              resetSimulation();
+              if (sessionId && user) {
+                supabase.from('resets').insert({
+                  session_id: sessionId,
+                  user_id: user.id,
+                  reset_type: 'allocation_reset',
+                  cards_cleared: 0,
+                }).then(() => {});
+              }
+            }}
           />
         }
         renderPanelContent={renderPanelContent}
@@ -407,6 +687,27 @@ function SimulationContent() {
         </DialogContent>
       </Dialog>
 
+      {/* Feedback confirmation dialog */}
+      <Dialog open={showFeedbackConfirm} onOpenChange={setShowFeedbackConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure you want to get feedback?</DialogTitle>
+            <DialogDescription>
+              You only get <strong>one</strong> AI-generated feedback per session. Make sure you've put your best effort into your reasoning board and budget decisions before requesting it — you'll use this feedback to refine your final submission.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFeedbackConfirm(false)}>
+              Go Back
+            </Button>
+            <Button onClick={() => { setShowFeedbackConfirm(false); handleShowFeedback(); }}>
+              <Send className="h-4 w-4 mr-2" />
+              Yes, Get Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Feedback page overlay */}
       {showFeedback && (
         <div className="fixed inset-0 z-50 bg-background overflow-auto">
@@ -414,14 +715,126 @@ function SimulationContent() {
             context={{ board, channelSpend, totals, writtenDiagnosis }}
             sessionId={sessionId}
             userId={user?.id ?? null}
+            feedbackEventId={feedbackEventId}
             onReturnAndAdjust={handleReturnFromFeedback}
             onSubmitFinal={handleSubmit}
-            onFeedbackReady={() => setHasFeedback(true)}
+            onFeedbackReady={() => { setHasFeedback(true); feedbackShownAtRef.current = Date.now(); }}
           />
         </div>
       )}
     </>
   );
+}
+
+function ClassCodeGate({ children }: { children: ReactNode }) {
+  const { user, role } = useAuth();
+  const [checking, setChecking] = useState(true);
+  const [enrolled, setEnrolled] = useState(false);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+
+  useEffect(() => {
+    if (!user || role !== 'student') {
+      setEnrolled(true);
+      setChecking(false);
+      return;
+    }
+    supabase
+      .from('student_enrollments')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .then(({ data }) => {
+        setEnrolled((data?.length ?? 0) > 0);
+        setChecking(false);
+      });
+  }, [user, role]);
+
+  const handleJoin = async () => {
+    if (!user || code.length !== 4) return;
+    setError(null);
+    setJoining(true);
+
+    const { data: classRows, error: lookupError } = await supabase
+      .rpc('lookup_class_by_code', { _class_code: code.trim().toUpperCase() });
+
+    const classData = classRows?.[0] ?? null;
+
+    if (lookupError || !classData) {
+      setError('Class code not found. Check with your professor.');
+      setJoining(false);
+      return;
+    }
+
+    const { error: insertError } = await supabase
+      .from('student_enrollments')
+      .insert({ user_id: user.id, class_id: classData.id });
+
+    setJoining(false);
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+
+    // Backfill class_id on any existing session that was created before enrollment
+    await supabase
+      .from('sessions')
+      .update({ class_id: classData.id })
+      .eq('user_id', user.id)
+      .is('class_id', null);
+
+    toast({ title: 'Enrolled!', description: 'You have been added to your class.' });
+    setEnrolled(true);
+  };
+
+  if (checking) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!enrolled) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-sm mx-4">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Enter your class code</CardTitle>
+            <CardDescription>Your professor will have shared a 4-character code with you.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              value={code}
+              onChange={e => { setCode(e.target.value.toUpperCase().slice(0, 4)); setError(null); }}
+              placeholder="e.g. AB3K"
+              className="text-center font-mono text-2xl tracking-widest"
+              maxLength={4}
+              autoFocus
+            />
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
+            <Button onClick={handleJoin} disabled={joining || code.length !== 4} className="w-full">
+              {joining ? 'Joining…' : 'Join class'}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground text-sm"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/auth';
+              }}
+            >
+              <LogOut className="h-3.5 w-3.5 mr-1.5" />
+              Sign out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 const Index = () => {
@@ -453,31 +866,19 @@ const Index = () => {
   }
 
   if (!user) {
-    return <Auth />;
-  }
-
-  // Professors see a link to dashboard instead of the simulation
-  if (role === 'professor') {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <p className="text-lg font-medium">Welcome, Professor!</p>
-          <a href="/dashboard" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity">
-            📊 Go to Dashboard
-          </a>
-        </div>
-      </div>
-    );
+    return null; // RoleGuard handles redirect to /auth
   }
 
   return (
-    <TabProvider>
-      <ReasoningBoardProvider>
-        <TutorialProvider>
-          <SimulationContent />
-        </TutorialProvider>
-      </ReasoningBoardProvider>
-    </TabProvider>
+    <ClassCodeGate>
+      <TabProvider>
+        <ReasoningBoardProvider>
+          <TutorialProvider>
+            <SimulationContent />
+          </TutorialProvider>
+        </ReasoningBoardProvider>
+      </TabProvider>
+    </ClassCodeGate>
   );
 };
 

@@ -1,25 +1,62 @@
+import { useRef, useEffect, useCallback } from 'react';
 import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SimulationHomeProps {
   onStartDecisions: () => void;
   currentRevenue: number;
+  sessionId: string | null;
+  userId: string | null;
 }
 
 const REVENUE_GOAL = 100000;
 
-export function SimulationHome({ onStartDecisions, currentRevenue }: SimulationHomeProps) {
+export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, userId }: SimulationHomeProps) {
   const progressPercent = Math.min((currentRevenue / REVENUE_GOAL) * 100, 100);
   const { startTutorial } = useTutorial();
+  const tutorialClickedRef = useRef(false);
+
+  const handleTutorialClick = useCallback(() => {
+    tutorialClickedRef.current = true;
+
+    // Insert tutorial_events row with action='opened'
+    if (sessionId && userId) {
+      supabase.from('tutorial_events').insert({
+        session_id: sessionId,
+        user_id: userId,
+        action: 'opened',
+      }).then(() => {});
+
+      // Update session flag
+      supabase.from('sessions').update({ tutorial_opened: true })
+        .eq('id', sessionId).then(() => {});
+    }
+
+    startTutorial();
+  }, [sessionId, userId, startTutorial]);
+
+  // On unmount (navigating away from Home), log 'not_opened' if button was never clicked
+  useEffect(() => {
+    return () => {
+      if (!tutorialClickedRef.current && sessionId && userId) {
+        supabase.from('tutorial_events').insert({
+          session_id: sessionId,
+          user_id: userId,
+          action: 'not_opened',
+        }).then(() => {});
+      }
+    };
+  }, [sessionId, userId]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Tutorial Banner */}
       <button
-        onClick={startTutorial}
+        onClick={handleTutorialClick}
         className="w-full flex items-center gap-4 p-5 rounded-xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all group text-left"
       >
         <div className="p-3 bg-primary/20 rounded-xl group-hover:bg-primary/30 transition-colors">

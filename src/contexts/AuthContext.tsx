@@ -1,15 +1,15 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
-type AppRole = 'student' | 'professor';
+type AppRole = 'student' | 'professor' | 'admin';
 
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, role: AppRole, displayName?: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, role: 'student' | 'professor', displayName?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -22,51 +22,107 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchRoleRef = useRef<string | null>(null);
+
   const fetchRole = useCallback(async (userId: string) => {
-    const { data } = await supabase
+    // Deduplicate concurrent calls for the same user
+    if (fetchRoleRef.current === userId) return;
+    fetchRoleRef.current = userId;
+
+    // Check admin first via database function
+    const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: userId });
+
+    // Guard against stale responses
+    if (fetchRoleRef.current !== userId) return;
+
+    if (isAdmin) {
+      setRole('admin');
+      return;
+    }
+
+    // Otherwise check user_roles table
+    const { data, error } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
       .maybeSingle();
+
+    if (fetchRoleRef.current !== userId) return;
+
+    if (error) {
+      setRole('student');
+      return;
+    }
+
     setRole((data?.role as AppRole) ?? 'student');
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    let initialDone = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock on initial load
-          setTimeout(() => fetchRole(session.user.id), 0);
+      (_event, nextSession) => {
+        if (!mounted) return;
+        // Skip if getSession already handled the initial load
+        if (!initialDone) return;
+
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+
+        if (nextSession?.user) {
+          fetchRoleRef.current = null; // allow re-fetch
+          fetchRole(nextSession.user.id).finally(() => {
+            if (mounted) setLoading(false);
+          });
         } else {
+          fetchRoleRef.current = null;
           setRole(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRole(session.user.id);
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!mounted) return;
+
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+
+      if (initialSession?.user) {
+        fetchRole(initialSession.user.id).finally(() => {
+          if (mounted) {
+            setLoading(false);
+            initialDone = true;
+          }
+        });
+      } else {
+        setRole(null);
+        setLoading(false);
+        initialDone = true;
       }
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchRole]);
 
-  const signUp = useCallback(async (email: string, password: string, role: AppRole, displayName?: string) => {
-    const { error } = await supabase.auth.signUp({
+  const signUp = useCallback(async (email: string, password: string, role: 'student' | 'professor', displayName?: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { role, display_name: displayName || email.split('@')[0] },
       },
     });
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+    // Supabase returns a fake user with no identities for repeated signups
+    if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+      return { error: 'An account with this email already exists. Please sign in instead.' };
+    }
+    return { error: null };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
-import { QUADRANT_CONNECTOR_POOLS } from '@/types/evidenceChip';
+import { QUADRANT_CONNECTORS } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
 import { cn } from '@/lib/utils';
 
@@ -148,67 +148,22 @@ function rankChips(chips: EvidenceChip[]): EvidenceChip[] {
   return [...chips].sort((a, b) => metricRank(a) - metricRank(b));
 }
 
-// ── Metric-aware conclusion phrases (pooled for variety) ──
-const CONTRAST_CONCLUSIONS: Record<string, string[]> = {
-  revenue: [
-    'suggesting the spend distribution between them needs rebalancing',
-    'pointing to an uneven return on investment across channels',
-    'raising a question about whether budget is flowing to the right performers',
-  ],
-  view: [
-    'indicating a reach imbalance that may not reflect revenue potential',
-    'suggesting that volume of views is not translating evenly across channels',
-  ],
-  click: [
-    'pointing to an engagement gap worth investigating',
-    'suggesting one channel is converting attention far more effectively',
-  ],
-  budget: [
-    'raising the question of whether this split is the best use of the total budget',
-    'suggesting a reallocation could improve overall return',
-  ],
-  default: [
-    'suggesting the allocation between them deserves closer review',
-    'indicating an imbalance that may warrant strategic attention',
-  ],
-};
-
-const REINFORCE_CONCLUSIONS: Record<string, string[]> = {
-  revenue: [
-    'reinforcing their combined contribution to total revenue',
-    'confirming both channels are pulling their weight on revenue',
-  ],
-  view: [
-    'confirming consistent audience reach across both',
-    'showing both channels are delivering similar reach levels',
-  ],
-  budget: [
-    'showing a deliberate, proportional investment in both channels',
-    'reflecting a balanced allocation strategy across these channels',
-  ],
-  default: [
-    'confirming a consistent pattern across both channels',
-    'suggesting both channels are performing in alignment',
-  ],
-};
-
-function getContrastConclusion(chip: EvidenceChip, seed = ''): string {
+// ── Metric-aware conclusion phrases ──
+function getContrastConclusion(chip: EvidenceChip): string {
   const m = (chip.metricName ?? chip.label).toLowerCase();
-  const pool = m.includes('revenue') || m.includes('profit') ? CONTRAST_CONCLUSIONS.revenue
-    : m.includes('view') || m.includes('impression') ? CONTRAST_CONCLUSIONS.view
-    : m.includes('click') || m.includes('conversion') ? CONTRAST_CONCLUSIONS.click
-    : m.includes('budget') ? CONTRAST_CONCLUSIONS.budget
-    : CONTRAST_CONCLUSIONS.default;
-  return pool[Math.floor(seededRandom(seed + 'contrast') * pool.length)];
+  if (m.includes('revenue') || m.includes('profit')) return 'suggesting the spend distribution between them needs rebalancing';
+  if (m.includes('view') || m.includes('impression')) return 'indicating a reach imbalance that may not reflect revenue potential';
+  if (m.includes('click') || m.includes('conversion')) return 'pointing to an engagement gap worth investigating';
+  if (m.includes('budget')) return 'raising the question of whether this split is the best use of the total budget';
+  return 'suggesting the allocation between them deserves closer review';
 }
 
-function getReinforceConclusion(chip: EvidenceChip, seed = ''): string {
+function getReinforceConclusion(chip: EvidenceChip): string {
   const m = (chip.metricName ?? chip.label).toLowerCase();
-  const pool = m.includes('revenue') || m.includes('profit') ? REINFORCE_CONCLUSIONS.revenue
-    : m.includes('view') || m.includes('impression') ? REINFORCE_CONCLUSIONS.view
-    : m.includes('budget') ? REINFORCE_CONCLUSIONS.budget
-    : REINFORCE_CONCLUSIONS.default;
-  return pool[Math.floor(seededRandom(seed + 'reinforce') * pool.length)];
+  if (m.includes('revenue') || m.includes('profit')) return 'reinforcing their combined contribution to total revenue';
+  if (m.includes('view') || m.includes('impression')) return 'confirming consistent audience reach across both';
+  if (m.includes('budget')) return 'showing a deliberate, proportional investment in both channels';
+  return 'confirming a consistent pattern across both channels';
 }
 
 /** Build a single-chip description (no context) */
@@ -216,43 +171,42 @@ function describeChipAlone(chip: EvidenceChip): string {
   const ch = channelOf(chip);
   const val = chip.value;
   const m = (chip.metricName ?? chip.label).toLowerCase();
-  // If student added an annotation, it becomes part of the story sentence
-  const annotationSuffix = chip.annotation ? ` — ${chip.annotation}` : '';
 
   // Product mix chip — qualitative / behavioural
   if (chip.chipKind === 'product') {
     const parts = chip.label.split('—');
     const channel = parts[0]?.trim() || ch;
     const product = parts[1]?.trim() || chip.label;
-    return `${channel} primarily selling ${product} (${val}), pointing to an audience that favours this product tier${annotationSuffix}`;
+    return `${channel} primarily selling ${product} (${val}), pointing to an audience that favours this product tier`;
   }
 
+
   if (m.includes('revenue') || m.includes('profit')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} generating stronger revenue than expected${annotationSuffix}`;
-    if (chip.chipKind === 'delta-decrease') return `${ch} underperforming on revenue${annotationSuffix}`;
-    return `${ch} contributing ${val} in revenue${annotationSuffix}`;
+    if (chip.chipKind === 'delta-increase') return `${ch} generating stronger revenue than expected`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} underperforming on revenue`;
+    return `${ch} contributing ${val} in revenue`;
   }
   if (m.includes('view') || m.includes('impression')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} reaching a broader audience with ${val} views${annotationSuffix}`;
-    if (chip.chipKind === 'delta-decrease') return `${ch} losing reach, down to ${val} views${annotationSuffix}`;
-    return `${ch} generating ${val} views${annotationSuffix}`;
+    if (chip.chipKind === 'delta-increase') return `${ch} reaching a broader audience with ${val} views`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} losing reach, down to ${val} views`;
+    return `${ch} generating ${val} views`;
   }
   if (m.includes('click') || m.includes('conversion')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} driving more engaged traffic${annotationSuffix}`;
-    if (chip.chipKind === 'delta-decrease') return `${ch} seeing reduced click-through${annotationSuffix}`;
-    return `${ch} producing ${val} clicks${annotationSuffix}`;
+    if (chip.chipKind === 'delta-increase') return `${ch} driving more engaged traffic`;
+    if (chip.chipKind === 'delta-decrease') return `${ch} seeing reduced click-through`;
+    return `${ch} producing ${val} clicks`;
   }
   if (m.includes('budget')) {
-    if (chip.chipKind === 'delta-increase') return `${ch} receiving a larger share of the budget${annotationSuffix}`;
-    if (chip.chipKind === 'delta-decrease') return `${ch}'s allocation trimmed back${annotationSuffix}`;
-    if (chip.chipKind === 'baseline') return `${ch}'s original allocation of ${val}${annotationSuffix}`;
-    return `${ch} allocated ${val}${annotationSuffix}`;
+    if (chip.chipKind === 'delta-increase') return `${ch} receiving a larger share of the budget`;
+    if (chip.chipKind === 'delta-decrease') return `${ch}'s allocation trimmed back`;
+    if (chip.chipKind === 'baseline') return `${ch}'s original allocation of ${val}`;
+    return `${ch} allocated ${val}`;
   }
   // fallback
-  if (chip.chipKind === 'delta-increase') return `strong ${metricOf(chip)} growth in ${ch}${annotationSuffix}`;
-  if (chip.chipKind === 'delta-decrease') return `declining ${metricOf(chip)} in ${ch}${annotationSuffix}`;
-  if (chip.chipKind === 'baseline') return `the baseline ${metricOf(chip)} level for ${ch}${annotationSuffix}`;
-  return `${ch}'s ${metricOf(chip)} at ${val}${annotationSuffix}`;
+  if (chip.chipKind === 'delta-increase') return `strong ${metricOf(chip)} growth in ${ch}`;
+  if (chip.chipKind === 'delta-decrease') return `declining ${metricOf(chip)} in ${ch}`;
+  if (chip.chipKind === 'baseline') return `the baseline ${metricOf(chip)} level for ${ch}`;
+  return `${ch}'s ${metricOf(chip)} at ${val}`;
 }
 
 /** Build a relationship sentence between a chip and its context chip */
@@ -271,15 +225,15 @@ function describeRelationship(chip: EvidenceChip, ctx: EvidenceChip, seed: strin
     const higherM = rel.aHigher ? mA : mB;
 
     if (rel.magnitude === 'vast')
-      return `${word} ${higher} driving far stronger ${higherM} than ${lower}, ${getContrastConclusion(primaryChip, seed)}`;
+      return `${word} ${higher} driving far stronger ${higherM} than ${lower}, ${getContrastConclusion(primaryChip)}`;
     if (rel.magnitude === 'considerable')
-      return `${word} ${higher} considerably outperforming ${lower} on ${higherM}, ${getContrastConclusion(primaryChip, seed)}`;
-    return `${word} ${higher}'s ${higherM} outpacing ${lower}'s, ${getContrastConclusion(primaryChip, seed)}`;
+      return `${word} ${higher} considerably outperforming ${lower} on ${higherM}, ${getContrastConclusion(primaryChip)}`;
+    return `${word} ${higher}'s ${higherM} outpacing ${lower}'s, ${getContrastConclusion(primaryChip)}`;
   } else {
     const word = STORY_REINFORCE_WORDS[Math.floor(seededRandom(seed) * STORY_REINFORCE_WORDS.length)];
     if (rel.magnitude === 'similar')
-      return `${chA}'s ${mA} ${word} ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip, seed)}`;
-    return `${chA}'s ${mA} moving in the same direction as ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip, seed)}`;
+      return `${chA}'s ${mA} ${word} ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip)}`;
+    return `${chA}'s ${mA} moving in the same direction as ${chB}'s ${mB}, ${getReinforceConclusion(primaryChip)}`;
   }
 }
 
@@ -310,29 +264,21 @@ const STORY_OPENERS: Record<ReasoningBlockId, string[]> = {
     'The data showed me [insight].',
     'Looking at the numbers, I identified [insight].',
     'What stood out immediately was [insight].',
-    'One thing that immediately caught my attention was [insight].',
-    'My first observation was [insight].',
   ],
   diagnostic: [
     'I traced this back to [insight].',
     'The root cause was [insight].',
     '[insight] explained why I was seeing this pattern.',
-    'What explained this was [insight].',
-    'I realised that [insight].',
   ],
   prescriptive: [
     '[insight] drove my decision to act.',
     'I chose to intervene because of [insight].',
     'Acting on [insight], I shifted my budget allocation.',
-    'My response to this was [insight].',
-    'I made the call to [insight] based on what I\'d found.',
   ],
   predictive: [
     'With these changes in place, I expect [insight].',
     'The likely outcome is [insight].',
     'Looking ahead, [insight] shapes my expectation of results.',
-    'I anticipate [insight] as a consequence.',
-    'The expected result is [insight].',
   ],
 };
 
@@ -393,10 +339,35 @@ function generateStorySentence(
   return templates[idx].replace('[insight]', insight);
 }
 
-// ── Layout ──
+// ── Exported helper: build the full reasoning story text from board state ──
 
 // Correct causal chain: Observe → Diagnose → Decide → Predict
 const BLOCK_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'];
+
+export function buildFullReasoningStory(board: Record<ReasoningBlockId, EvidenceChip[]>): string {
+  const sentences: string[] = [];
+  const priorChannels = new Set<string>();
+
+  for (const blockId of BLOCK_ORDER) {
+    const chips = board[blockId];
+    const sentence = generateStorySentence(chips, blockId, priorChannels);
+    if (!sentence) continue;
+
+    for (const chip of chips) {
+      priorChannels.add(`${channelOf(chip)}|${metricOf(chip)}`);
+    }
+
+    const connector = QUADRANT_CONNECTORS[blockId];
+    const text = connector
+      ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
+      : sentence;
+    sentences.push(text);
+  }
+
+  return sentences.join(' ');
+}
+
+// ── Layout ──
 
 const BLOCK_STYLE: Record<ReasoningBlockId, { label: string; accent: string; tint: string }> = {
   descriptive: { label: 'Descriptive', accent: '#D4A017', tint: 'rgba(212, 160, 23, 0.09)' },
@@ -406,19 +377,7 @@ const BLOCK_STYLE: Record<ReasoningBlockId, { label: string; accent: string; tin
 };
 
 export function ReasoningNarrative() {
-  const { board, writtenDiagnosis, setWrittenDiagnosis } = useReasoningBoard();
-
-  // Contextual Notes: chips with non-empty annotations, grouped by block
-  const annotatedByBlock = useMemo(() => {
-    const result: Partial<Record<ReasoningBlockId, EvidenceChip[]>> = {};
-    for (const blockId of BLOCK_ORDER) {
-      const chips = board[blockId].filter(c => c.annotation && c.annotation.trim().length > 0);
-      if (chips.length > 0) result[blockId] = chips;
-    }
-    return result;
-  }, [board]);
-
-  const hasAnyAnnotations = Object.keys(annotatedByBlock).length > 0;
+  const { board } = useReasoningBoard();
 
   // At a Glance: data-referenced sentences
   const glanceSentences = useMemo(() => {
@@ -445,10 +404,7 @@ export function ReasoningNarrative() {
         priorChannels.add(`${channelOf(chip)}|${metricOf(chip)}`);
       }
 
-      const connectorPool = QUADRANT_CONNECTOR_POOLS[blockId];
-      const connectorSeed = chips.map(c => c.id).join('-') + blockId + 'conn';
-      const connectorIdx = Math.floor(seededRandom(connectorSeed) * connectorPool.length);
-      const connector = connectorPool[connectorIdx];
+      const connector = QUADRANT_CONNECTORS[blockId];
       const text = connector
         ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
         : sentence;
@@ -456,6 +412,19 @@ export function ReasoningNarrative() {
     }
     return sentences;
   }, [board]);
+
+  const annotatedByBlock = useMemo(() => {
+    const result: Partial<Record<ReasoningBlockId, { chip: EvidenceChip; blockStyle: typeof BLOCK_STYLE[ReasoningBlockId] }[]>> = {};
+    for (const blockId of BLOCK_ORDER) {
+      const chips = (board[blockId] || []).filter(c => c.annotation && c.annotation.trim().length > 0);
+      if (chips.length > 0) {
+        result[blockId] = chips.map(c => ({ chip: c, blockStyle: BLOCK_STYLE[blockId] }));
+      }
+    }
+    return result;
+  }, [board]);
+
+  const hasAnyAnnotations = Object.keys(annotatedByBlock).length > 0;
 
   return (
     <div className="flex-shrink-0 border-t border-border/60">
@@ -511,11 +480,6 @@ export function ReasoningNarrative() {
                             {(chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : [])).map((ctx, ci) => (
                               <span key={`ctx-${ci}`} className="text-muted-foreground ml-1">+ {ctx.label}</span>
                             ))}
-                            {chip.annotation && (
-                              <span className="block text-[11px] italic text-muted-foreground mt-0.5">
-                                "{chip.annotation}"
-                              </span>
-                            )}
                           </span>
                         </div>
                       ))}
@@ -537,6 +501,7 @@ export function ReasoningNarrative() {
       </div>
 
       {/* Full Reasoning Story */}
+<<<<<<< HEAD
       <div className="px-3 pb-5 space-y-3">
         <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground">
           Full reasoning story
@@ -574,6 +539,40 @@ export function ReasoningNarrative() {
       </div>
 
       {/* Contextual Notes — grouped by quadrant, shown when any note exists */}
+=======
+      <div className="px-3 pb-4">
+        <div className="relative rounded-2xl border border-[#E7DCC7] bg-[#FBF6EB] shadow-sm px-5 py-4">
+          <span
+            aria-hidden="true"
+            className="absolute left-3 top-1 text-[62px] leading-none font-serif text-[#C8B79E]/55 pointer-events-none select-none"
+          >
+            "
+          </span>
+          <div className="relative flex items-center gap-2 mb-3">
+            <span className="h-2 w-2 rounded-full bg-[#C4622D]" />
+            <h3 className="text-lg font-bold tracking-wide text-[#3A3025]">MY FULL REASONING STORY</h3>
+          </div>
+          <div className="relative pr-1">
+            {storySentences.length === 0 ? (
+              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#4B4136]/70 italic">
+                Your reasoning story will appear here once you begin adding evidence.
+              </p>
+            ) : (
+              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#2E2A24]">
+                {storySentences.map((entry, index) => (
+                  <span
+                    key={`${entry.blockId}-${index}`}
+                    style={{ color: BLOCK_STYLE[entry.blockId].accent }}
+                  >
+                    {entry.text}{' '}
+                  </span>
+                ))}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+>>>>>>> main
       {hasAnyAnnotations && (
         <div className="px-3 pb-5">
           <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground mb-3">
@@ -581,23 +580,31 @@ export function ReasoningNarrative() {
           </h3>
           <div className="space-y-3">
             {BLOCK_ORDER.map((blockId) => {
-              const chips = annotatedByBlock[blockId];
-              if (!chips || chips.length === 0) return null;
+              const entries = annotatedByBlock[blockId];
+              if (!entries || entries.length === 0) return null;
               const style = BLOCK_STYLE[blockId];
               return (
                 <div
                   key={blockId}
-                  className="rounded-xl border border-border/40 border-l-4 p-3"
-                  style={{ borderLeftColor: style.accent, backgroundColor: style.tint }}
+                  className="rounded-xl border border-border/40 p-3"
+                  style={{
+                    borderLeftColor: style.accent,
+                    borderLeftWidth: 4,
+                    backgroundColor: style.tint
+                  }}
                 >
                   <div className="text-xs font-bold mb-2" style={{ color: style.accent }}>
                     {style.label}
                   </div>
                   <div className="space-y-2">
-                    {chips.map((chip) => (
+                    {entries.map(({ chip }) => (
                       <div key={chip.id} className="text-[12px]">
-                        <span className="font-medium text-foreground/80">{chip.label}: {chip.value}</span>
-                        <p className="italic text-foreground/70 mt-0.5 leading-snug">"{chip.annotation}"</p>
+                        <span className="font-medium text-foreground/80">
+                          {chip.label}: {chip.value}
+                        </span>
+                        <p className="italic text-foreground/70 mt-0.5 leading-snug">
+                          "{chip.annotation}"
+                        </p>
                       </div>
                     ))}
                   </div>

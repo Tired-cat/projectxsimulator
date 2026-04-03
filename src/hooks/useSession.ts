@@ -51,10 +51,23 @@ export function useSession() {
             loading: false,
           });
         } else {
-          // Create new session
+          // Look up student's enrolled class
+          const { data: enrollment } = await supabase
+            .from('student_enrollments')
+            .select('class_id')
+            .eq('user_id', user.id)
+            .order('enrolled_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          // Create new session with class_id if enrolled
           const { data: newSession } = await supabase
             .from('sessions')
-            .insert({ user_id: user.id, scenario_id: SCENARIO_ID })
+            .insert({
+              user_id: user.id,
+              scenario_id: SCENARIO_ID,
+              class_id: enrollment?.class_id ?? null,
+            })
             .select()
             .single();
 

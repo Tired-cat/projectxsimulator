@@ -3,6 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ReasoningBoardState, REASONING_SEQUENCE } from '@/types/evidenceChip';
 
+interface ChannelSpend {
+  tiktok: number;
+  instagram: number;
+  facebook: number;
+  newspaper: number;
+}
+
 interface SubmitOptions {
   sessionId: string | null;
   startedAt: string | null;
@@ -13,6 +20,9 @@ interface SubmitOptions {
   usedAi: boolean;
   forceSave: () => Promise<void>;
   completeSession: () => Promise<void>;
+  channelSpend: ChannelSpend;
+  feedbackRoundsUsed: number;
+  generatedStory: string;
 }
 
 function computeReasoningScore(board: ReasoningBoardState, adjustmentsMade: number): number {
@@ -37,6 +47,9 @@ export function useSubmission({
   usedAi,
   forceSave,
   completeSession,
+  channelSpend,
+  feedbackRoundsUsed,
+  generatedStory,
 }: SubmitOptions) {
   const { user } = useAuth();
 
@@ -51,7 +64,19 @@ export function useSubmission({
 
     const reasoning_score = computeReasoningScore(board, adjustmentsMade);
 
-    await supabase.from('submissions').insert({
+    const contextPairsCount = Object.values(board).reduce(
+      (sum, chips) => sum + chips.filter((c: any) => c.contextChips?.length > 0 || c.contextChip).length,
+      0,
+    );
+
+    // Query actual feedback rounds from ai_feedback_events
+    const { count: actualFeedbackRounds } = await supabase
+      .from('ai_feedback_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .eq('user_id', user.id);
+
+    const submissionData = {
       session_id: sessionId,
       user_id: user.id,
       final_decision: finalDecision,
@@ -59,10 +84,23 @@ export function useSubmission({
       time_elapsed_seconds: elapsed,
       reasoning_score,
       used_ai: usedAi,
-    });
+      generated_story: generatedStory || null,
+      descriptive_card_count: board.descriptive?.length ?? 0,
+      diagnostic_card_count: board.diagnostic?.length ?? 0,
+      prescriptive_card_count: board.prescriptive?.length ?? 0,
+      predictive_card_count: board.predictive?.length ?? 0,
+      contextualise_pairs_count: contextPairsCount,
+      final_tiktok_spend: channelSpend.tiktok,
+      final_instagram_spend: channelSpend.instagram,
+      final_facebook_spend: channelSpend.facebook,
+      final_newspaper_spend: channelSpend.newspaper,
+      feedback_rounds_used: actualFeedbackRounds ?? feedbackRoundsUsed,
+    };
+
+    await supabase.from('submissions').insert(submissionData);
 
     await completeSession();
-  }, [sessionId, user, startedAt, finalDecision, cardsOnBoardCount, board, adjustmentsMade, usedAi, forceSave, completeSession]);
+  }, [sessionId, user, startedAt, finalDecision, cardsOnBoardCount, board, adjustmentsMade, usedAi, forceSave, completeSession, channelSpend, feedbackRoundsUsed, generatedStory]);
 
   return { submit };
 }

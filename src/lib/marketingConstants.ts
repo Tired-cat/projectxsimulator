@@ -1,4 +1,7 @@
-// Marketing Simulation Constants - Calibrated to produce ~$43k revenue at starting state
+// Marketing Simulation Constants
+// Starting state revenue: ~$71,360 (TikTok $1.3k, Instagram $6.2k, Facebook $22.9k, Newspaper $40.9k)
+// The designed trap: TikTok gets 45% of budget but generates only 2% of revenue
+// The hidden gem: Newspaper gets 5% of budget but generates 57% of revenue
 
 export const GLOBAL_BUDGET = 20000;
 

@@ -1,6 +1,6 @@
 ﻿import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Pencil, Trash2, Eye, Search, Zap, TrendingUp } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Trash2, Pencil } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   AlertDialog,
@@ -18,18 +18,6 @@ import {
   getSmartInsight,
 } from '@/types/evidenceChip';
 import type { EvidenceChip, ReasoningBlockId } from '@/types/evidenceChip';
-
-const BLOCK_ICONS: Record<ReasoningBlockId, React.ComponentType<{ className?: string }>> = {
-  descriptive: Eye,
-  diagnostic: Search,
-  prescriptive: Zap,
-  predictive: TrendingUp,
-};
-
-const BLOCK_EMPTY_HINTS: Partial<Record<ReasoningBlockId, string>> = {
-  prescriptive: 'What action did you take?',
-  predictive: 'What result do you expect?',
-};
 import type { EvidenceDragData, EvidenceDropData } from '@/lib/evidenceDnd';
 import {
   getBlockDropId,
@@ -107,6 +95,7 @@ export function ReasoningBoard() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+<<<<<<< HEAD
         <div className="px-4 py-5 space-y-5">
           {/* Causal flow indicator */}
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
@@ -126,6 +115,9 @@ export function ReasoningBoard() {
             </h3>
           </div>
 
+=======
+        <div className="p-3 space-y-4">
+>>>>>>> main
           {/* 4 reasoning blocks */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
             {REASONING_BLOCKS.map((block, blockIndex) => {
@@ -136,7 +128,6 @@ export function ReasoningBoard() {
                 <BlockDropContainer key={block.id} blockId={block.id}>
                   {({ setNodeRef, isOver }) => {
                     const isHovered = isOver && !!activeDrag;
-                    const BlockIcon = BLOCK_ICONS[block.id];
 
                     return (
                       <div
@@ -164,8 +155,12 @@ export function ReasoningBoard() {
                           {stepNumber}
                         </span>
                         <div className="min-w-0">
+<<<<<<< HEAD
                           <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: block.color }}>
                             <BlockIcon className="w-3 h-3 flex-shrink-0" />
+=======
+                          <div className="text-xs font-bold" style={{ color: block.color }}>
+>>>>>>> main
                             {block.title}
                           </div>
                           <div className="text-[10px] text-muted-foreground truncate leading-snug">
@@ -195,10 +190,14 @@ export function ReasoningBoard() {
                         style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                       >
                         <span>Drop evidence here</span>
+<<<<<<< HEAD
                         {BLOCK_EMPTY_HINTS[block.id] && (
                           <span className="text-muted-foreground/60 text-[9px] font-medium">{BLOCK_EMPTY_HINTS[block.id]}</span>
                         )}
                         <span className="text-muted-foreground/50 text-[9px]">Multiple items welcome</span>
+=======
+                        <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
+>>>>>>> main
                         {block.id === 'predictive' && (
                           <span className="text-muted-foreground/60 text-[9px] text-center mt-0.5">
                             Fill Prescriptive first — predicts what happens after your action
@@ -268,23 +267,24 @@ function ChipCard({
   chip,
   blockId,
   blockColor,
-  onRemove,
   chipIndex,
+  onRemove,
 }: {
   chip: EvidenceChip;
   blockId: ReasoningBlockId;
   blockColor: string;
-  onRemove: () => void;
   chipIndex: number;
+  onRemove: () => void;
 }) {
   const { updateChipAnnotation } = useReasoningBoard();
-  const [annotating, setAnnotating] = useState(false);
-  const [draft, setDraft] = useState(chip.annotation ?? '');
   const canAnnotate = chipIndex < 2;
   const insight = getSmartInsight(chip, blockId);
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
+
+  const [showAnnotation, setShowAnnotation] = useState(false);
+  const [draft, setDraft] = useState(chip.annotation ?? '');
 
   useEffect(() => {
     setDraft(chip.annotation ?? '');
@@ -303,6 +303,7 @@ function ChipCard({
       fromBlock: blockId,
     } satisfies EvidenceDragData,
   });
+
 
   return (
     <div
@@ -342,20 +343,9 @@ function ChipCard({
               {insight}
             </div>
           )}
-
-          {/* Truncated annotation preview — shown when note exists and popover is closed */}
-          {chip.annotation && !annotating && (
-            <div
-              className="mt-1.5 px-2 py-1 rounded bg-primary/5 border border-primary/20 text-[10px] text-foreground/70 italic leading-snug cursor-pointer hover:bg-primary/10 transition-colors"
-              onClick={(e) => { e.stopPropagation(); if (canAnnotate) setAnnotating(true); }}
-              onPointerDown={(e) => e.stopPropagation()}
-              title={canAnnotate ? 'Click to edit' : undefined}
-            >
-              "{chip.annotation.length > 60 ? chip.annotation.slice(0, 60) + '…' : chip.annotation}"
-            </div>
-          )}
         </div>
 
+<<<<<<< HEAD
         {/* Annotation affordance — always visible */}
         {canAnnotate && (
           chip.annotation ? (
@@ -378,6 +368,23 @@ function ChipCard({
               <span>Add note</span>
             </button>
           )
+=======
+        {/* Annotate button */}
+        {canAnnotate && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowAnnotation(p => !p); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="Add my interpretation"
+            className={cn(
+              'flex-shrink-0 p-0.5 rounded transition-colors',
+              chip.annotation
+                ? 'text-primary'
+                : 'text-muted-foreground/40 hover:text-primary'
+            )}
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+>>>>>>> main
         )}
 
         {/* Remove button */}
@@ -390,34 +397,37 @@ function ChipCard({
         </button>
       </div>
 
-      {/* Inline annotation popover */}
-      {annotating && canAnnotate && (
-        <div className="px-2.5 pb-2 pt-1 border-t border-border/40" onPointerDown={(e) => e.stopPropagation()}>
+      {/* Annotation popover */}
+      {showAnnotation && canAnnotate && (
+        <div
+          className="px-2.5 pb-2 pt-1"
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           <p className="text-[9px] text-muted-foreground/70 mb-1">
             Why does this data point matter? What does it tell you?
           </p>
           <textarea
-            className="w-full text-[10px] rounded border border-border/60 bg-background px-2 py-1 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
+            className="w-full text-[10px] rounded border border-border/60 bg-background px-2 py-1.5 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
             rows={2}
             maxLength={160}
             placeholder="My interpretation..."
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, 150))}
-            onBlur={() => {
-              updateChipAnnotation(blockId, chip.id, draft.trim());
-              setAnnotating(false);
-            }}
             onPointerDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
             autoFocus
           />
-          <div className="flex justify-between items-center mt-0.5">
+          <div className="flex justify-between items-center mt-1">
             <span className="text-[9px] text-muted-foreground/50">{150 - draft.length} chars left</span>
             <button
               className="text-[9px] text-primary hover:underline"
               onPointerDown={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 updateChipAnnotation(blockId, chip.id, draft.trim());
-                setAnnotating(false);
+                setShowAnnotation(false);
               }}
             >
               Save
@@ -425,6 +435,19 @@ function ChipCard({
           </div>
         </div>
       )}
+
+      {/* Annotation preview */}
+      {chip.annotation && !showAnnotation && (
+        <div
+          className="mx-2.5 mb-1.5 px-2 py-1 rounded bg-primary/5 border border-primary/20 text-[10px] text-foreground/70 italic leading-snug cursor-pointer hover:bg-primary/10 transition-colors"
+          onClick={(e) => { e.stopPropagation(); setShowAnnotation(true); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Click to edit"
+        >
+          "{chip.annotation.length > 60 ? chip.annotation.slice(0, 60) + '…' : chip.annotation}"
+        </div>
+      )}
+
     </div>
   );
 }

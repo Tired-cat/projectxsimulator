@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,8 @@ import { GraduationCap, BookOpen, Shield } from 'lucide-react';
 const ADMIN_EMAIL = 'ashwonsouq@gmail.com';
 
 export default function Auth() {
-  const { signIn, signUp } = useAuth();
+  const { user, signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('student');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -21,8 +23,14 @@ export default function Auth() {
   const [classCode, setClassCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const resetFields = () => {
-    setEmail('');
+  const normalizeClassCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+
+  // If already logged in, redirect
+  useEffect(() => {
+    if (user) navigate('/auth-redirect', { replace: true });
+  }, [user, navigate]);
+
+    const resetFields = () => {
     setPassword('');
     setDisplayName('');
     setClassCode('');
@@ -33,19 +41,19 @@ export default function Auth() {
     e.preventDefault();
     setSubmitting(true);
 
+    const normalizedClassCode = normalizeClassCode(classCode.trim());
+
     if (isSignUp) {
       // Validate class code first
-      if (!classCode.trim()) {
+      if (!normalizedClassCode) {
         toast({ title: 'Class code required', description: 'Please enter the 4-digit class code from your professor.', variant: 'destructive' });
         setSubmitting(false);
         return;
       }
 
-      const { data: classData, error: classError } = await supabase
-        .from('classes')
-        .select('id, name')
-        .eq('class_code', classCode.trim())
-        .maybeSingle();
+      const { data: classRows, error: classError } = await supabase
+        .rpc('lookup_class_by_code', { _class_code: normalizedClassCode });
+      const classData = classRows?.[0] ?? null;
 
       if (classError || !classData) {
         toast({ title: 'Invalid class code', description: 'No class found with that code. Please check with your professor.', variant: 'destructive' });
@@ -55,7 +63,17 @@ export default function Auth() {
 
       const { error } = await signUp(email, password, 'student', displayName);
       if (error) {
-        toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
+        if (error.toLowerCase().includes('already exists')) {
+          toast({
+            title: 'Account already exists',
+            description: 'An account with this email already exists. Please sign in below and enter your class code to enroll.',
+            variant: 'destructive',
+          });
+          setIsSignUp(false);
+          // Keep class code so they can sign in with it
+        } else {
+          toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
+        }
       } else {
         // Enroll after signup — we need to wait for auth state, so store class info
         localStorage.setItem('pending_enrollment_class_id', classData.id);
@@ -66,13 +84,11 @@ export default function Auth() {
       const { error } = await signIn(email, password);
       if (error) {
         toast({ title: 'Sign in failed', description: error, variant: 'destructive' });
-      } else if (classCode.trim()) {
+      } else if (normalizedClassCode) {
         // Try to enroll in the class after login
-        const { data: classData } = await supabase
-          .from('classes')
-          .select('id, name')
-          .eq('class_code', classCode.trim())
-          .maybeSingle();
+        const { data: classRows } = await supabase
+          .rpc('lookup_class_by_code', { _class_code: normalizedClassCode });
+        const classData = classRows?.[0] ?? null;
 
         if (classData) {
           const { data: { user } } = await supabase.auth.getUser();
@@ -172,7 +188,7 @@ export default function Auth() {
                   <Input
                     id="s-code"
                     value={classCode}
-                    onChange={(e) => setClassCode(e.target.value)}
+                    onChange={(e) => setClassCode(normalizeClassCode(e.target.value))}
                     placeholder="e.g. 4821"
                     maxLength={4}
                     className="text-center text-lg tracking-widest font-mono"
