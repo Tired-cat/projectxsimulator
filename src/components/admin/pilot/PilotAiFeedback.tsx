@@ -157,7 +157,7 @@ export default function PilotAiFeedback({ classId }: Props) {
   return (
     <div className="space-y-6">
       {/* ── METRIC CARDS ─────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {METRICS.map((m) => (
           <Card key={m.label}>
             <CardContent className="py-4 text-center">
