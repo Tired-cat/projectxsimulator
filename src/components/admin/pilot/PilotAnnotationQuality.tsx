@@ -104,9 +104,8 @@ export default function PilotAnnotationQuality({ classId }: Props) {
   }, [allAnnotations]);
 
   // ── Metric 2: Most annotated quadrant
-  const mostAnnotatedQuadrant = useMemo(() => {
+  const mostAnnotatedQuadrant = useMemo((): string | null => {
     if (!allAnnotations.length) return null;
-    // avg annotation count per student per quadrant
     const qCounts: Record<string, number[]> = {};
     for (const q of QUADRANTS) qCounts[q] = [];
     for (const row of rbsRows) {
@@ -116,7 +115,7 @@ export default function PilotAnnotationQuality({ classId }: Props) {
         qCounts[q].push(count);
       }
     }
-    let best = QUADRANTS[0];
+    let best: string = QUADRANTS[0];
     let bestAvg = 0;
     for (const q of QUADRANTS) {
       const arr = qCounts[q];
