@@ -25,53 +25,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchRoleRef = useRef<string | null>(null);
 
   const fetchRole = useCallback(async (userId: string) => {
-    // Deduplicate concurrent calls for the same user
     if (fetchRoleRef.current === userId) return;
     fetchRoleRef.current = userId;
 
-    // Check admin first via database function
-    const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: userId });
+    try {
+      const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: userId });
 
-    // Guard against stale responses
-    if (fetchRoleRef.current !== userId) return;
+      if (fetchRoleRef.current !== userId) return;
 
-    if (isAdmin) {
-      setRole('admin');
-      return;
+      if (isAdmin) {
+        setRole('admin');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (fetchRoleRef.current !== userId) return;
+
+      if (error) {
+        setRole('student');
+        return;
+      }
+
+      setRole((data?.role as AppRole) ?? 'student');
+    } catch {
+      if (fetchRoleRef.current === userId) {
+        setRole('student');
+      }
     }
-
-    // Otherwise check user_roles table
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (fetchRoleRef.current !== userId) return;
-
-    if (error) {
-      setRole('student');
-      return;
-    }
-
-    setRole((data?.role as AppRole) ?? 'student');
   }, []);
 
   useEffect(() => {
     let mounted = true;
     let initialDone = false;
 
+    const finishInitialLoad = () => {
+      initialDone = true;
+      if (mounted) setLoading(false);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
-        if (!mounted) return;
-        // Skip if getSession already handled the initial load
-        if (!initialDone) return;
+        if (!mounted || !initialDone) return;
 
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
 
         if (nextSession?.user) {
-          fetchRoleRef.current = null; // allow re-fetch
+          fetchRoleRef.current = null;
+          setLoading(true);
           fetchRole(nextSession.user.id).finally(() => {
             if (mounted) setLoading(false);
           });
@@ -83,25 +89,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (!mounted) return;
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: initialSession } }) => {
+        if (!mounted) return;
 
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
 
-      if (initialSession?.user) {
-        fetchRole(initialSession.user.id).finally(() => {
-          if (mounted) {
-            setLoading(false);
-            initialDone = true;
-          }
-        });
-      } else {
+        if (initialSession?.user) {
+          fetchRoleRef.current = null;
+          fetchRole(initialSession.user.id).finally(() => {
+            finishInitialLoad();
+          });
+        } else {
+          setRole(null);
+          finishInitialLoad();
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
         setRole(null);
-        setLoading(false);
-        initialDone = true;
-      }
-    });
+        finishInitialLoad();
+      });
 
     return () => {
       mounted = false;
