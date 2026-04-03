@@ -80,26 +80,10 @@ export default function Auth() {
         toast({ title: 'Check your email', description: `A confirmation link has been sent. You'll be enrolled in "${classData.name}" after verifying.` });
       }
     } else {
-      // Sign in — if class code provided, validate and enroll
+      // Sign in — no class code needed, ClassCodeGate handles enrollment
       const { error } = await signIn(email, password);
       if (error) {
         toast({ title: 'Sign in failed', description: error, variant: 'destructive' });
-      } else if (normalizedClassCode) {
-        // Try to enroll in the class after login
-        const { data: classRows } = await supabase
-          .rpc('lookup_class_by_code', { _class_code: normalizedClassCode });
-        const classData = classRows?.[0] ?? null;
-
-        if (classData) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from('student_enrollments').upsert(
-              { user_id: user.id, class_id: classData.id } as any,
-              { onConflict: 'user_id,class_id' }
-            );
-            toast({ title: 'Enrolled!', description: `You've been added to "${classData.name}".` });
-          }
-        }
       }
     }
 
