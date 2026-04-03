@@ -47,7 +47,7 @@ export default function AdminPilot() {
   const { classId, setClassId, classes, loading: classesLoading } = useAdminClassFilter();
   const [activeTab, setActiveTab] = useState<PilotTab>('Pilot health');
   const [studentCount, setStudentCount] = useState<number | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  
 
   /* fetch student count for selected class */
   useEffect(() => {
