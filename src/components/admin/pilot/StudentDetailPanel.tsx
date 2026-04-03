@@ -77,6 +77,16 @@ interface NavEvent {
   visit_number: number | null;
 }
 
+interface BoardEvent {
+  event_type: string;
+  evidence_id: string | null;
+  evidence_type: string | null;
+  quadrant: string | null;
+  paired_with: string | null;
+  sequence_number: number | null;
+  created_at: string;
+}
+
 interface BoardCard {
   id?: string;
   label?: string;
