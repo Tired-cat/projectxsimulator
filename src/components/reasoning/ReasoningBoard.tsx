@@ -270,14 +270,6 @@ function ChipCard({
     } satisfies EvidenceDragData,
   });
 
-  const { setNodeRef: setContextDropRef, isOver: isContextOver } = useDroppable({
-    id: getContextDropId(blockId, chip.id),
-    data: {
-      kind: 'context-target',
-      blockId,
-      targetChipId: chip.id,
-    } satisfies EvidenceDropData,
-  });
 
   return (
     <div
