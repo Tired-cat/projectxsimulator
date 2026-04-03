@@ -258,7 +258,7 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
         { label: 'Made allocation change', count: madeAllocation, color: '#6B4F8A' },
         { label: 'Visited Reasoning Board', count: visitedReasoningCount, color: '#6B4F8A' },
         { label: 'Placed ≥1 card', count: placedCard, color: '#D4A053' },
-        { label: 'Used Contextualise', count: usedContextualise, color: '#D4A053' },
+        { label: 'Added ≥1 annotation', count: addedAnnotation, color: '#D4A053' },
         { label: 'Requested AI feedback', count: requestedAI, color: '#4CAF50' },
         { label: 'Submitted', count: subCount, color: '#4CAF50' },
       ];
