@@ -76,12 +76,13 @@ export default function PilotStruggleSignals({ classId }: Props) {
         return res;
       };
 
-      const [nav, sub, rst, alloc, brd] = await Promise.all([
+      const [nav, sub, rst, alloc, brd, rbsRaw] = await Promise.all([
         cq<NavRow>((ids) => supabase.from('navigation_events').select('session_id, tab, time_spent_seconds').in('session_id', ids), sessionIds),
         cq<SubRow>((ids) => supabase.from('submissions').select('session_id, predictive_card_count, contextualise_pairs_count').in('session_id', ids), sessionIds),
         cq<ResetRow>((ids) => supabase.from('resets').select('session_id, reset_type, cards_cleared').in('session_id', ids), sessionIds),
         cq<{ session_id: string }>((ids) => supabase.from('allocation_events').select('session_id').in('session_id', ids), sessionIds),
         cq<BoardRow>((ids) => supabase.from('board_events').select('session_id, sequence_number, evidence_id').in('session_id', ids), sessionIds),
+        cq<{ session_id: string; cards: any; written_diagnosis: string | null }>((ids) => supabase.from('reasoning_board_state').select('session_id, cards, written_diagnosis').in('session_id', ids), sessionIds),
       ]);
 
       const totalSubs = new Set(sub.map((r) => r.session_id)).size;
