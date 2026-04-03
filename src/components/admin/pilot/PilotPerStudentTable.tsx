@@ -135,7 +135,17 @@ export default function PilotPerStudentTable({ classId }: Props) {
         ).in('session_id', ids), sessionIds),
         cq<{ session_id: string }>((ids) => supabase.from('allocation_events').select('session_id').in('session_id', ids), sessionIds),
         cq<{ session_id: string }>((ids) => supabase.from('ai_feedback_events').select('session_id').in('session_id', ids), sessionIds),
+        cq<{ session_id: string; cards: any; written_diagnosis: string | null }>((ids) => supabase.from('reasoning_board_state').select('session_id, cards, written_diagnosis').in('session_id', ids), sessionIds),
       ]);
+
+      // Index board state by session_id
+      const boardMap = new Map<string, { annotationCount: number; hasDiagnosis: boolean }>();
+      boardRows.forEach((b) => {
+        const cardsArr = Array.isArray(b.cards) ? b.cards : [];
+        const annotationCount = cardsArr.filter((c: any) => c?.annotation && c.annotation.trim() !== '').length;
+        const hasDiagnosis = !!(b.written_diagnosis && b.written_diagnosis.trim() !== '');
+        boardMap.set(b.session_id, { annotationCount, hasDiagnosis });
+      });
 
       // Index by session_id
       const subMap = new Map<string, typeof subRows[0]>();
