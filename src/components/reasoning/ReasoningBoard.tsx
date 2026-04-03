@@ -133,12 +133,7 @@ export function ReasoningBoard() {
                           {stepNumber}
                         </span>
                         <div className="min-w-0">
-<<<<<<< HEAD
-                          <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: block.color }}>
-                            <BlockIcon className="w-3 h-3 flex-shrink-0" />
-=======
                           <div className="text-xs font-bold" style={{ color: block.color }}>
->>>>>>> main
                             {block.title}
                           </div>
                           <div className="text-[10px] text-muted-foreground truncate leading-snug">
