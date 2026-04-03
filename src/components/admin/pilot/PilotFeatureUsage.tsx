@@ -51,9 +51,10 @@ interface SubRow {
   predictive_card_count: number;
 }
 
-interface AiFeedbackRow { session_id: string; }
+interface AiFeedbackRow { session_id: string; post_feedback_action: string | null; }
 interface BoardEventRow { session_id: string; evidence_type: string | null; }
 interface TutorialEventRow { session_id: string; step_number: number | null; action: string; }
+interface BoardStateRow { session_id: string; cards: any; written_diagnosis: string | null; }
 
 function isCorrect(s: SubRow): boolean {
   const tk = s.final_tiktok_spend ?? 9000;
