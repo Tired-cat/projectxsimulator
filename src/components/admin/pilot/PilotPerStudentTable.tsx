@@ -443,6 +443,16 @@ export default function PilotPerStudentTable({ classId }: Props) {
                     </td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.cards ?? '—'}</td>
                     <td className="py-2 px-3 text-center text-muted-foreground">{row.quadrants != null ? `${row.quadrants}/4` : '—'}</td>
+                    <td className={cn("py-2 px-3 text-right", row.annotations === 0 || row.annotations == null ? 'text-muted-foreground' : 'text-foreground')}>
+                      {row.annotations != null ? row.annotations : '—'}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      {row.diagnosis == null ? '—' : row.diagnosis ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#4A7C59' }}>Yes</span>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
+                      )}
+                    </td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.sessionId ? row.allocChanges : '—'}</td>
                     <td className="py-2 px-3 text-center">
                       {row.sessionId == null ? '—' : (
