@@ -141,8 +141,16 @@ export default function PilotPerStudentTable({ classId }: Props) {
       // Index board state by session_id
       const boardMap = new Map<string, { annotationCount: number; hasDiagnosis: boolean }>();
       boardRows.forEach((b) => {
-        const cardsArr = Array.isArray(b.cards) ? b.cards : [];
-        const annotationCount = cardsArr.filter((c: any) => c?.annotation && c.annotation.trim() !== '').length;
+        // cards is an object { descriptive: [...], diagnostic: [...], ... } not an array
+        let allChips: any[] = [];
+        if (b.cards && typeof b.cards === 'object' && !Array.isArray(b.cards)) {
+          for (const quadrant of Object.values(b.cards as Record<string, any>)) {
+            if (Array.isArray(quadrant)) allChips.push(...quadrant);
+          }
+        } else if (Array.isArray(b.cards)) {
+          allChips = b.cards;
+        }
+        const annotationCount = allChips.filter((c: any) => c?.annotation && c.annotation.trim() !== '').length;
         const hasDiagnosis = !!(b.written_diagnosis && b.written_diagnosis.trim() !== '');
         boardMap.set(b.session_id, { annotationCount, hasDiagnosis });
       });
