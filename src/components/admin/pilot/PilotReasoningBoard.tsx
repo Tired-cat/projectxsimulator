@@ -24,6 +24,8 @@ interface SubmissionRow {
   prescriptive_card_count: number;
   predictive_card_count: number;
   contextualise_pairs_count: number;
+  final_tiktok_spend: number | null;
+  final_newspaper_spend: number | null;
 }
 
 const QUADRANTS = [
