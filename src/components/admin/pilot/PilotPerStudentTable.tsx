@@ -417,7 +417,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
-                  <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">No students match the current filters.</td></tr>
+                  <tr><td colSpan={10} className="py-8 text-center text-muted-foreground">No students match the current filters.</td></tr>
                 ) : pageRows.map((row, i) => (
                   <tr
                     key={row.sessionId ?? `no-session-${i}`}
