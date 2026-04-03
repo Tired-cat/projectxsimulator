@@ -125,6 +125,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
   const [hasFeedback, setHasFeedback] = useState(false);
   const [allocCount, setAllocCount] = useState(0);
   const [boardResets, setBoardResets] = useState(0);
+  const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DetailTab>('reasoning');
 
