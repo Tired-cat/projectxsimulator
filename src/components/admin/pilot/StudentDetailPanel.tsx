@@ -436,23 +436,10 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
       </div>
 
       {/* Reasoning Story */}
+      <hr className="border-border" />
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-2">Reasoning story</p>
-        {storySentences.length > 0 ? (
-          <div className="space-y-1.5">
-            {storySentences.map((sentence, i) => (
-              <div
-                key={i}
-                className="text-xs text-foreground bg-muted/20 rounded-md py-2 px-3 leading-relaxed border-l-[3px]"
-                style={{ borderLeftColor: STORY_COLORS[i % STORY_COLORS.length] }}
-              >
-                {sentence}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground italic">No reasoning story generated.</p>
-        )}
+        <p className="text-xs font-medium text-foreground mb-2">My Full Reasoning Story</p>
+        <ReasoningStoryBlocks generatedStory={generatedStory} />
       </div>
     </div>
   );
