@@ -442,7 +442,72 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
   );
 }
 
-/* ── Tab 2: Allocation Path ─────────────────────── */
+const STORY_BLOCK_STYLES = [
+  { bg: '#FAEEDA', border: '#D4A017', color: '#854F0B', label: 'Descriptive' },
+  { bg: '#FAECE7', border: '#C4622D', color: '#993C1D', label: 'Diagnostic' },
+  { bg: '#EAF3DE', border: '#4A7C59', color: '#3B6D11', label: 'Prescriptive' },
+  { bg: '#EEEDFE', border: '#6B4F8A', color: '#3C3489', label: 'Predictive' },
+];
+const MISSING_PLACEHOLDER = '(No reasoning captured for this step)';
+
+function ReasoningStoryBlocks({ generatedStory }: { generatedStory: string | null }) {
+  if (!generatedStory) {
+    return <p className="text-[11px] text-muted-foreground italic">No reasoning story was generated for this submission.</p>;
+  }
+
+  const rawChunks = generatedStory.split(/\.\s+/).map(s => s.trim()).filter(s => s.length > 0);
+
+  // Normalize to exactly 4 blocks
+  let blocks: string[];
+  if (rawChunks.length >= 4) {
+    blocks = [
+      rawChunks[0],
+      rawChunks[1],
+      rawChunks[2],
+      rawChunks.slice(3).join('. '),
+    ];
+  } else {
+    blocks = [...rawChunks];
+    while (blocks.length < 4) blocks.push(MISSING_PLACEHOLDER);
+  }
+
+  // Ensure trailing periods
+  blocks = blocks.map(b => b === MISSING_PLACEHOLDER ? b : (b.endsWith('.') ? b : b + '.'));
+
+  const hasMissing = blocks.some(b => b === MISSING_PLACEHOLDER);
+
+  return (
+    <div>
+      <div className="flex flex-col gap-1">
+        {blocks.map((text, i) => {
+          const style = STORY_BLOCK_STYLES[i];
+          return (
+            <div
+              key={i}
+              className="rounded-r-[5px] py-2 px-2.5 border-l-2"
+              style={{
+                backgroundColor: style.bg,
+                borderLeftColor: style.border,
+                color: text === MISSING_PLACEHOLDER ? '#888780' : style.color,
+                fontStyle: text === MISSING_PLACEHOLDER ? 'italic' : 'normal',
+                fontSize: '11px',
+                lineHeight: 1.6,
+              }}
+            >
+              {text}
+            </div>
+          );
+        })}
+      </div>
+      {hasMissing && (
+        <p className="text-[10px] text-[#D4A017] mt-2">
+          One or more reasoning steps were not captured in the generated story.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AllocationPathTab({ events }: { events: AllocEvent[] }) {
   const chartData = useMemo(() => {
     if (!events.length) return [];
