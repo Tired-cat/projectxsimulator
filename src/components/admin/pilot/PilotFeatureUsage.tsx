@@ -167,9 +167,10 @@ export default function PilotFeatureUsage({ classId }: Props) {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
-  const [aiFeedbackSessions, setAiFeedbackSessions] = useState<Set<string>>(new Set());
+  const [aiFeedbackRows, setAiFeedbackRows] = useState<AiFeedbackRow[]>([]);
   const [productMixSessions, setProductMixSessions] = useState<Set<string>>(new Set());
   const [tutorialEvents, setTutorialEvents] = useState<TutorialEventRow[]>([]);
+  const [boardStates, setBoardStates] = useState<BoardStateRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
