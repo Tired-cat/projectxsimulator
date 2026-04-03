@@ -72,6 +72,7 @@ interface AiFeedback {
 interface NavEvent {
   tab: string;
   entered_at: string;
+  exited_at: string | null;
   time_spent_seconds: number | null;
   visit_number: number | null;
 }
