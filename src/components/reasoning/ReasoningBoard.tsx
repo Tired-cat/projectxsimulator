@@ -181,6 +181,7 @@ export function ReasoningBoard() {
                             chip={chip}
                             blockId={block.id}
                             blockColor={block.color}
+                            chipIndex={index}
                             onRemove={() => removeChip(block.id, chip.id)}
                           />
                         ))}
@@ -231,14 +232,17 @@ function ChipCard({
   chip,
   blockId,
   blockColor,
+  chipIndex,
   onRemove,
 }: {
   chip: EvidenceChip;
   blockId: ReasoningBlockId;
   blockColor: string;
+  chipIndex: number;
   onRemove: () => void;
 }) {
   const { updateChipAnnotation } = useReasoningBoard();
+  const canAnnotate = chipIndex < 2;
   const insight = getSmartInsight(chip, blockId);
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
