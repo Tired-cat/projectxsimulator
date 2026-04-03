@@ -424,7 +424,6 @@ export default function PilotPerStudentTable({ classId }: Props) {
                     </td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.cards ?? '—'}</td>
                     <td className="py-2 px-3 text-center text-muted-foreground">{row.quadrants != null ? `${row.quadrants}/4` : '—'}</td>
-                    <td className="py-2 px-3 text-right text-muted-foreground">{row.contextualise ?? '—'}</td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.sessionId ? row.allocChanges : '—'}</td>
                     <td className="py-2 px-3 text-center">
                       {row.sessionId == null ? '—' : (

@@ -254,7 +254,6 @@ export default function PilotFeatureUsage({ classId }: Props) {
 
     return [
       calcRow('Tutorial completed', tutCompletedIds),
-      calcRow('Contextualise mechanic', contextIds),
       calcRow('AI feedback', aiFeedbackSessions),
       calcRow('Product mix analysis', productMixSessions),
       calcRow('All 4 quadrants filled', allQuadIds),

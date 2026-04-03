@@ -411,37 +411,6 @@ export default function PilotReasoningBoard({ classId }: Props) {
         </div>
       )}
 
-      {/* ── contextualise pairs table ──────────────── */}
-      <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3">Top contextualise pairs</h3>
-        <Card className="bg-background border-border shadow-sm">
-          <CardContent className="p-0">
-            {contextPairs.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No contextualise events recorded yet.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Pair</TableHead>
-                    <TableHead className="text-xs text-right w-24">Times</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contextPairs.map((p, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs font-mono">
-                        {p.evidence_id} <span className="text-muted-foreground">↔</span> {p.paired_with}
-                      </TableCell>
-                      <TableCell className="text-xs text-right font-medium">{p.pair_count}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* ── first drag donut charts ────────────────── */}
       <FirstDragCharts firstDrags={firstDrags} />
     </div>
