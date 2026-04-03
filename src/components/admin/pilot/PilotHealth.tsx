@@ -240,9 +240,13 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
             .select('session_id, cards')
             .in('session_id', chunk);
           (boardStates ?? []).forEach((row: any) => {
-            const cards = Array.isArray(row.cards) ? row.cards : [];
-            const hasAnnotation = cards.some(
-              (chip: any) => chip.annotation && chip.annotation.trim() !== ''
+            // cards is an object keyed by quadrant, each value is an array of chips
+            const cardsObj = row.cards && typeof row.cards === 'object' && !Array.isArray(row.cards)
+              ? row.cards
+              : {};
+            const allChips = Object.values(cardsObj).flat() as any[];
+            const hasAnnotation = allChips.some(
+              (chip: any) => chip && chip.annotation && String(chip.annotation).trim() !== ''
             );
             if (hasAnnotation) annotatedSessions.add(row.session_id);
           });
