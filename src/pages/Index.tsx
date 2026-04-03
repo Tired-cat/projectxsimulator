@@ -254,7 +254,25 @@ function SimulationContent() {
           const cards = data.cards as unknown as ReasoningBoardState;
           // Only load if it has the right shape
           if (cards.descriptive && cards.diagnostic && cards.predictive && cards.prescriptive) {
-            loadBoard(cards, data.written_diagnosis || '');
+            let diagnosis = data.written_diagnosis || '';
+            // Regenerate diagnosis from annotations if it wasn't saved
+            if (!diagnosis) {
+              const QUADRANT_ORDER: Array<keyof ReasoningBoardState> = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
+              const QUADRANT_LABELS: Record<string, string> = {
+                descriptive: 'Descriptive', diagnostic: 'Diagnostic',
+                predictive: 'Predictive', prescriptive: 'Prescriptive',
+              };
+              const lines: string[] = [];
+              for (const q of QUADRANT_ORDER) {
+                for (const c of (cards[q] || [])) {
+                  if (c.annotation && c.annotation.trim().length > 0) {
+                    lines.push(`${QUADRANT_LABELS[q]}: "${c.annotation.trim()}"`);
+                  }
+                }
+              }
+              diagnosis = lines.join('\n');
+            }
+            loadBoard(cards, diagnosis);
           }
         } catch {
           // Invalid shape, start fresh
