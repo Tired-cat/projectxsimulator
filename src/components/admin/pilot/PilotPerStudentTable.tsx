@@ -308,6 +308,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
 
         <StudentDetailPanel
           sessionId={detailTarget.sessionId}
+          userId={detailTarget.userId}
           onClose={() => setDetailTarget(null)}
         />
       </div>
