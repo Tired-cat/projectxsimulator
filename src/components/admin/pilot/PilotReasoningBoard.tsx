@@ -172,7 +172,7 @@ export default function PilotReasoningBoard({ classId }: Props) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
   const [draggedItems, setDraggedItems] = useState<DraggedItem[]>([]);
-  const [contextPairs, setContextPairs] = useState<ContextPair[]>([]);
+  
   const [firstDrags, setFirstDrags] = useState<FirstDragEvent[]>([]);
   const [totalSessions, setTotalSessions] = useState(0);
   const [loading, setLoading] = useState(true);
