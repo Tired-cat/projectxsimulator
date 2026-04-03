@@ -8,6 +8,7 @@ interface ReasoningBoardContextValue {
   removeChip: (blockId: ReasoningBlockId, chipId: string) => void;
   moveChip: (fromBlock: ReasoningBlockId, toBlock: ReasoningBlockId, chipId: string) => void;
   contextualiseChip: (blockId: ReasoningBlockId, targetChipId: string, contextChip: EvidenceChip) => void;
+  updateChipAnnotation: (blockId: ReasoningBlockId, chipId: string, annotation: string) => void;
   clearBoard: () => void;
   draggingChip: EvidenceChip | null;
   setDraggingChip: (chip: EvidenceChip | null) => void;
