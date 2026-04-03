@@ -125,6 +125,7 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
       removeChip,
       moveChip,
       contextualiseChip,
+      updateChipAnnotation,
       clearBoard,
       draggingChip,
       setDraggingChip,
