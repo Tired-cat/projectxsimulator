@@ -178,22 +178,24 @@ export default function PilotFeatureUsage({ classId }: Props) {
       setLoading(true);
       const ids = await getSessionIds(classId);
 
-      const [sessData, subData, aiData, boardData, tutData] = await Promise.all([
+      const [sessData, subData, aiData, boardData, tutData, bsData] = await Promise.all([
         chunked<SessionRow>((c) => supabase.from('sessions').select('id, tutorial_completed, tutorial_opened').in('id', c), ids),
         chunked<SubRow>((c) => supabase.from('submissions').select('session_id, final_tiktok_spend, final_newspaper_spend, contextualise_pairs_count, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count').in('session_id', c), ids),
-        chunked<AiFeedbackRow>((c) => supabase.from('ai_feedback_events').select('session_id').in('session_id', c), ids),
+        chunked<AiFeedbackRow>((c) => supabase.from('ai_feedback_events').select('session_id, post_feedback_action').in('session_id', c), ids),
         chunked<BoardEventRow>((c) => supabase.from('board_events').select('session_id, evidence_type').in('session_id', c), ids),
         chunked<TutorialEventRow>((c) => supabase.from('tutorial_events').select('session_id, step_number, action').in('session_id', c), ids),
+        chunked<BoardStateRow>((c) => supabase.from('reasoning_board_state').select('session_id, cards, written_diagnosis').in('session_id', c), ids),
       ]);
 
       if (!cancelled) {
         setSessions(sessData);
         setSubs(subData);
-        setAiFeedbackSessions(new Set(aiData.map((r) => r.session_id)));
+        setAiFeedbackRows(aiData);
         setProductMixSessions(new Set(
           boardData.filter((r) => r.evidence_type === 'product_mix').map((r) => r.session_id)
         ));
         setTutorialEvents(tutData);
+        setBoardStates(bsData);
         setLoading(false);
       }
     })();
