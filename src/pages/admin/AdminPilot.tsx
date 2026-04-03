@@ -24,6 +24,7 @@ const PilotPerStudentTable = lazy(() => import('@/components/admin/pilot/PilotPe
 const TABS = [
   'Pilot health',
   'Reasoning board',
+  'Annotation quality',
   'Allocation decisions',
   'Feature usage',
   'AI feedback',
