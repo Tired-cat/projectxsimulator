@@ -13,6 +13,7 @@ const Auth = lazy(() => import('./pages/Auth'));
 const AuthRedirect = lazy(() => import('./pages/AuthRedirect'));
 const ProfessorDashboard = lazy(() => import('./pages/ProfessorDashboard'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const Enroll = lazy(() => import('./pages/Enroll'));
 const Unauthorized = lazy(() => import('./pages/Unauthorized'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
