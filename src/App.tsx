@@ -52,6 +52,14 @@ const App = () => (
               }
             />
             <Route
+              path="/enroll"
+              element={
+                <Suspense fallback={<RouteLoader fullScreen />}>
+                  <Enroll />
+                </Suspense>
+              }
+            />
+            <Route
               path="/"
               element={
                 <RoleGuard allowed={['student']}>
