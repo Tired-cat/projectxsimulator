@@ -51,9 +51,10 @@ interface SubRow {
   predictive_card_count: number;
 }
 
-interface AiFeedbackRow { session_id: string; }
+interface AiFeedbackRow { session_id: string; post_feedback_action: string | null; }
 interface BoardEventRow { session_id: string; evidence_type: string | null; }
 interface TutorialEventRow { session_id: string; step_number: number | null; action: string; }
+interface BoardStateRow { session_id: string; cards: any; written_diagnosis: string | null; }
 
 function isCorrect(s: SubRow): boolean {
   const tk = s.final_tiktok_spend ?? 9000;
@@ -166,9 +167,10 @@ export default function PilotFeatureUsage({ classId }: Props) {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
-  const [aiFeedbackSessions, setAiFeedbackSessions] = useState<Set<string>>(new Set());
+  const [aiFeedbackRows, setAiFeedbackRows] = useState<AiFeedbackRow[]>([]);
   const [productMixSessions, setProductMixSessions] = useState<Set<string>>(new Set());
   const [tutorialEvents, setTutorialEvents] = useState<TutorialEventRow[]>([]);
+  const [boardStates, setBoardStates] = useState<BoardStateRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,22 +178,24 @@ export default function PilotFeatureUsage({ classId }: Props) {
       setLoading(true);
       const ids = await getSessionIds(classId);
 
-      const [sessData, subData, aiData, boardData, tutData] = await Promise.all([
+      const [sessData, subData, aiData, boardData, tutData, bsData] = await Promise.all([
         chunked<SessionRow>((c) => supabase.from('sessions').select('id, tutorial_completed, tutorial_opened').in('id', c), ids),
         chunked<SubRow>((c) => supabase.from('submissions').select('session_id, final_tiktok_spend, final_newspaper_spend, contextualise_pairs_count, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count').in('session_id', c), ids),
-        chunked<AiFeedbackRow>((c) => supabase.from('ai_feedback_events').select('session_id').in('session_id', c), ids),
+        chunked<AiFeedbackRow>((c) => supabase.from('ai_feedback_events').select('session_id, post_feedback_action').in('session_id', c), ids),
         chunked<BoardEventRow>((c) => supabase.from('board_events').select('session_id, evidence_type').in('session_id', c), ids),
         chunked<TutorialEventRow>((c) => supabase.from('tutorial_events').select('session_id, step_number, action').in('session_id', c), ids),
+        chunked<BoardStateRow>((c) => supabase.from('reasoning_board_state').select('session_id, cards, written_diagnosis').in('session_id', c), ids),
       ]);
 
       if (!cancelled) {
         setSessions(sessData);
         setSubs(subData);
-        setAiFeedbackSessions(new Set(aiData.map((r) => r.session_id)));
+        setAiFeedbackRows(aiData);
         setProductMixSessions(new Set(
           boardData.filter((r) => r.evidence_type === 'product_mix').map((r) => r.session_id)
         ));
         setTutorialEvents(tutData);
+        setBoardStates(bsData);
         setLoading(false);
       }
     })();
@@ -206,6 +210,34 @@ export default function PilotFeatureUsage({ classId }: Props) {
   }, [subs]);
 
   const sessionSet = useMemo(() => new Set(sessions.map((s) => s.id)), [sessions]);
+
+  /* ── board state lookups ──────────────────────── */
+  const boardStateBySession = useMemo(() => {
+    const m = new Map<string, BoardStateRow>();
+    boardStates.forEach((b) => m.set(b.session_id, b));
+    return m;
+  }, [boardStates]);
+
+  /* ── helper: count annotations in a cards JSONB ─ */
+  function countAnnotations(cards: any): { annotated: number; totalSlots: number } {
+    let annotated = 0;
+    let totalSlots = 0;
+    if (cards && typeof cards === 'object' && !Array.isArray(cards)) {
+      for (const quadrant of Object.values(cards as Record<string, any>)) {
+        if (Array.isArray(quadrant)) {
+          const slotsInQuadrant = Math.min(quadrant.length, 2);
+          totalSlots += slotsInQuadrant;
+          for (let i = 0; i < slotsInQuadrant; i++) {
+            const chip = quadrant[i];
+            if (chip && typeof chip.annotation === 'string' && chip.annotation.trim().length > 0) {
+              annotated++;
+            }
+          }
+        }
+      }
+    }
+    return { annotated, totalSlots };
+  }
 
   /* ── feature matrix rows ─────────────────────── */
   const matrixRows = useMemo(() => {
@@ -238,13 +270,32 @@ export default function PilotFeatureUsage({ classId }: Props) {
     // Row 1 — Tutorial completed
     const tutCompletedIds = new Set(sessions.filter((s) => s.tutorial_completed).map((s) => s.id));
 
-    // Row 2 — AI feedback
-    // aiFeedbackSessions already a Set
+    // Row 2 — Adjusted after feedback (post_feedback_action = 'adjusted')
+    const adjustedIds = new Set(
+      aiFeedbackRows.filter((r) => r.post_feedback_action === 'adjusted').map((r) => r.session_id)
+    );
+    const submittedImmediatelyIds = new Set(
+      aiFeedbackRows.filter((r) => r.post_feedback_action === 'submitted_immediately').map((r) => r.session_id)
+    );
+    // Custom calc for adjusted: non-users = submitted_immediately (not "everyone else")
+    const adjustedRow = (() => {
+      const usedBy = pct(adjustedIds.size, totalSessions);
+      let adjCorrect = 0, adjTotal = 0, immCorrect = 0, immTotal = 0;
+      subs.forEach((s) => {
+        if (adjustedIds.has(s.session_id)) {
+          adjTotal++; if (isCorrect(s)) adjCorrect++;
+        } else if (submittedImmediatelyIds.has(s.session_id)) {
+          immTotal++; if (isCorrect(s)) immCorrect++;
+        }
+      });
+      const crUser = pct(adjCorrect, adjTotal);
+      const crNon = pct(immCorrect, immTotal);
+      const delta = crUser - crNon;
+      return { label: 'Adjusted after feedback', usedBy, crUser, crNon, delta, verdict: verdict(delta) };
+    })();
 
-    // Row 4 — Product mix
-    // productMixSessions already a Set
-
-    // Row 5 — All 4 quadrants
+    // Row 3 — Product mix
+    // Row 4 — All 4 quadrants
     const allQuadIds = new Set(
       subs.filter((s) =>
         s.descriptive_card_count > 0 && s.diagnostic_card_count > 0 &&
@@ -252,13 +303,33 @@ export default function PilotFeatureUsage({ classId }: Props) {
       ).map((s) => s.session_id)
     );
 
+    // Row 5 — Contextual Notes used (at least 1 annotation)
+    const annotatedIds = new Set<string>();
+    const allSlotIds = new Set<string>();
+    boardStates.forEach((b) => {
+      const { annotated, totalSlots } = countAnnotations(b.cards);
+      if (annotated > 0) annotatedIds.add(b.session_id);
+      if (totalSlots > 0 && annotated >= totalSlots) allSlotIds.add(b.session_id);
+    });
+
+    // Row 6 — Written diagnosis generated
+    const diagnosisIds = new Set(
+      boardStates.filter((b) => b.written_diagnosis && typeof b.written_diagnosis === 'string' && b.written_diagnosis.trim().length > 0)
+        .map((b) => b.session_id)
+    );
+
+    // Row 7 — All annotation slots used
+
     return [
       calcRow('Tutorial completed', tutCompletedIds),
-      calcRow('AI feedback', aiFeedbackSessions),
+      adjustedRow,
       calcRow('Product mix analysis', productMixSessions),
       calcRow('All 4 quadrants filled', allQuadIds),
+      calcRow('Contextual Notes used', annotatedIds),
+      calcRow('Written diagnosis generated', diagnosisIds),
+      calcRow('All annotation slots used', allSlotIds),
     ];
-  }, [sessions, subs, aiFeedbackSessions, productMixSessions]);
+  }, [sessions, subs, aiFeedbackRows, productMixSessions, boardStates]);
 
   /* ── tutorial step drop-off ──────────────────── */
   const tutorialChartData = useMemo(() => {
