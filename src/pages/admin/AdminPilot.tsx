@@ -14,6 +14,7 @@ import { RouteLoader } from '@/components/RouteLoader';
 
 const PilotHealth = lazy(() => import('@/components/admin/pilot/PilotHealth'));
 const PilotReasoningBoard = lazy(() => import('@/components/admin/pilot/PilotReasoningBoard'));
+const PilotAnnotationQuality = lazy(() => import('@/components/admin/pilot/PilotAnnotationQuality'));
 const PilotAllocationDecisions = lazy(() => import('@/components/admin/pilot/PilotAllocationDecisions'));
 const PilotFeatureUsage = lazy(() => import('@/components/admin/pilot/PilotFeatureUsage'));
 const PilotAiFeedback = lazy(() => import('@/components/admin/pilot/PilotAiFeedback'));
