@@ -127,10 +127,32 @@ export default function PilotStruggleSignals({ classId }: Props) {
       const sessProChair = new Set(brd.filter((r) => r.evidence_id === 'pro_chair_tiktok').map((r) => r.session_id));
       const pctProChair = sessWithBoard.size > 0 ? (sessProChair.size / sessWithBoard.size) * 100 : 0;
 
+      // Row 9 — Never added a Contextual Note
+      const sessWithDrags = new Set(brd.map((r) => r.session_id));
+      const hasAnnotation = (cards: any): boolean => {
+        if (!cards || typeof cards !== 'object') return false;
+        for (const qKey of Object.keys(cards)) {
+          const arr = cards[qKey];
+          if (!Array.isArray(arr)) continue;
+          for (const chip of arr) {
+            if (chip && typeof chip.annotation === 'string' && chip.annotation.trim().length > 0) return true;
+          }
+        }
+        return false;
+      };
+      const sessWithAnnotation = new Set(rbsRaw.filter((r) => hasAnnotation(r.cards)).map((r) => r.session_id));
+      const dragsNoAnnotation = [...sessWithDrags].filter((sid) => !sessWithAnnotation.has(sid)).length;
+      const pctNoAnnotation = sessWithDrags.size > 0 ? (dragsNoAnnotation / sessWithDrags.size) * 100 : 0;
+
+      // Row 10 — Written diagnosis empty at submission
+      const subSessionIds = new Set(sub.map((r) => r.session_id));
+      const rbsForSubs = rbsRaw.filter((r) => subSessionIds.has(r.session_id));
+      const emptyDiagnosis = rbsForSubs.filter((r) => !r.written_diagnosis || r.written_diagnosis.trim().length === 0).length;
+      const pctEmptyDiagnosis = rbsForSubs.length > 0 ? (emptyDiagnosis / rbsForSubs.length) * 100 : (totalSubs > 0 ? 100 : 0);
+
       const results: IssueRow[] = [
         { issue: 'Never reached Reasoning Board', pctAffected: pctNeverRB, threshold: 10, status: getStatus(pctNeverRB, 10), priority: 'P1' },
         { issue: 'Left Predictive quadrant empty', pctAffected: pctPredEmpty, threshold: 35, status: getStatus(pctPredEmpty, 35), priority: 'P1' },
-        { issue: 'Never used Contextualise', pctAffected: pctCtxZero, threshold: 40, status: getStatus(pctCtxZero, 40), priority: 'P1' },
         { issue: 'Board reset 2+ times', pctAffected: pctResetTwice, threshold: 15, status: getStatus(pctResetTwice, 15), priority: 'P2' },
         { issue: 'Submitted with 0 allocation changes', pctAffected: pctNoAlloc, threshold: 10, status: getStatus(pctNoAlloc, 10), priority: 'P2' },
         { issue: 'Never visited My Decisions', pctAffected: pctNeverMD, threshold: 15, status: getStatus(pctNeverMD, 15), priority: 'P2' },
@@ -139,6 +161,16 @@ export default function PilotStruggleSignals({ classId }: Props) {
           issue: 'Pro Chair TikTok never dragged (BUG-02)', pctAffected: pctProChair, threshold: 5,
           status: getStatus(pctProChair, 5, true), priority: 'P1',
           note: pctProChair >= 5 ? `${pctProChair.toFixed(1)}% of students dragged Pro Chair TikTok — BUG-02 may have been partially fixed. Verify.` : undefined,
+        },
+        {
+          issue: 'Never added a Contextual Note', pctAffected: pctNoAnnotation, threshold: 50,
+          status: getStatus(pctNoAnnotation, 50), priority: 'P2',
+          note: pctNoAnnotation > 50 ? 'Students placed evidence but wrote no interpretations — annotations are not being used.' : undefined,
+        },
+        {
+          issue: 'Written diagnosis empty at submission', pctAffected: pctEmptyDiagnosis, threshold: 60,
+          status: getStatus(pctEmptyDiagnosis, 60), priority: 'P2',
+          note: pctEmptyDiagnosis > 60 ? 'Most students submitted without a written diagnosis — the annotation → AI feedback pipeline isn\'t being used.' : undefined,
         },
       ];
 
