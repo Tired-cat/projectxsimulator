@@ -22,7 +22,6 @@ import type { EvidenceDragData, EvidenceDropData } from '@/lib/evidenceDnd';
 import {
   getBlockDropId,
   getBoardChipDragId,
-  getContextDropId,
 } from '@/lib/evidenceDnd';
 import { cn } from '@/lib/utils';
 import { ReasoningNarrative } from './ReasoningNarrative';
