@@ -23,6 +23,8 @@ interface StudentRow {
   tutorial: 'Completed' | 'Abandoned' | 'Skipped';
   cards: number | null;
   quadrants: number | null;
+  annotations: number | null;
+  diagnosis: boolean | null;
   allocChanges: number;
   feedback: boolean;
   decision: 'Correct' | 'Partial' | 'Incorrect' | 'No change' | null;
@@ -121,7 +123,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
         return res;
       };
 
-      const [subRows, allocRows, feedbackRows] = await Promise.all([
+      const [subRows, allocRows, feedbackRows, boardRows] = await Promise.all([
         cq<{
           session_id: string;
           descriptive_card_count: number; diagnostic_card_count: number;
@@ -133,7 +135,17 @@ export default function PilotPerStudentTable({ classId }: Props) {
         ).in('session_id', ids), sessionIds),
         cq<{ session_id: string }>((ids) => supabase.from('allocation_events').select('session_id').in('session_id', ids), sessionIds),
         cq<{ session_id: string }>((ids) => supabase.from('ai_feedback_events').select('session_id').in('session_id', ids), sessionIds),
+        cq<{ session_id: string; cards: any; written_diagnosis: string | null }>((ids) => supabase.from('reasoning_board_state').select('session_id, cards, written_diagnosis').in('session_id', ids), sessionIds),
       ]);
+
+      // Index board state by session_id
+      const boardMap = new Map<string, { annotationCount: number; hasDiagnosis: boolean }>();
+      boardRows.forEach((b) => {
+        const cardsArr = Array.isArray(b.cards) ? b.cards : [];
+        const annotationCount = cardsArr.filter((c: any) => c?.annotation && c.annotation.trim() !== '').length;
+        const hasDiagnosis = !!(b.written_diagnosis && b.written_diagnosis.trim() !== '');
+        boardMap.set(b.session_id, { annotationCount, hasDiagnosis });
+      });
 
       // Index by session_id
       const subMap = new Map<string, typeof subRows[0]>();
@@ -154,6 +166,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
             userId, sessionId: null, email,
             durationMin: null, tutorial: 'Skipped' as const,
             cards: null, quadrants: null,
+            annotations: null, diagnosis: null,
             allocChanges: 0, feedback: false, decision: null,
           };
         }
@@ -190,9 +203,13 @@ export default function PilotPerStudentTable({ classId }: Props) {
           else decision = 'Incorrect';
         }
 
+        const board = boardMap.get(session.id);
+
         return {
           userId, sessionId: session.id, email, durationMin, tutorial,
           cards, quadrants,
+          annotations: board?.annotationCount ?? 0,
+          diagnosis: board?.hasDiagnosis ?? false,
           allocChanges: allocCounts.get(session.id) ?? 0,
           feedback: feedbackSessions.has(session.id),
           decision,
@@ -326,6 +343,8 @@ export default function PilotPerStudentTable({ classId }: Props) {
     { key: 'tutorial', label: 'Tutorial', align: 'center' },
     { key: 'cards', label: 'Cards', align: 'right' },
     { key: 'quadrants', label: 'Quadrants', align: 'center' },
+    { key: 'annotations', label: 'Annotations', align: 'right' },
+    { key: 'diagnosis', label: 'Diagnosis', align: 'center' },
     { key: 'allocChanges', label: 'Alloc. changes', align: 'right' },
     { key: 'feedback', label: 'Feedback', align: 'center' },
     { key: 'decision', label: 'Decision', align: 'center' },
@@ -398,7 +417,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
-                  <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">No students match the current filters.</td></tr>
+                  <tr><td colSpan={10} className="py-8 text-center text-muted-foreground">No students match the current filters.</td></tr>
                 ) : pageRows.map((row, i) => (
                   <tr
                     key={row.sessionId ?? `no-session-${i}`}
@@ -424,6 +443,16 @@ export default function PilotPerStudentTable({ classId }: Props) {
                     </td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.cards ?? '—'}</td>
                     <td className="py-2 px-3 text-center text-muted-foreground">{row.quadrants != null ? `${row.quadrants}/4` : '—'}</td>
+                    <td className={cn("py-2 px-3 text-right", row.annotations === 0 || row.annotations == null ? 'text-muted-foreground' : 'text-foreground')}>
+                      {row.annotations != null ? row.annotations : '—'}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      {row.diagnosis == null ? '—' : row.diagnosis ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#4A7C59' }}>Yes</span>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
+                      )}
+                    </td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{row.sessionId ? row.allocChanges : '—'}</td>
                     <td className="py-2 px-3 text-center">
                       {row.sessionId == null ? '—' : (
