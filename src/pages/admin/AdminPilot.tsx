@@ -14,6 +14,7 @@ import { RouteLoader } from '@/components/RouteLoader';
 
 const PilotHealth = lazy(() => import('@/components/admin/pilot/PilotHealth'));
 const PilotReasoningBoard = lazy(() => import('@/components/admin/pilot/PilotReasoningBoard'));
+const PilotAnnotationQuality = lazy(() => import('@/components/admin/pilot/PilotAnnotationQuality'));
 const PilotAllocationDecisions = lazy(() => import('@/components/admin/pilot/PilotAllocationDecisions'));
 const PilotFeatureUsage = lazy(() => import('@/components/admin/pilot/PilotFeatureUsage'));
 const PilotAiFeedback = lazy(() => import('@/components/admin/pilot/PilotAiFeedback'));
@@ -23,6 +24,7 @@ const PilotPerStudentTable = lazy(() => import('@/components/admin/pilot/PilotPe
 const TABS = [
   'Pilot health',
   'Reasoning board',
+  'Annotation quality',
   'Allocation decisions',
   'Feature usage',
   'AI feedback',
@@ -143,6 +145,7 @@ export default function AdminPilot() {
         <Suspense fallback={<RouteLoader label="Loading pilot analytics…" />}>
           {visitedTabs.has('Pilot health') && <div className={activeTab !== 'Pilot health' ? 'hidden' : ''}><PilotHealth classId={classId} /></div>}
           {visitedTabs.has('Reasoning board') && <div className={activeTab !== 'Reasoning board' ? 'hidden' : ''}><PilotReasoningBoard classId={classId} /></div>}
+          {visitedTabs.has('Annotation quality') && <div className={activeTab !== 'Annotation quality' ? 'hidden' : ''}><PilotAnnotationQuality classId={classId} /></div>}
           {visitedTabs.has('Allocation decisions') && <div className={activeTab !== 'Allocation decisions' ? 'hidden' : ''}><PilotAllocationDecisions classId={classId} /></div>}
           {visitedTabs.has('Feature usage') && <div className={activeTab !== 'Feature usage' ? 'hidden' : ''}><PilotFeatureUsage classId={classId} /></div>}
           {visitedTabs.has('AI feedback') && <div className={activeTab !== 'AI feedback' ? 'hidden' : ''}><PilotAiFeedback classId={classId} /></div>}
