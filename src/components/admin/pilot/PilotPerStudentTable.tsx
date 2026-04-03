@@ -166,6 +166,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
             userId, sessionId: null, email,
             durationMin: null, tutorial: 'Skipped' as const,
             cards: null, quadrants: null,
+            annotations: null, diagnosis: null,
             allocChanges: 0, feedback: false, decision: null,
           };
         }
