@@ -153,7 +153,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
           return {
             userId, sessionId: null, email,
             durationMin: null, tutorial: 'Skipped' as const,
-            cards: null, quadrants: null, contextualise: null,
+            cards: null, quadrants: null,
             allocChanges: 0, feedback: false, decision: null,
           };
         }
