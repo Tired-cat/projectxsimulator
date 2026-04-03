@@ -58,6 +58,7 @@ interface AiFeedback {
   ai_feedback_text: string | null;
   post_feedback_action: string | null;
   time_adjusting_seconds: number | null;
+  requested_at: string;
   descriptive_cards_before: number;
   diagnostic_cards_before: number;
   prescriptive_cards_before: number;
