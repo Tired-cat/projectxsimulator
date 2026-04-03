@@ -69,18 +69,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
+      (event, nextSession) => {
         if (!mounted || !initialDone) return;
+
+        // Token refreshes (e.g. window refocus) should NOT reset the UI
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(nextSession);
+          return;
+        }
 
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
 
         if (nextSession?.user) {
-          fetchRoleRef.current = null;
-          setLoading(true);
-          fetchRole(nextSession.user.id).finally(() => {
-            if (mounted) setLoading(false);
-          });
+          // Only re-fetch role if the user actually changed
+          if (nextSession.user.id !== fetchRoleRef.current) {
+            fetchRoleRef.current = null;
+            setLoading(true);
+            fetchRole(nextSession.user.id).finally(() => {
+              if (mounted) setLoading(false);
+            });
+          }
         } else {
           fetchRoleRef.current = null;
           setRole(null);
