@@ -512,42 +512,184 @@ function ReasoningStoryBlocks({ generatedStory }: { generatedStory: string | nul
   );
 }
 
+const ALLOC_DEFAULTS: Record<string, number> = { tiktok: 9000, instagram: 5500, facebook: 4500, newspaper: 1000 };
+const ALLOC_CHANNEL_LABELS: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', newspaper: 'Newspaper' };
+
 function AllocationPathTab({ events }: { events: AllocEvent[] }) {
-  const chartData = useMemo(() => {
-    if (!events.length) return [];
-    const bySeq = new Map<number, Record<string, number>>();
-    events.forEach((e) => {
-      if (e.sequence_number == null || e.new_value == null) return;
-      if (!bySeq.has(e.sequence_number)) bySeq.set(e.sequence_number, {});
-      bySeq.get(e.sequence_number)![e.channel] = e.new_value;
+  /* ── Budget comparison cards ────────────────── */
+  const finalValues = useMemo(() => {
+    const state = { ...ALLOC_DEFAULTS };
+    events.forEach(e => {
+      const ch = e.channel?.toLowerCase();
+      if (ch && e.new_value != null) state[ch] = e.new_value;
     });
-    const seqs = [...bySeq.keys()].sort((a, b) => a - b);
-    const state: Record<string, number> = { tiktok: 9000, newspaper: 1000 };
-    return seqs.map((seq) => {
-      const changes = bySeq.get(seq)!;
-      Object.entries(changes).forEach(([ch, val]) => { state[ch] = val; });
-      return { seq, tiktok: state.tiktok, newspaper: state.newspaper };
-    });
+    return state;
   }, [events]);
 
-  if (!events.length) {
-    return <p className="text-xs text-muted-foreground py-4">Student made no allocation changes.</p>;
+  /* ── Line chart data ────────────────────────── */
+  const chartData = useMemo(() => {
+    if (!events.length) return [];
+    // Collect all unique sequence numbers
+    const seqSet = new Set<number>();
+    events.forEach(e => { if (e.sequence_number != null) seqSet.add(e.sequence_number); });
+    const seqs = [...seqSet].sort((a, b) => a - b);
+
+    // Build timeline with carry-forward
+    const state = { tiktok: ALLOC_DEFAULTS.tiktok, newspaper: ALLOC_DEFAULTS.newspaper };
+    const bySeq = new Map<number, Record<string, number>>();
+    events.forEach(e => {
+      if (e.sequence_number == null || e.new_value == null) return;
+      if (!bySeq.has(e.sequence_number)) bySeq.set(e.sequence_number, {});
+      bySeq.get(e.sequence_number)![e.channel.toLowerCase()] = e.new_value;
+    });
+
+    const points = [{ label: 'Start', tiktok: state.tiktok, newspaper: state.newspaper }];
+    seqs.forEach((seq, i) => {
+      const changes = bySeq.get(seq);
+      if (changes) {
+        if (changes.tiktok != null) state.tiktok = changes.tiktok;
+        if (changes.newspaper != null) state.newspaper = changes.newspaper;
+      }
+      points.push({ label: `Change ${i + 1}`, tiktok: state.tiktok, newspaper: state.newspaper });
+    });
+
+    // Add submit point
+    points.push({ label: 'Submit', tiktok: state.tiktok, newspaper: state.newspaper });
+    return points;
+  }, [events]);
+
+  /* ── Decision outcome ───────────────────────── */
+  const noChanges = events.length === 0;
+  const tkFinal = finalValues.tiktok;
+  const npFinal = finalValues.newspaper;
+  const tkCorrect = tkFinal < ALLOC_DEFAULTS.tiktok;
+  const npCorrect = npFinal > ALLOC_DEFAULTS.newspaper;
+
+  type OutcomeKey = 'correct' | 'partial' | 'incorrect' | 'nochange';
+  const outcome: OutcomeKey = noChanges ? 'nochange' : (tkCorrect && npCorrect ? 'correct' : (tkCorrect || npCorrect ? 'partial' : 'incorrect'));
+  const OUTCOME_STYLE: Record<OutcomeKey, { color: string; text: string }> = {
+    correct: { color: '#4A7C59', text: 'Correct direction — reduced TikTok and increased Newspaper.' },
+    partial: { color: '#D4A017', text: 'Partial — only one of the two correct moves was made.' },
+    incorrect: { color: '#C4622D', text: 'Incorrect — budget was not moved in the right direction.' },
+    nochange: { color: '#888780', text: 'No changes made.' },
+  };
+
+  if (noChanges) {
+    return <p className="text-xs text-muted-foreground py-4 italic">This student made no allocation changes — they submitted the default budget.</p>;
   }
 
+  const maxBar = 10000;
+
   return (
-    <div>
-      <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="seq" tick={{ fontSize: 10 }} label={{ value: 'Change #', position: 'insideBottom', offset: -2, fontSize: 10 }} />
-          <YAxis domain={[0, 12000]} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} width={45} />
-          <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
-          <ReferenceLine y={9000} stroke="#888780" strokeDasharray="4 4" label={{ value: 'TikTok default', fontSize: 9, fill: '#888780' }} />
-          <ReferenceLine y={1000} stroke="#888780" strokeDasharray="4 4" label={{ value: 'Newspaper default', fontSize: 9, fill: '#888780' }} />
-          <Line type="monotone" dataKey="tiktok" name="TikTok" stroke="#C4622D" strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="newspaper" name="Newspaper" stroke="#4A7C59" strokeWidth={2} dot={{ r: 3 }} />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="space-y-5">
+      {/* ── Budget allocation cards ──────────────── */}
+      <div>
+        <p className="text-xs font-medium text-foreground mb-3">Budget allocation: default → final</p>
+        <div className="grid grid-cols-2 gap-3">
+          {(['tiktok', 'newspaper', 'instagram', 'facebook'] as const).map(ch => {
+            const def = ALLOC_DEFAULTS[ch];
+            const fin = finalValues[ch];
+            const diff = fin - def;
+            const changed = diff !== 0;
+            const isIncrease = diff > 0;
+            return (
+              <div key={ch} className="rounded-lg border border-border/50 p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <p className="text-[11px] font-medium text-foreground">{ALLOC_CHANNEL_LABELS[ch]}</p>
+                  {changed ? (
+                    <span className="text-[11px] font-medium" style={{ color: isIncrease ? '#C4622D' : '#4A7C59' }}>
+                      {isIncrease ? '↑' : '↓'} {isIncrease ? '+' : ''}${diff.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">no change</span>
+                  )}
+                </div>
+                {/* Default bar */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] text-muted-foreground w-10 shrink-0">Default</span>
+                  <div className="flex-1 h-3 bg-muted/30 rounded overflow-hidden">
+                    <div className="h-full rounded" style={{ width: `${(def / maxBar) * 100}%`, backgroundColor: '#888780' }} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground w-12 text-right">${def.toLocaleString()}</span>
+                </div>
+                {/* Final bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-10 shrink-0">Final</span>
+                  <div className="flex-1 h-3 bg-muted/30 rounded overflow-hidden">
+                    <div className="h-full rounded" style={{
+                      width: `${(fin / maxBar) * 100}%`,
+                      backgroundColor: !changed ? '#888780' : (ch === 'tiktok' ? '#A32D2D' : ch === 'newspaper' ? '#4A7C59' : '#888780'),
+                    }} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground w-12 text-right">${fin.toLocaleString()}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Decision path line chart ────────────── */}
+      <div>
+        <p className="text-xs font-medium text-foreground mb-3">Decision path — TikTok & Newspaper spend over time</p>
+        <div style={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10 }}
+                interval={chartData.length > 10 ? 1 : 0}
+                angle={chartData.length > 8 ? -30 : 0}
+                textAnchor={chartData.length > 8 ? 'end' : 'middle'}
+                height={chartData.length > 8 ? 50 : 30}
+              />
+              <YAxis
+                domain={[0, 12000]}
+                ticks={[0, 3000, 6000, 9000, 12000]}
+                tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                tick={{ fontSize: 10 }}
+                width={40}
+              />
+              <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
+              <ReferenceLine
+                y={9000}
+                stroke="#88878088"
+                strokeDasharray="6 4"
+                label={{ value: 'TikTok default $9k', position: 'right', fontSize: 9, fill: '#888780' }}
+              />
+              <ReferenceLine
+                y={1000}
+                stroke="#88878088"
+                strokeDasharray="6 4"
+                label={{ value: 'Newspaper default $1k', position: 'right', fontSize: 9, fill: '#888780' }}
+              />
+              <Line type="monotone" dataKey="tiktok" name="TikTok spend" stroke="#A32D2D" strokeWidth={2} dot={{ r: 4, fill: '#A32D2D' }} />
+              <Line type="monotone" dataKey="newspaper" name="Newspaper spend" stroke="#4A7C59" strokeWidth={2} dot={{ r: 4, fill: '#4A7C59' }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Legend */}
+        <div className="flex items-center gap-4 mt-2 justify-center">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: '#A32D2D' }} />
+            TikTok spend
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: '#4A7C59' }} />
+            Newspaper spend
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="w-6 border-t-2 border-dashed" style={{ borderColor: '#888780' }} />
+            Default value
+          </div>
+        </div>
+      </div>
+
+      {/* ── Outcome summary ─────────────────────── */}
+      <p className="text-xs font-medium" style={{ color: OUTCOME_STYLE[outcome].color }}>
+        {OUTCOME_STYLE[outcome].text}
+      </p>
     </div>
   );
 }
