@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, ReferenceLine,
 } from 'recharts';
-import { MessageSquare, Timer, CheckCircle, Send, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Timer, CheckCircle, Send, AlertTriangle, FileText } from 'lucide-react';
 
 interface Props { classId: string | null; }
 
@@ -26,6 +26,7 @@ interface AiRow {
   tiktok_spend_after: number | null;
   newspaper_spend_before: number | null;
   newspaper_spend_after: number | null;
+  ai_feedback_text: string | null;
 }
 
 interface SubRow {
@@ -38,8 +39,28 @@ const QUAD_COLORS: Record<string, string> = {
   Descriptive: '#D4A017', Diagnostic: '#C4622D', Prescriptive: '#4A7C59', Predictive: '#6B4F8A',
 };
 
+function parseAiFeedback(text: string | null): { budgetFeedback?: string; reasoningFeedback?: string; diagnosisFeedback?: string; overallNudge?: string } | null {
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed === 'object' && parsed !== null) return parsed;
+  } catch { /* fall through */ }
+  return null;
+}
+
+function wordCount(s: string | undefined | null): number {
+  if (!s || typeof s !== 'string') return 0;
+  return s.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function isCorrectDecision(sub: SubRow): boolean {
+  return (sub.final_tiktok_spend != null && sub.final_tiktok_spend < 9000) &&
+         (sub.final_newspaper_spend != null && sub.final_newspaper_spend > 1000);
+}
+
 export default function PilotAiFeedback({ classId }: Props) {
   const [rows, setRows] = useState<AiRow[]>([]);
+  const [subs, setSubs] = useState<SubRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,19 +74,34 @@ export default function PilotAiFeedback({ classId }: Props) {
       const { data: sessData } = await sq;
       const ids = (sessData ?? []).map((s) => s.id);
 
-      // fetch ai_feedback_events
+      // fetch ai_feedback_events + submissions in parallel
       const aiRows: AiRow[] = [];
-      for (let i = 0; i < ids.length; i += 100) {
-        const chunk = ids.slice(i, i + 100);
-        const { data } = await supabase
-          .from('ai_feedback_events')
-          .select('session_id, post_feedback_action, time_adjusting_seconds, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after, tiktok_spend_before, tiktok_spend_after, newspaper_spend_before, newspaper_spend_after')
-          .in('session_id', chunk);
-        if (data) aiRows.push(...(data as AiRow[]));
-      }
+      const subRows: SubRow[] = [];
+      const fetchAi = async () => {
+        for (let i = 0; i < ids.length; i += 100) {
+          const chunk = ids.slice(i, i + 100);
+          const { data } = await supabase
+            .from('ai_feedback_events')
+            .select('session_id, post_feedback_action, time_adjusting_seconds, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after, tiktok_spend_before, tiktok_spend_after, newspaper_spend_before, newspaper_spend_after, ai_feedback_text')
+            .in('session_id', chunk);
+          if (data) aiRows.push(...(data as AiRow[]));
+        }
+      };
+      const fetchSubs = async () => {
+        for (let i = 0; i < ids.length; i += 100) {
+          const chunk = ids.slice(i, i + 100);
+          const { data } = await supabase
+            .from('submissions')
+            .select('session_id, final_tiktok_spend, final_newspaper_spend')
+            .in('session_id', chunk);
+          if (data) subRows.push(...(data as SubRow[]));
+        }
+      };
+      await Promise.all([fetchAi(), fetchSubs()]);
 
       if (!cancelled) {
         setRows(aiRows);
+        setSubs(subRows);
         setLoading(false);
       }
     })();
@@ -116,6 +152,66 @@ export default function PilotAiFeedback({ classId }: Props) {
     { name: 'Submitted immediately', value: submitted.length, color: '#888780' },
   ];
   const donutTotal = adjusted.length + submitted.length;
+
+  // ── Annotation metrics ──
+  const parsedFeedbacks = useMemo(() =>
+    rows.map((r) => ({ session_id: r.session_id, parsed: parseAiFeedback(r.ai_feedback_text) })),
+    [rows]
+  );
+
+  const annotationMetrics = useMemo(() => {
+    if (!rows.length) return null;
+
+    // Card 1: Annotations reached AI — diagnosisFeedback is non-empty
+    const withDiagnosisFeedback = parsedFeedbacks.filter((r) => {
+      const df = r.parsed?.diagnosisFeedback;
+      return df && typeof df === 'string' && df.trim().length > 0;
+    });
+    const pctReached = Math.round((withDiagnosisFeedback.length / rows.length) * 100);
+
+    // Card 2: Diagnosis feedback substantive (> 30 words)
+    const substantiveDiagnosis = parsedFeedbacks.filter((r) => wordCount(r.parsed?.diagnosisFeedback) > 30);
+    const pctSubstantive = Math.round((substantiveDiagnosis.length / rows.length) * 100);
+
+    // Card 3: Correct decision rate — substantive vs thin/absent
+    const subMap = new Map(subs.map((s) => [s.session_id, s]));
+    const substantiveSessionIds = new Set(substantiveDiagnosis.map((r) => r.session_id));
+    const thinSessionIds = new Set(
+      parsedFeedbacks.filter((r) => !substantiveSessionIds.has(r.session_id)).map((r) => r.session_id)
+    );
+
+    const correctInSubstantive = [...substantiveSessionIds].filter((sid) => {
+      const sub = subMap.get(sid);
+      return sub && isCorrectDecision(sub);
+    }).length;
+    const correctInThin = [...thinSessionIds].filter((sid) => {
+      const sub = subMap.get(sid);
+      return sub && isCorrectDecision(sub);
+    }).length;
+
+    const pctCorrectSubstantive = substantiveSessionIds.size > 0 ? Math.round((correctInSubstantive / substantiveSessionIds.size) * 100) : 0;
+    const pctCorrectThin = thinSessionIds.size > 0 ? Math.round((correctInThin / thinSessionIds.size) * 100) : 0;
+
+    return { pctReached, pctSubstantive, pctCorrectSubstantive, pctCorrectThin, substantiveCount: substantiveSessionIds.size, thinCount: thinSessionIds.size };
+  }, [rows, parsedFeedbacks, subs]);
+
+  // ── Field analysis chart ──
+  const fieldAnalysis = useMemo(() => {
+    if (!parsedFeedbacks.length) return [];
+    const fields = [
+      { key: 'budgetFeedback' as const, label: 'Budget allocation', fill: '#888780' },
+      { key: 'reasoningFeedback' as const, label: 'Reasoning board', fill: '#6B4F8A' },
+      { key: 'diagnosisFeedback' as const, label: 'Written diagnosis', fill: '#D4A017' },
+      { key: 'overallNudge' as const, label: 'Overall nudge', fill: '#4A7C59' },
+    ];
+    const total = parsedFeedbacks.length;
+    return fields.map((f) => {
+      const substantive = parsedFeedbacks.filter((r) => wordCount(r.parsed?.[f.key]) > 30).length;
+      return { field: f.label, pct: total > 0 ? Math.round((substantive / total) * 100) : 0, fill: f.fill };
+    });
+  }, [parsedFeedbacks]);
+
+  const diagnosisSubstantiveRate = fieldAnalysis.find((f) => f.field === 'Written diagnosis')?.pct ?? 0;
 
   if (loading) {
     return <ViewSkeleton metrics charts={2} />;
@@ -221,10 +317,76 @@ export default function PilotAiFeedback({ classId }: Props) {
         </Card>
       </div>
 
-
-
       {/* ── ALLOCATION DELTA AFTER FEEDBACK ──────── */}
       <AllocationDeltaChart rows={rows} />
+
+      {/* ── SECTION 1: Written diagnosis in AI feedback ── */}
+      {annotationMetrics && (
+        <>
+          <h3 className="text-sm font-semibold text-foreground pt-2">Written diagnosis in AI feedback</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="py-4 text-center">
+                <FileText className="h-5 w-5 mx-auto mb-2" style={{ color: '#D4A017' }} />
+                <p className="text-2xl font-bold" style={{ color: '#D4A017' }}>{annotationMetrics.pctReached}%</p>
+                <p className="text-xs text-muted-foreground mt-1">Annotations reached AI</p>
+                <p className="text-[10px] text-muted-foreground">diagnosisFeedback non-empty</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-4 text-center">
+                <MessageSquare className="h-5 w-5 mx-auto mb-2" style={{ color: '#6B4F8A' }} />
+                <p className="text-2xl font-bold" style={{ color: '#6B4F8A' }}>{annotationMetrics.pctSubstantive}%</p>
+                <p className="text-xs text-muted-foreground mt-1">Diagnosis feedback substantive</p>
+                <p className="text-[10px] text-muted-foreground">&gt; 30 words in diagnosisFeedback</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-4 text-center">
+                <CheckCircle className="h-5 w-5 mx-auto mb-2" style={{ color: '#4A7C59' }} />
+                <p className="text-2xl font-bold" style={{ color: '#4A7C59' }}>
+                  {annotationMetrics.pctCorrectSubstantive}% <span className="text-base font-normal text-muted-foreground">vs</span> {annotationMetrics.pctCorrectThin}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Annotation → correct decision</p>
+                <p className="text-[10px] text-muted-foreground">
+                  substantive (n={annotationMetrics.substantiveCount}) vs thin/absent (n={annotationMetrics.thinCount})
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* ── SECTION 2: AI response field analysis ── */}
+      {fieldAnalysis.length > 0 && (
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <h3 className="text-sm font-semibold text-foreground mb-1">Which feedback sections are substantive?</h3>
+            <p className="text-[10px] text-muted-foreground mb-4">% of sessions where field has &gt; 30 words</p>
+            <div style={{ height: 180 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={fieldAnalysis} barCategoryGap="25%">
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="field" tick={{ fontSize: 10 }} />
+                  <YAxis tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} width={40} domain={[0, 100]} />
+                  <Tooltip formatter={(v: number) => `${v}%`} />
+                  <Bar dataKey="pct" name="Substantive %" radius={[3, 3, 0, 0]}>
+                    {fieldAnalysis.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {diagnosisSubstantiveRate < 40 && (
+              <div className="flex items-start gap-2 mt-3 p-3 rounded-md bg-amber-50 border border-amber-200">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800">
+                  The written diagnosis section of AI feedback is often thin. Students' annotations may not be giving the AI enough context to respond to — check whether written_diagnosis is reaching the edge function.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
