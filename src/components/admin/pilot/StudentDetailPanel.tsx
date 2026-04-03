@@ -515,7 +515,20 @@ function ReasoningStoryBlocks({ generatedStory }: { generatedStory: string | nul
 const ALLOC_DEFAULTS: Record<string, number> = { tiktok: 9000, instagram: 5500, facebook: 4500, newspaper: 1000 };
 const ALLOC_CHANNEL_LABELS: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', newspaper: 'Newspaper' };
 
-function AllocationPathTab({ events }: { events: AllocEvent[] }) {
+function AllocationPathTab({ events, sub, sessionId }: { events: AllocEvent[]; sub: SubData | null; sessionId: string }) {
+  const [allocResets, setAllocResets] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const { count } = await supabase
+        .from('resets')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_id', sessionId)
+        .eq('reset_type', 'allocation_reset');
+      setAllocResets(count ?? 0);
+    })();
+  }, [sessionId]);
+
   /* ── Budget comparison cards ────────────────── */
   const finalValues = useMemo(() => {
     const state = { ...ALLOC_DEFAULTS };
@@ -529,12 +542,10 @@ function AllocationPathTab({ events }: { events: AllocEvent[] }) {
   /* ── Line chart data ────────────────────────── */
   const chartData = useMemo(() => {
     if (!events.length) return [];
-    // Collect all unique sequence numbers
     const seqSet = new Set<number>();
     events.forEach(e => { if (e.sequence_number != null) seqSet.add(e.sequence_number); });
     const seqs = [...seqSet].sort((a, b) => a - b);
 
-    // Build timeline with carry-forward
     const state = { tiktok: ALLOC_DEFAULTS.tiktok, newspaper: ALLOC_DEFAULTS.newspaper };
     const bySeq = new Map<number, Record<string, number>>();
     events.forEach(e => {
@@ -553,7 +564,6 @@ function AllocationPathTab({ events }: { events: AllocEvent[] }) {
       points.push({ label: `Change ${i + 1}`, tiktok: state.tiktok, newspaper: state.newspaper });
     });
 
-    // Add submit point
     points.push({ label: 'Submit', tiktok: state.tiktok, newspaper: state.newspaper });
     return points;
   }, [events]);
@@ -580,6 +590,21 @@ function AllocationPathTab({ events }: { events: AllocEvent[] }) {
 
   const maxBar = 10000;
 
+  /* ── Table data from submissions ────────────── */
+  const TABLE_CHANNELS = [
+    { key: 'tiktok', label: 'TikTok', default: 9000, subKey: 'final_tiktok_spend' as keyof SubData, direction: 'decrease' },
+    { key: 'instagram', label: 'Instagram', default: 5500, subKey: 'final_instagram_spend' as keyof SubData, direction: 'neutral' },
+    { key: 'facebook', label: 'Facebook', default: 4500, subKey: 'final_facebook_spend' as keyof SubData, direction: 'neutral' },
+    { key: 'newspaper', label: 'Newspaper', default: 1000, subKey: 'final_newspaper_spend' as keyof SubData, direction: 'increase' },
+  ] as const;
+
+  function getDeltaColor(delta: number, direction: string): string {
+    if (delta === 0) return '#888780';
+    if (direction === 'neutral') return '#888780';
+    if (direction === 'decrease') return delta < 0 ? '#4A7C59' : '#C4622D'; // TikTok: decrease = good
+    return delta > 0 ? '#4A7C59' : '#C4622D'; // Newspaper: increase = good
+  }
+
   return (
     <div className="space-y-5">
       {/* ── Budget allocation cards ──────────────── */}
@@ -604,7 +629,6 @@ function AllocationPathTab({ events }: { events: AllocEvent[] }) {
                     <span className="text-[10px] text-muted-foreground">no change</span>
                   )}
                 </div>
-                {/* Default bar */}
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[10px] text-muted-foreground w-10 shrink-0">Default</span>
                   <div className="flex-1 h-3 bg-muted/30 rounded overflow-hidden">
@@ -612,7 +636,6 @@ function AllocationPathTab({ events }: { events: AllocEvent[] }) {
                   </div>
                   <span className="text-[10px] text-muted-foreground w-12 text-right">${def.toLocaleString()}</span>
                 </div>
-                {/* Final bar */}
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground w-10 shrink-0">Final</span>
                   <div className="flex-1 h-3 bg-muted/30 rounded overflow-hidden">
@@ -652,24 +675,13 @@ function AllocationPathTab({ events }: { events: AllocEvent[] }) {
                 width={40}
               />
               <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
-              <ReferenceLine
-                y={9000}
-                stroke="#88878088"
-                strokeDasharray="6 4"
-                label={{ value: 'TikTok default $9k', position: 'right', fontSize: 9, fill: '#888780' }}
-              />
-              <ReferenceLine
-                y={1000}
-                stroke="#88878088"
-                strokeDasharray="6 4"
-                label={{ value: 'Newspaper default $1k', position: 'right', fontSize: 9, fill: '#888780' }}
-              />
+              <ReferenceLine y={9000} stroke="#88878088" strokeDasharray="6 4" label={{ value: 'TikTok default $9k', position: 'right', fontSize: 9, fill: '#888780' }} />
+              <ReferenceLine y={1000} stroke="#88878088" strokeDasharray="6 4" label={{ value: 'Newspaper default $1k', position: 'right', fontSize: 9, fill: '#888780' }} />
               <Line type="monotone" dataKey="tiktok" name="TikTok spend" stroke="#A32D2D" strokeWidth={2} dot={{ r: 4, fill: '#A32D2D' }} />
               <Line type="monotone" dataKey="newspaper" name="Newspaper spend" stroke="#4A7C59" strokeWidth={2} dot={{ r: 4, fill: '#4A7C59' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        {/* Legend */}
         <div className="flex items-center gap-4 mt-2 justify-center">
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: '#A32D2D' }} />
@@ -690,6 +702,56 @@ function AllocationPathTab({ events }: { events: AllocEvent[] }) {
       <p className="text-xs font-medium" style={{ color: OUTCOME_STYLE[outcome].color }}>
         {OUTCOME_STYLE[outcome].text}
       </p>
+
+      {/* ── Default vs. final allocation table ───── */}
+      <div>
+        <p className="text-xs font-medium text-foreground mb-2">Default vs. final allocation</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Channel</th>
+                <th className="text-right py-2 px-3 font-semibold text-muted-foreground">Default</th>
+                <th className="text-right py-2 px-3 font-semibold text-muted-foreground">Final</th>
+                <th className="text-right py-2 px-3 font-semibold text-muted-foreground">Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TABLE_CHANNELS.map(ch => {
+                const finalVal = sub ? (sub[ch.subKey] as number | null) : null;
+                const hasValue = finalVal != null;
+                const delta = hasValue ? finalVal - ch.default : 0;
+                return (
+                  <tr key={ch.key} className="border-b border-border/30 last:border-0">
+                    <td className="py-1.5 px-3 font-medium text-foreground">{ch.label}</td>
+                    <td className="py-1.5 px-3 text-right text-muted-foreground">${ch.default.toLocaleString()}</td>
+                    <td className="py-1.5 px-3 text-right text-muted-foreground">
+                      {hasValue ? `$${finalVal.toLocaleString()}` : '—'}
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-medium" style={{ color: !hasValue ? '#888780' : getDeltaColor(delta, ch.direction) }}>
+                      {!hasValue ? '—' : delta === 0 ? '—' : (
+                        <>
+                          {delta > 0 ? '↑' : '↓'} {delta > 0 ? '+' : '−'}${Math.abs(delta).toLocaleString()}
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Allocation resets ────────────────────── */}
+      {allocResets > 0 && (
+        <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
+          <span className="text-amber-600 shrink-0 mt-0.5">⟳</span>
+          <p className="text-xs text-amber-800">
+            This student reset the budget allocation {allocResets} time{allocResets !== 1 ? 's' : ''} during their session.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
