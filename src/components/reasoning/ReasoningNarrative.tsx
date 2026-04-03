@@ -533,6 +533,47 @@ export function ReasoningNarrative() {
           </div>
         </div>
       </div>
+      {hasAnyAnnotations && (
+        <div className="px-3 pb-5">
+          <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground mb-3">
+            CONTEXTUAL NOTES
+          </h3>
+          <div className="space-y-3">
+            {BLOCK_ORDER.map((blockId) => {
+              const entries = annotatedByBlock[blockId];
+              if (!entries || entries.length === 0) return null;
+              const style = BLOCK_STYLE[blockId];
+              return (
+                <div
+                  key={blockId}
+                  className="rounded-xl border border-border/40 p-3"
+                  style={{
+                    borderLeftColor: style.accent,
+                    borderLeftWidth: 4,
+                    backgroundColor: style.tint
+                  }}
+                >
+                  <div className="text-xs font-bold mb-2" style={{ color: style.accent }}>
+                    {style.label}
+                  </div>
+                  <div className="space-y-2">
+                    {entries.map(({ chip }) => (
+                      <div key={chip.id} className="text-[12px]">
+                        <span className="font-medium text-foreground/80">
+                          {chip.label}: {chip.value}
+                        </span>
+                        <p className="italic text-foreground/70 mt-0.5 leading-snug">
+                          "{chip.annotation}"
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
