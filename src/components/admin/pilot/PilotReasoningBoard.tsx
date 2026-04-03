@@ -218,11 +218,8 @@ export default function PilotReasoningBoard({ classId }: Props) {
     return `${Math.round((filled / n) * 100)}%`;
   }, [submissions, n]);
 
-  const usedContextPct = useMemo(() => {
-    if (n === 0) return '0%';
-    const used = submissions.filter(r => r.contextualise_pairs_count > 0).length;
-    return `${Math.round((used / n) * 100)}%`;
-  }, [submissions, n]);
+
+
 
   const avgBoardResets = useMemo(() => {
     const sessionIds = [...new Set(submissions.map(s => s.session_id))];

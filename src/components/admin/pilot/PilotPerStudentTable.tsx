@@ -177,7 +177,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
         if (sub) {
           cards = sub.descriptive_card_count + sub.diagnostic_card_count + sub.prescriptive_card_count + sub.predictive_card_count;
           quadrants = [sub.descriptive_card_count, sub.diagnostic_card_count, sub.prescriptive_card_count, sub.predictive_card_count].filter((c) => c > 0).length;
-          contextualise = sub.contextualise_pairs_count;
+
 
           const tkCorrect = (sub.final_tiktok_spend ?? 9000) <= 9000;
           const npCorrect = (sub.final_newspaper_spend ?? 1000) >= 1000;
