@@ -123,7 +123,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
         return res;
       };
 
-      const [subRows, allocRows, feedbackRows] = await Promise.all([
+      const [subRows, allocRows, feedbackRows, boardRows] = await Promise.all([
         cq<{
           session_id: string;
           descriptive_card_count: number; diagnostic_card_count: number;
