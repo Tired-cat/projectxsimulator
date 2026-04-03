@@ -491,7 +491,7 @@ function ReasoningBoardTab({ cards, generatedStory, writtenDiagnosis }: { cards:
       <hr className="border-border" />
       <div>
         <p className="text-xs font-medium text-foreground mb-2">My Full Reasoning Story</p>
-        <ReasoningStoryBlocks generatedStory={generatedStory} />
+        <ReasoningStoryBlocks generatedStory={generatedStory} cards={cards} />
       </div>
     </div>
   );
