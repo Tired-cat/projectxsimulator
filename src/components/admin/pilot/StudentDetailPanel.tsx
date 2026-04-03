@@ -102,6 +102,16 @@ function getTutorialBadge(session: SessionData | null) {
   return { bg: '#888780', text: 'Tutorial skipped' };
 }
 
+const DETAIL_TABS = [
+  { id: 'reasoning', label: 'Reasoning board' },
+  { id: 'allocation', label: 'Allocation path' },
+  { id: 'ai', label: 'AI feedback' },
+  { id: 'navigation', label: 'Navigation' },
+  { id: 'sequence', label: 'Board sequence' },
+] as const;
+
+type DetailTab = typeof DETAIL_TABS[number]['id'];
+
 /* ══════════════════════════════════════════════════
    MAIN COMPONENT
    ══════════════════════════════════════════════════ */
