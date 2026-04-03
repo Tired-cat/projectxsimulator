@@ -346,7 +346,7 @@ function formatEvidenceId(id: string): string {
 
 /* ── Tab 1: Reasoning Board ─────────────────────── */
 const QUADRANT_ORDER = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
-const STORY_COLORS = ['#D4A017', '#C4622D', '#4A7C59', '#6B4F8A'];
+
 
 function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; generatedStory: string | null }) {
   const byQuadrant = useMemo(() => {
