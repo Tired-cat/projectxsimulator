@@ -355,7 +355,7 @@ export default function PilotReasoningBoard({ classId }: Props) {
       rate: quadrantStats[q].totalChips > 0
         ? Math.round((quadrantStats[q].annotatedChips / quadrantStats[q].totalChips) * 100)
         : 0,
-      color: QUAD_COLORS[q] || '#888780',
+      color: { descriptive: '#D4A017', diagnostic: '#C4622D', prescriptive: '#4A7C59', predictive: '#6B4F8A' }[q] || '#888780',
     }));
 
     // Diagnosis vs correct decision
