@@ -520,6 +520,90 @@ export default function PilotReasoningBoard({ classId }: Props) {
         </div>
       )}
 
+      {/* ── contextual notes analysis ──────────────── */}
+      {contextNotesMetrics && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-foreground">Contextual Notes Analysis</h3>
+
+          {/* 3 metric cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <MetricCard label="Used contextual notes" value={`${contextNotesMetrics.usedPct}%`} icon={<MessageSquareText className="h-4 w-4" />} />
+            <MetricCard label="Avg annotations per student" value={contextNotesMetrics.avgAnnotations} icon={<FileText className="h-4 w-4" />} />
+            <MetricCard label="Written diagnosis generated" value={`${contextNotesMetrics.diagnosisPct}%`} icon={<CheckCircle className="h-4 w-4" />} />
+          </div>
+
+          {/* 2 charts side by side */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Chart 1 — Annotation rate by quadrant */}
+            <Card className="bg-background border-border shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3">Annotation rate by quadrant</h4>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={contextNotesMetrics.quadrantRateData} barCategoryGap="25%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="quadrant" tick={{ fontSize: 11 }} />
+                      <YAxis unit="%" tick={{ fontSize: 11 }} domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: number) => [`${value}%`, 'Annotated']}
+                      />
+                      <Bar dataKey="rate" radius={[3, 3, 0, 0]}>
+                        {contextNotesMetrics.quadrantRateData.map((d, i) => (
+                          <Cell key={i} fill={d.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Chart 2 — Written diagnosis vs correct decision */}
+            <Card className="bg-background border-border shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3">Written diagnosis vs correct decision</h4>
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={contextNotesMetrics.diagnosisDecisionData} barCategoryGap="30%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                      <YAxis unit="%" tick={{ fontSize: 11 }} domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: number) => [`${value}%`, 'Correct decision rate']}
+                      />
+                      <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
+                        {contextNotesMetrics.diagnosisDecisionData.map((d, i) => (
+                          <Cell key={i} fill={d.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {contextNotesMetrics.gap >= 15 && (
+                  <div className="mt-3 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-3 py-2">
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      Students with written annotations made correct decisions {contextNotesMetrics.gap}% more often.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
       {/* ── first drag donut charts ────────────────── */}
       <FirstDragCharts firstDrags={firstDrags} />
     </div>
