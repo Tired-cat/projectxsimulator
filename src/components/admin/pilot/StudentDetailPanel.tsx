@@ -915,22 +915,11 @@ function AiFeedbackTab({ data }: { data: AiFeedback | null }) {
         </div>
       </div>
 
-      {/* SECTION 3 — AI feedback text */}
+      {/* SECTION 3 — AI feedback text (parsed) */}
       {data.ai_feedback_text && (
         <div>
           <p className="text-xs font-medium text-foreground mb-2">Feedback shown to student</p>
-          <div
-            className="rounded-r-lg py-3 px-3.5 border-l-[3px]"
-            style={{
-              backgroundColor: '#EEEDFE',
-              borderLeftColor: '#6B4F8A',
-              color: '#3C3489',
-              fontSize: '12px',
-              lineHeight: 1.6,
-            }}
-          >
-            <p className="whitespace-pre-wrap">{data.ai_feedback_text}</p>
-          </div>
+          <ParsedAiFeedback rawText={data.ai_feedback_text} />
         </div>
       )}
 
