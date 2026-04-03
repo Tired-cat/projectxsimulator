@@ -7,7 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { LayoutGrid, Grid2x2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { LayoutGrid, Grid2x2, RotateCcw, AlertTriangle, MessageSquareText, FileText, CheckCircle } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -24,6 +24,8 @@ interface SubmissionRow {
   prescriptive_card_count: number;
   predictive_card_count: number;
   contextualise_pairs_count: number;
+  final_tiktok_spend: number | null;
+  final_newspaper_spend: number | null;
 }
 
 const QUADRANTS = [
@@ -51,7 +53,7 @@ async function fetchSubmissions(sessionIds: string[]): Promise<SubmissionRow[]> 
     const chunk = sessionIds.slice(i, i + chunkSize);
     const { data } = await supabase
       .from('submissions')
-      .select('session_id, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count, contextualise_pairs_count')
+      .select('session_id, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count, contextualise_pairs_count, final_tiktok_spend, final_newspaper_spend')
       .in('session_id', chunk);
     if (data) rows.push(...(data as SubmissionRow[]));
   }
@@ -152,6 +154,27 @@ async function fetchFirstDrags(sessionIds: string[]): Promise<FirstDragEvent[]> 
   return rows;
 }
 
+interface BoardStateRow {
+  session_id: string;
+  cards: any;
+  written_diagnosis: string | null;
+}
+
+async function fetchBoardStates(sessionIds: string[]): Promise<BoardStateRow[]> {
+  if (sessionIds.length === 0) return [];
+  const rows: BoardStateRow[] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('reasoning_board_state')
+      .select('session_id, cards, written_diagnosis')
+      .in('session_id', chunk);
+    if (data) rows.push(...(data as BoardStateRow[]));
+  }
+  return rows;
+}
+
 /* ── metric card ────────────────────────────────── */
 function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
   return (
@@ -172,8 +195,8 @@ export default function PilotReasoningBoard({ classId }: Props) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
   const [draggedItems, setDraggedItems] = useState<DraggedItem[]>([]);
-  
   const [firstDrags, setFirstDrags] = useState<FirstDragEvent[]>([]);
+  const [boardStates, setBoardStates] = useState<BoardStateRow[]>([]);
   const [totalSessions, setTotalSessions] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -182,17 +205,19 @@ export default function PilotReasoningBoard({ classId }: Props) {
     (async () => {
       setLoading(true);
       const sids = await getSessionIdsForClass(classId);
-      const [subs, resets, dragged, firsts] = await Promise.all([
+      const [subs, resets, dragged, firsts, bStates] = await Promise.all([
         fetchSubmissions(sids),
         fetchResetCounts(sids),
         fetchDraggedItems(sids),
         fetchFirstDrags(sids),
+        fetchBoardStates(sids),
       ]);
       if (!cancelled) {
         setSubmissions(subs);
         setResetCounts(resets);
         setDraggedItems(dragged);
         setFirstDrags(firsts);
+        setBoardStates(bStates);
         setTotalSessions(sids.length);
         setLoading(false);
       }
@@ -275,6 +300,93 @@ export default function PilotReasoningBoard({ classId }: Props) {
     // so we show items that appeared but were used by < 5% of sessions
     return rare;
   }, [draggedItems, totalSessions]);
+
+  /* ── contextual notes metrics ────────────────── */
+  const parseChipsFromCards = (cards: any): { quadrant: string; hasAnnotation: boolean }[] => {
+    const chips: { quadrant: string; hasAnnotation: boolean }[] = [];
+    if (cards && typeof cards === 'object' && !Array.isArray(cards)) {
+      for (const [quadrant, arr] of Object.entries(cards)) {
+        if (Array.isArray(arr)) {
+          for (const c of arr) {
+            chips.push({ quadrant, hasAnnotation: !!(c?.annotation && String(c.annotation).trim()) });
+          }
+        }
+      }
+    }
+    return chips;
+  };
+
+  const contextNotesMetrics = useMemo(() => {
+    if (boardStates.length === 0) return null;
+    const total = boardStates.length;
+    let sessionsWithAnnotations = 0;
+    let totalAnnotations = 0;
+    let sessionsWithDiagnosis = 0;
+
+    // Per-quadrant: { quadrant: { totalChips, annotatedChips } }
+    const quadrantStats: Record<string, { totalChips: number; annotatedChips: number }> = {
+      descriptive: { totalChips: 0, annotatedChips: 0 },
+      diagnostic: { totalChips: 0, annotatedChips: 0 },
+      prescriptive: { totalChips: 0, annotatedChips: 0 },
+      predictive: { totalChips: 0, annotatedChips: 0 },
+    };
+
+    for (const bs of boardStates) {
+      const chips = parseChipsFromCards(bs.cards);
+      const annotatedCount = chips.filter(c => c.hasAnnotation).length;
+      if (annotatedCount > 0) sessionsWithAnnotations++;
+      totalAnnotations += annotatedCount;
+      if (bs.written_diagnosis && bs.written_diagnosis.trim()) sessionsWithDiagnosis++;
+
+      for (const chip of chips) {
+        if (quadrantStats[chip.quadrant]) {
+          quadrantStats[chip.quadrant].totalChips++;
+          if (chip.hasAnnotation) quadrantStats[chip.quadrant].annotatedChips++;
+        }
+      }
+    }
+
+    const usedPct = Math.round((sessionsWithAnnotations / total) * 100);
+    const avgAnnotations = (totalAnnotations / total).toFixed(1);
+    const diagnosisPct = Math.round((sessionsWithDiagnosis / total) * 100);
+
+    const quadrantRateData = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'].map(q => ({
+      quadrant: q.charAt(0).toUpperCase() + q.slice(1),
+      rate: quadrantStats[q].totalChips > 0
+        ? Math.round((quadrantStats[q].annotatedChips / quadrantStats[q].totalChips) * 100)
+        : 0,
+      color: { descriptive: '#D4A017', diagnostic: '#C4622D', prescriptive: '#4A7C59', predictive: '#6B4F8A' }[q] || '#888780',
+    }));
+
+    // Diagnosis vs correct decision
+    const subMap = new Map(submissions.map(s => [s.session_id, s]));
+    let diagCorrect = 0, diagTotal = 0, noDiagCorrect = 0, noDiagTotal = 0;
+    for (const bs of boardStates) {
+      const sub = subMap.get(bs.session_id);
+      if (!sub) continue;
+      const isCorrect = (sub.final_tiktok_spend ?? 9000) < 9000 && (sub.final_newspaper_spend ?? 1000) > 1000;
+      if (bs.written_diagnosis && bs.written_diagnosis.trim()) {
+        diagTotal++;
+        if (isCorrect) diagCorrect++;
+      } else {
+        noDiagTotal++;
+        if (isCorrect) noDiagCorrect++;
+      }
+    }
+    const diagCorrectPct = diagTotal > 0 ? Math.round((diagCorrect / diagTotal) * 100) : 0;
+    const noDiagCorrectPct = noDiagTotal > 0 ? Math.round((noDiagCorrect / noDiagTotal) * 100) : 0;
+    const gap = diagCorrectPct - noDiagCorrectPct;
+
+    return {
+      usedPct, avgAnnotations, diagnosisPct,
+      quadrantRateData,
+      diagnosisDecisionData: [
+        { label: 'Had written diagnosis', pct: diagCorrectPct, color: '#4A7C59' },
+        { label: 'No written diagnosis', pct: noDiagCorrectPct, color: '#888780' },
+      ],
+      gap,
+    };
+  }, [boardStates, submissions]);
 
   if (loading) {
     return <ViewSkeleton metrics charts={2} table />;
@@ -404,6 +516,90 @@ export default function PilotReasoningBoard({ classId }: Props) {
                 {id}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── contextual notes analysis ──────────────── */}
+      {contextNotesMetrics && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-foreground">Contextual Notes Analysis</h3>
+
+          {/* 3 metric cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <MetricCard label="Used contextual notes" value={`${contextNotesMetrics.usedPct}%`} icon={<MessageSquareText className="h-4 w-4" />} />
+            <MetricCard label="Avg annotations per student" value={contextNotesMetrics.avgAnnotations} icon={<FileText className="h-4 w-4" />} />
+            <MetricCard label="Written diagnosis generated" value={`${contextNotesMetrics.diagnosisPct}%`} icon={<CheckCircle className="h-4 w-4" />} />
+          </div>
+
+          {/* 2 charts side by side */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Chart 1 — Annotation rate by quadrant */}
+            <Card className="bg-background border-border shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3">Annotation rate by quadrant</h4>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={contextNotesMetrics.quadrantRateData} barCategoryGap="25%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="quadrant" tick={{ fontSize: 11 }} />
+                      <YAxis unit="%" tick={{ fontSize: 11 }} domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: number) => [`${value}%`, 'Annotated']}
+                      />
+                      <Bar dataKey="rate" radius={[3, 3, 0, 0]}>
+                        {contextNotesMetrics.quadrantRateData.map((d, i) => (
+                          <Cell key={i} fill={d.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Chart 2 — Written diagnosis vs correct decision */}
+            <Card className="bg-background border-border shadow-sm">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-foreground mb-3">Written diagnosis vs correct decision</h4>
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={contextNotesMetrics.diagnosisDecisionData} barCategoryGap="30%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                      <YAxis unit="%" tick={{ fontSize: 11 }} domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: number) => [`${value}%`, 'Correct decision rate']}
+                      />
+                      <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
+                        {contextNotesMetrics.diagnosisDecisionData.map((d, i) => (
+                          <Cell key={i} fill={d.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {contextNotesMetrics.gap >= 15 && (
+                  <div className="mt-3 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-3 py-2">
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      Students with written annotations made correct decisions {contextNotesMetrics.gap}% more often.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}
