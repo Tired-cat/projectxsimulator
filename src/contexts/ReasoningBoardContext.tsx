@@ -121,18 +121,18 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateChipAnnotation = useCallback((blockId: ReasoningBlockId, chipId: string, annotation: string) => {
-    setBoard(prev => {
-      const updatedBoard = {
-        ...prev,
-        [blockId]: prev[blockId].map(chip =>
-          chip.id === chipId ? { ...chip, annotation } : chip
-        ),
-      };
-      const newDiagnosis = generateDiagnosisFromAnnotations(updatedBoard);
-      setWrittenDiagnosis(newDiagnosis);
-      return updatedBoard;
-    });
-  }, [generateDiagnosisFromAnnotations]);
+    // Compute updated board synchronously from current state so both
+    // board and writtenDiagnosis update in the same render batch
+    const updatedBoard = {
+      ...board,
+      [blockId]: board[blockId].map(chip =>
+        chip.id === chipId ? { ...chip, annotation } : chip
+      ),
+    };
+    const newDiagnosis = generateDiagnosisFromAnnotations(updatedBoard);
+    setBoard(updatedBoard);
+    setWrittenDiagnosis(newDiagnosis);
+  }, [board, generateDiagnosisFromAnnotations]);
 
   const clearBoard = useCallback(() => {
     setBoard(prev => {
