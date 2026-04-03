@@ -192,7 +192,7 @@ export default function PilotPerStudentTable({ classId }: Props) {
 
         return {
           userId, sessionId: session.id, email, durationMin, tutorial,
-          cards, quadrants, contextualise,
+          cards, quadrants,
           allocChanges: allocCounts.get(session.id) ?? 0,
           feedback: feedbackSessions.has(session.id),
           decision,
