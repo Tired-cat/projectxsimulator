@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
@@ -866,7 +867,7 @@ const Index = () => {
   }
 
   if (!user) {
-    return null; // RoleGuard handles redirect to /auth
+    return <Navigate to="/auth" replace />;
   }
 
   return (
