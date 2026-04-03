@@ -311,30 +311,6 @@ function ChipCard({
           )}
         </div>
 
-<<<<<<< HEAD
-        {/* Annotation affordance — always visible */}
-        {canAnnotate && (
-          chip.annotation ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); setAnnotating(p => !p); }}
-              onPointerDown={(e) => e.stopPropagation()}
-              title="Edit note"
-              className="flex-shrink-0 p-0.5 rounded text-primary hover:text-primary/80 transition-colors"
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
-          ) : (
-            <button
-              onClick={(e) => { e.stopPropagation(); setAnnotating(true); }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-primary bg-primary/10 border border-primary/30 hover:bg-primary/15 transition-colors"
-              title="Add your interpretation"
-            >
-              <Pencil className="h-3 w-3" />
-              <span>Add note</span>
-            </button>
-          )
-=======
         {/* Annotate button */}
         {canAnnotate && (
           <button
@@ -350,7 +326,6 @@ function ChipCard({
           >
             <Pencil className="h-3 w-3" />
           </button>
->>>>>>> main
         )}
 
         {/* Remove button */}
