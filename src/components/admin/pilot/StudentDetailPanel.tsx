@@ -75,6 +75,20 @@ interface NavEvent {
   visit_number: number | null;
 }
 
+interface BoardCard {
+  id?: string;
+  label?: string;
+  value?: string;
+  context?: string;
+  chipKind?: string;
+  sourceId?: string;
+  channelName?: string;
+  metricName?: string;
+  pairedWith?: string;
+  paired_with?: string;
+  createdAt?: number;
+}
+
 /* ── Decision logic ───────────────────────────── */
 type DecisionOutcome = 'Correct' | 'Partial' | 'Incorrect' | 'Not submitted';
 
@@ -125,6 +139,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
   const [hasFeedback, setHasFeedback] = useState(false);
   const [allocCount, setAllocCount] = useState(0);
   const [boardResets, setBoardResets] = useState(0);
+  const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DetailTab>('reasoning');
 
@@ -133,7 +148,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
     (async () => {
       setLoading(true);
 
-      const [sessionRes, profileRes, subRes, allocRes, aiRes, navRes, resetRes] = await Promise.all([
+      const [sessionRes, profileRes, subRes, allocRes, aiRes, navRes, resetRes, boardRes] = await Promise.all([
         supabase.from('sessions')
           .select('started_at, completed_at, is_completed, tutorial_completed, tutorial_opened')
           .eq('id', sessionId).single(),
@@ -158,6 +173,10 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .select('id')
           .eq('session_id', sessionId)
           .eq('reset_type', 'board_reset'),
+        supabase.from('reasoning_board_state')
+          .select('cards')
+          .eq('session_id', sessionId)
+          .maybeSingle(),
       ]);
 
       if (!cancelled) {
@@ -171,6 +190,23 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         setHasFeedback(aiRes.data != null);
         setNavEvents((navRes.data ?? []) as NavEvent[]);
         setBoardResets((resetRes.data ?? []).length);
+
+        // Parse board cards — can be object keyed by quadrant or an array
+        const raw = boardRes.data?.cards;
+        let parsedCards: BoardCard[] = [];
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          // Object format: { descriptive: [...], diagnostic: [...], ... }
+          const obj = raw as Record<string, BoardCard[]>;
+          for (const [quadrant, cards] of Object.entries(obj)) {
+            if (Array.isArray(cards)) {
+              cards.forEach(c => parsedCards.push({ ...c, chipKind: c.chipKind, _quadrant: quadrant } as any));
+            }
+          }
+        } else if (Array.isArray(raw)) {
+          parsedCards = raw as BoardCard[];
+        }
+        setBoardCards(parsedCards);
+
         setLoading(false);
       }
     })();
@@ -280,7 +316,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
 
       {/* ── TAB CONTENT ──────────────────────────────── */}
       <div className="pt-1">
-        {activeTab === 'reasoning' && <BoardStateTab sub={sub} />}
+        {activeTab === 'reasoning' && <ReasoningBoardTab cards={boardCards} generatedStory={sub?.generated_story ?? null} />}
         {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} />}
         {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
@@ -303,42 +339,116 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-/* ── Tab 1: Board State ─────────────────────────── */
-function BoardStateTab({ sub }: { sub: SubData | null }) {
-  if (!sub) {
-    return <p className="text-xs text-muted-foreground py-4">No submission data for this student.</p>;
+/* ── Helper: format evidence_id for display ───── */
+function formatEvidenceId(id: string): string {
+  return id.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+}
+
+/* ── Tab 1: Reasoning Board ─────────────────────── */
+const QUADRANT_ORDER = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
+const STORY_COLORS = ['#D4A017', '#C4622D', '#4A7C59', '#6B4F8A'];
+
+function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; generatedStory: string | null }) {
+  const byQuadrant = useMemo(() => {
+    const map: Record<string, BoardCard[]> = {
+      descriptive: [], diagnostic: [], prescriptive: [], predictive: [],
+    };
+    cards.forEach(card => {
+      const q = (card as any)._quadrant ?? 'descriptive';
+      if (map[q]) map[q].push(card);
+    });
+    return map;
+  }, [cards]);
+
+  const storySentences = useMemo(() => {
+    if (!generatedStory) return [];
+    return generatedStory.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+  }, [generatedStory]);
+
+  if (cards.length === 0) {
+    return <p className="text-xs text-muted-foreground py-4 italic">No evidence was placed on the reasoning board.</p>;
   }
 
-  const quads = [
-    { key: 'descriptive', count: sub.descriptive_card_count },
-    { key: 'diagnostic', count: sub.diagnostic_card_count },
-    { key: 'prescriptive', count: sub.prescriptive_card_count },
-    { key: 'predictive', count: sub.predictive_card_count },
-  ];
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* 2×2 Grid */}
       <div className="grid grid-cols-2 gap-3">
-        {quads.map((q) => (
-          <div
-            key={q.key}
-            className="rounded-lg border p-3"
-            style={{ borderColor: QUAD_COLORS[q.key] + '40', backgroundColor: QUAD_COLORS[q.key] + '08' }}
-          >
-            <p className="text-xs font-semibold" style={{ color: QUAD_COLORS[q.key] }}>{QUAD_LABELS[q.key]}</p>
-            <p className="text-lg font-bold mt-1" style={{ color: QUAD_COLORS[q.key] }}>
-              {q.count} card{q.count !== 1 ? 's' : ''}
-            </p>
-            {q.count === 0 && <p className="text-[10px] text-muted-foreground">(empty)</p>}
-          </div>
-        ))}
+        {QUADRANT_ORDER.map(q => {
+          const qCards = byQuadrant[q];
+          const color = QUAD_COLORS[q];
+          return (
+            <div
+              key={q}
+              className="rounded-[10px] border p-3"
+              style={{ borderColor: color + '66', backgroundColor: color + '14' }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="text-[11px] font-medium" style={{ color }}>{QUAD_LABELS[q]}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {qCards.length > 0 ? `${qCards.length} card${qCards.length !== 1 ? 's' : ''}` : 'empty'}
+                </span>
+              </div>
+
+              {qCards.length === 0 ? (
+                <p className="text-[10px] italic text-muted-foreground">(empty — no evidence placed here)</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {qCards.map((card, i) => {
+                    const evidenceId = card.sourceId || card.id || `card-${i}`;
+                    const displayLabel = card.label || formatEvidenceId(evidenceId);
+                    const pairedWith = card.pairedWith || card.paired_with;
+                    return (
+                      <div
+                        key={i}
+                        className="rounded-md bg-white/80 dark:bg-background/80 px-2.5 py-[7px]"
+                        style={{
+                          border: `0.5px solid ${color}4D`,
+                          borderBottomWidth: pairedWith ? '2px' : '0.5px',
+                          borderBottomColor: pairedWith ? color : `${color}4D`,
+                        }}
+                      >
+                        <p className="text-[11px] text-foreground leading-snug">{displayLabel}</p>
+                        {card.value && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{card.value}</p>
+                        )}
+                        {pairedWith && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="inline-flex items-center gap-0">
+                              <span className="inline-block w-[7px] h-[7px] rounded-sm border border-muted-foreground/50" />
+                              <span className="inline-block w-[7px] h-[7px] rounded-sm border border-muted-foreground/50 -ml-[3px]" />
+                            </span>
+                            <span className="text-[10px] italic text-muted-foreground">
+                              Paired with: {formatEvidenceId(pairedWith)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
+      {/* Reasoning Story */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-1">Reasoning story</p>
-        {sub.generated_story ? (
-          <div className="text-xs text-foreground bg-muted/30 rounded-md p-3 whitespace-pre-wrap leading-relaxed">
-            {sub.generated_story}
+        <p className="text-xs font-semibold text-muted-foreground mb-2">Reasoning story</p>
+        {storySentences.length > 0 ? (
+          <div className="space-y-1.5">
+            {storySentences.map((sentence, i) => (
+              <div
+                key={i}
+                className="text-xs text-foreground bg-muted/20 rounded-md py-2 px-3 leading-relaxed border-l-[3px]"
+                style={{ borderLeftColor: STORY_COLORS[i % STORY_COLORS.length] }}
+              >
+                {sentence}
+              </div>
+            ))}
           </div>
         ) : (
           <p className="text-xs text-muted-foreground italic">No reasoning story generated.</p>
