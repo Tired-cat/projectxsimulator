@@ -19,10 +19,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [classCode, setClassCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  const normalizeClassCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
 
   // If already logged in, redirect
   useEffect(() => {
