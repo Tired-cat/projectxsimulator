@@ -191,7 +191,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .eq('session_id', sessionId)
           .eq('reset_type', 'board_reset'),
         supabase.from('reasoning_board_state')
-          .select('cards')
+          .select('cards, written_diagnosis')
           .eq('session_id', sessionId)
           .maybeSingle(),
         supabase.from('board_events')
