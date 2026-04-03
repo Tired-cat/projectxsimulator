@@ -95,29 +95,7 @@ export function ReasoningBoard() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-<<<<<<< HEAD
-        <div className="px-4 py-5 space-y-5">
-          {/* Causal flow indicator */}
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
-            {(['Observe', 'Diagnose', 'Decide', 'Predict'] as const).map((label, i) => (
-              <span key={label} className="flex items-center gap-1">
-                <span className="px-2 py-1 rounded-md bg-muted/60 font-semibold tracking-tight text-foreground/90 border border-border/70">
-                  {i + 1} {label}
-                </span>
-                {i < 3 && <span className="text-muted-foreground/40">→</span>}
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-4 mb-1">
-            <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground">
-              Reasoning blocks
-            </h3>
-          </div>
-
-=======
         <div className="p-3 space-y-4">
->>>>>>> main
           {/* 4 reasoning blocks */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
             {REASONING_BLOCKS.map((block, blockIndex) => {
@@ -155,12 +133,7 @@ export function ReasoningBoard() {
                           {stepNumber}
                         </span>
                         <div className="min-w-0">
-<<<<<<< HEAD
-                          <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: block.color }}>
-                            <BlockIcon className="w-3 h-3 flex-shrink-0" />
-=======
                           <div className="text-xs font-bold" style={{ color: block.color }}>
->>>>>>> main
                             {block.title}
                           </div>
                           <div className="text-[10px] text-muted-foreground truncate leading-snug">
@@ -190,14 +163,7 @@ export function ReasoningBoard() {
                         style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                       >
                         <span>Drop evidence here</span>
-<<<<<<< HEAD
-                        {BLOCK_EMPTY_HINTS[block.id] && (
-                          <span className="text-muted-foreground/60 text-[9px] font-medium">{BLOCK_EMPTY_HINTS[block.id]}</span>
-                        )}
-                        <span className="text-muted-foreground/50 text-[9px]">Multiple items welcome</span>
-=======
                         <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
->>>>>>> main
                         {block.id === 'predictive' && (
                           <span className="text-muted-foreground/60 text-[9px] text-center mt-0.5">
                             Fill Prescriptive first — predicts what happens after your action
@@ -345,30 +311,6 @@ function ChipCard({
           )}
         </div>
 
-<<<<<<< HEAD
-        {/* Annotation affordance — always visible */}
-        {canAnnotate && (
-          chip.annotation ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); setAnnotating(p => !p); }}
-              onPointerDown={(e) => e.stopPropagation()}
-              title="Edit note"
-              className="flex-shrink-0 p-0.5 rounded text-primary hover:text-primary/80 transition-colors"
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
-          ) : (
-            <button
-              onClick={(e) => { e.stopPropagation(); setAnnotating(true); }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-primary bg-primary/10 border border-primary/30 hover:bg-primary/15 transition-colors"
-              title="Add your interpretation"
-            >
-              <Pencil className="h-3 w-3" />
-              <span>Add note</span>
-            </button>
-          )
-=======
         {/* Annotate button */}
         {canAnnotate && (
           <button
@@ -384,7 +326,6 @@ function ChipCard({
           >
             <Pencil className="h-3 w-3" />
           </button>
->>>>>>> main
         )}
 
         {/* Remove button */}
