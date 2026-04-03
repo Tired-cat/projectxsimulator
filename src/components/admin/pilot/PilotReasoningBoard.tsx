@@ -205,17 +205,19 @@ export default function PilotReasoningBoard({ classId }: Props) {
     (async () => {
       setLoading(true);
       const sids = await getSessionIdsForClass(classId);
-      const [subs, resets, dragged, firsts] = await Promise.all([
+      const [subs, resets, dragged, firsts, bStates] = await Promise.all([
         fetchSubmissions(sids),
         fetchResetCounts(sids),
         fetchDraggedItems(sids),
         fetchFirstDrags(sids),
+        fetchBoardStates(sids),
       ]);
       if (!cancelled) {
         setSubmissions(subs);
         setResetCounts(resets);
         setDraggedItems(dragged);
         setFirstDrags(firsts);
+        setBoardStates(bStates);
         setTotalSessions(sids.length);
         setLoading(false);
       }
