@@ -95,29 +95,7 @@ export function ReasoningBoard() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-<<<<<<< HEAD
-        <div className="px-4 py-5 space-y-5">
-          {/* Causal flow indicator */}
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
-            {(['Observe', 'Diagnose', 'Decide', 'Predict'] as const).map((label, i) => (
-              <span key={label} className="flex items-center gap-1">
-                <span className="px-2 py-1 rounded-md bg-muted/60 font-semibold tracking-tight text-foreground/90 border border-border/70">
-                  {i + 1} {label}
-                </span>
-                {i < 3 && <span className="text-muted-foreground/40">→</span>}
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-4 mb-1">
-            <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground">
-              Reasoning blocks
-            </h3>
-          </div>
-
-=======
         <div className="p-3 space-y-4">
->>>>>>> main
           {/* 4 reasoning blocks */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
             {REASONING_BLOCKS.map((block, blockIndex) => {
