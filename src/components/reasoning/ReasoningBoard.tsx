@@ -389,32 +389,6 @@ function ChipCard({
         </div>
       )}
 
-      {/* Contextualise zone — supports multiple context chips */}
-      <div className="mx-2.5 mb-2 space-y-1">
-        {contextItems.map((ctx, i) => (
-          <div key={`${ctx.id}-${i}`} className="px-2 py-1.5 rounded border border-border bg-muted/30 text-[10px] flex items-center gap-1.5">
-            <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-            <span className="text-foreground/70 truncate">
-              Contextualised with <strong>{ctx.label}</strong>
-            </span>
-          </div>
-        ))}
-        <div
-          ref={setContextDropRef}
-          className={cn(
-            'px-2 py-1.5 rounded border border-dashed text-[10px] text-center transition-all',
-            isContextOver
-              ? 'border-primary bg-primary/5 text-primary'
-              : 'border-border/50 text-muted-foreground/60'
-          )}
-        >
-          {isContextOver
-            ? 'Drop to contextualise'
-            : hasContext
-              ? '+ Add another supporting piece of evidence'
-              : 'Contextualise this — drag another bar here to support or explain this observation.'}
-        </div>
-      </div>
     </div>
   );
 }
