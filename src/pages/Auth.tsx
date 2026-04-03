@@ -29,7 +29,7 @@ export default function Auth() {
     const resetFields = () => {
     setPassword('');
     setDisplayName('');
-    setClassCode('');
+    
     setIsSignUp(false);
   };
 
