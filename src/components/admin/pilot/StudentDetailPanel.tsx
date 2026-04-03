@@ -167,7 +167,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .eq('session_id', sessionId)
           .order('sequence_number', { ascending: true }),
         supabase.from('ai_feedback_events')
-          .select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after')
+          .select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, requested_at, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after')
           .eq('session_id', sessionId).maybeSingle(),
         supabase.from('navigation_events')
           .select('tab, entered_at, time_spent_seconds, visit_number')
