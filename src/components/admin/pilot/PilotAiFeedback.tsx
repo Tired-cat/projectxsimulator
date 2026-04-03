@@ -149,7 +149,6 @@ export default function PilotAiFeedback({ classId }: Props) {
   }
 
   const METRICS = [
-    { label: 'Requested feedback', value: `${pctRequested}%`, sub: `${sessionsWithFeedback} of ${completedCount} sessions`, icon: MessageSquare, color: '#6B4F8A' },
     { label: 'Adjusted after feedback', value: `${pctAdjusted}%`, sub: `${adjusted.length} event${adjusted.length !== 1 ? 's' : ''}`, icon: CheckCircle, color: '#4A7C59' },
     { label: 'Submitted immediately', value: `${pctSubmitted}%`, sub: `${submitted.length} event${submitted.length !== 1 ? 's' : ''}`, icon: Send, color: '#888780' },
     { label: 'Avg adjust time', value: `${avgAdjustTime.toFixed(1)} min`, sub: 'after seeing feedback', icon: Timer, color: '#D4A017' },
