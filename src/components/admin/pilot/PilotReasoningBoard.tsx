@@ -388,7 +388,7 @@ export default function PilotReasoningBoard({ classId }: Props) {
     };
   }, [boardStates, submissions]);
 
-
+  if (loading) {
     return <ViewSkeleton metrics charts={2} table />;
   }
 
