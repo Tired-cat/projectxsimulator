@@ -89,8 +89,9 @@ export default function PilotAnnotationQuality({ classId }: Props) {
     const result: { session_id: string; evidence_id: string; annotation: string; quadrant: string; words: number }[] = [];
     for (const row of rbsRows) {
       for (const chip of extractChips(row)) {
-        if (chip.annotation && chip.annotation.trim().length > 0 && chip.evidence_id) {
-          result.push({ session_id: row.session_id, evidence_id: chip.evidence_id, annotation: chip.annotation, quadrant: chip.quadrant, words: wc(chip.annotation) });
+        const evidenceKey = chip.evidence_id || chip.sourceId;
+        if (chip.annotation && chip.annotation.trim().length > 0 && evidenceKey) {
+          result.push({ session_id: row.session_id, evidence_id: evidenceKey, annotation: chip.annotation, quadrant: chip.quadrant, words: wc(chip.annotation) });
         }
       }
     }
