@@ -34,7 +34,7 @@ function isCorrect(sub: SubRow): boolean {
          (sub.final_newspaper_spend != null && sub.final_newspaper_spend > 1000);
 }
 
-type Chip = { evidence_id?: string; annotation?: string; quadrant: string };
+type Chip = { evidence_id?: string; sourceId?: string; annotation?: string; quadrant: string };
 
 function extractChips(row: RbsRow): Chip[] {
   const chips: Chip[] = [];
