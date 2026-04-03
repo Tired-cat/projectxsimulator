@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check, Trash2, Eye, Search, Zap, TrendingUp } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Pencil, Trash2, Eye, Search, Zap, TrendingUp } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   AlertDialog,
@@ -34,7 +34,6 @@ import type { EvidenceDragData, EvidenceDropData } from '@/lib/evidenceDnd';
 import {
   getBlockDropId,
   getBoardChipDragId,
-  getContextDropId,
 } from '@/lib/evidenceDnd';
 import { cn } from '@/lib/utils';
 import { ReasoningNarrative } from './ReasoningNarrative';
@@ -208,6 +207,7 @@ export function ReasoningBoard() {
                             chip={chip}
                             blockId={block.id}
                             blockColor={block.color}
+                            chipIndex={index}
                             onRemove={() => removeChip(block.id, chip.id)}
                           />
                         ))}
@@ -259,20 +259,26 @@ function ChipCard({
   blockId,
   blockColor,
   onRemove,
+  chipIndex,
 }: {
   chip: EvidenceChip;
   blockId: ReasoningBlockId;
   blockColor: string;
   onRemove: () => void;
+  chipIndex: number;
 }) {
   const { updateChipAnnotation } = useReasoningBoard();
   const [annotating, setAnnotating] = useState(false);
+  const [draft, setDraft] = useState(chip.annotation ?? '');
+  const canAnnotate = chipIndex < 2;
   const insight = getSmartInsight(chip, blockId);
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
-  const contextItems = chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : []);
-  const hasContext = contextItems.length > 0;
+
+  useEffect(() => {
+    setDraft(chip.annotation ?? '');
+  }, [chip.annotation]);
 
   const {
     attributes,
@@ -286,15 +292,6 @@ function ChipCard({
       chip,
       fromBlock: blockId,
     } satisfies EvidenceDragData,
-  });
-
-  const { setNodeRef: setContextDropRef, isOver: isContextOver } = useDroppable({
-    id: getContextDropId(blockId, chip.id),
-    data: {
-      kind: 'context-target',
-      blockId,
-      targetChipId: chip.id,
-    } satisfies EvidenceDropData,
   });
 
   return (
@@ -336,30 +333,35 @@ function ChipCard({
             </div>
           )}
 
-          {/* Annotation — user's written interpretation */}
-          {chip.annotation || annotating ? (
-            <textarea
-              className="w-full mt-1.5 text-[10px] rounded border border-border/50 bg-transparent px-2 py-1 text-foreground/80 placeholder:text-muted-foreground/40 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
-              rows={2}
-              placeholder="Your interpretation..."
-              defaultValue={chip.annotation ?? ''}
-              onBlur={(e) => {
-                updateChipAnnotation(blockId, chip.id, e.target.value.trim());
-                setAnnotating(false);
-              }}
+          {/* Truncated annotation preview — shown when note exists and popover is closed */}
+          {chip.annotation && !annotating && (
+            <div
+              className="mt-1.5 px-2 py-1 rounded bg-primary/5 border border-primary/20 text-[10px] text-foreground/70 italic leading-snug cursor-pointer hover:bg-primary/10 transition-colors"
+              onClick={(e) => { e.stopPropagation(); if (canAnnotate) setAnnotating(true); }}
               onPointerDown={(e) => e.stopPropagation()}
-              autoFocus={annotating}
-            />
-          ) : (
-            <button
-              className="mt-1.5 text-[9px] text-muted-foreground/50 hover:text-primary italic transition-colors text-left w-full"
-              onClick={(e) => { e.stopPropagation(); setAnnotating(true); }}
-              onPointerDown={(e) => e.stopPropagation()}
+              title={canAnnotate ? 'Click to edit' : undefined}
             >
-              + Add your interpretation...
-            </button>
+              "{chip.annotation.length > 60 ? chip.annotation.slice(0, 60) + '…' : chip.annotation}"
+            </div>
           )}
         </div>
+
+        {/* Pencil icon — only on first 2 chips per block */}
+        {canAnnotate && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setAnnotating(p => !p); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="My interpretation"
+            className={cn(
+              'flex-shrink-0 p-0.5 rounded transition-colors',
+              chip.annotation
+                ? 'text-primary'
+                : 'text-muted-foreground/40 hover:text-primary opacity-0 group-hover:opacity-100'
+            )}
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
 
         {/* Remove button */}
         <button
@@ -371,32 +373,41 @@ function ChipCard({
         </button>
       </div>
 
-      {/* Contextualise zone — supports multiple context chips */}
-      <div className="mx-2.5 mb-2 space-y-1">
-        {contextItems.map((ctx, i) => (
-          <div key={`${ctx.id}-${i}`} className="px-2 py-1.5 rounded border border-border bg-muted/30 text-[10px] flex items-center gap-1.5">
-            <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-            <span className="text-foreground/70 truncate">
-              Contextualised with <strong>{ctx.label}</strong>
-            </span>
+      {/* Inline annotation popover */}
+      {annotating && canAnnotate && (
+        <div className="px-2.5 pb-2 pt-1 border-t border-border/40" onPointerDown={(e) => e.stopPropagation()}>
+          <p className="text-[9px] text-muted-foreground/70 mb-1">
+            Why does this data point matter? What does it tell you?
+          </p>
+          <textarea
+            className="w-full text-[10px] rounded border border-border/60 bg-background px-2 py-1 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
+            rows={2}
+            maxLength={160}
+            placeholder="My interpretation..."
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, 150))}
+            onBlur={() => {
+              updateChipAnnotation(blockId, chip.id, draft.trim());
+              setAnnotating(false);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            autoFocus
+          />
+          <div className="flex justify-between items-center mt-0.5">
+            <span className="text-[9px] text-muted-foreground/50">{150 - draft.length} chars left</span>
+            <button
+              className="text-[9px] text-primary hover:underline"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                updateChipAnnotation(blockId, chip.id, draft.trim());
+                setAnnotating(false);
+              }}
+            >
+              Save
+            </button>
           </div>
-        ))}
-        <div
-          ref={setContextDropRef}
-          className={cn(
-            'px-2 py-1.5 rounded border border-dashed text-[10px] text-center transition-all',
-            isContextOver
-              ? 'border-primary bg-primary/5 text-primary'
-              : 'border-border/50 text-muted-foreground/60'
-          )}
-        >
-          {isContextOver
-            ? 'Drop to contextualise'
-            : hasContext
-              ? '+ Add another supporting piece of evidence'
-              : 'Contextualise this — drag another bar here to support or explain this observation.'}
         </div>
-      </div>
+      )}
     </div>
   );
 }
