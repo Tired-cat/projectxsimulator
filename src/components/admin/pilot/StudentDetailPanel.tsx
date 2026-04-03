@@ -193,6 +193,11 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .select('cards')
           .eq('session_id', sessionId)
           .maybeSingle(),
+        supabase.from('board_events')
+          .select('event_type, evidence_id, evidence_type, quadrant, paired_with, sequence_number, created_at')
+          .eq('session_id', sessionId)
+          .order('sequence_number', { ascending: true })
+          .order('created_at', { ascending: true }),
       ]);
 
       if (!cancelled) {
