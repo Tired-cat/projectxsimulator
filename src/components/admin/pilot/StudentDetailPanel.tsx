@@ -491,7 +491,7 @@ function ReasoningBoardTab({ cards, generatedStory, writtenDiagnosis }: { cards:
       <hr className="border-border" />
       <div>
         <p className="text-xs font-medium text-foreground mb-2">My Full Reasoning Story</p>
-        <ReasoningStoryBlocks generatedStory={generatedStory} />
+        <ReasoningStoryBlocks generatedStory={generatedStory} cards={cards} />
       </div>
     </div>
   );
@@ -505,8 +505,31 @@ const STORY_BLOCK_STYLES = [
 ];
 const MISSING_PLACEHOLDER = '(No reasoning captured for this step)';
 
-function ReasoningStoryBlocks({ generatedStory }: { generatedStory: string | null }) {
-  if (!generatedStory) {
+function ReasoningStoryBlocks({ generatedStory, cards = [] }: { generatedStory: string | null; cards?: BoardCard[] }) {
+  // If no generated story, try to build one from card annotations
+  let storyToUse = generatedStory;
+  if (!storyToUse && cards.length > 0) {
+    const QUAD_ORDER = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
+    const QUAD_LABEL_MAP: Record<string, string> = { descriptive: 'Descriptive', diagnostic: 'Diagnostic', predictive: 'Predictive', prescriptive: 'Prescriptive' };
+    const byQ: Record<string, typeof cards> = {};
+    for (const c of cards) {
+      const q = ((c as any)._quadrant || '').toLowerCase();
+      if (!byQ[q]) byQ[q] = [];
+      byQ[q].push(c);
+    }
+    const sentences: string[] = [];
+    for (const q of QUAD_ORDER) {
+      const qCards = byQ[q] || [];
+      const labels = qCards.map(c => c.label || c.sourceId || 'evidence').join(', ');
+      if (qCards.length > 0) {
+        const annotation = qCards.find(c => c.annotation)?.annotation;
+        sentences.push(annotation ? `${QUAD_LABEL_MAP[q]}: ${labels} — ${annotation}` : `${QUAD_LABEL_MAP[q]}: ${labels}`);
+      }
+    }
+    if (sentences.length > 0) storyToUse = sentences.join('. ');
+  }
+
+  if (!storyToUse) {
     return <p className="text-[11px] text-muted-foreground italic">No reasoning story was generated for this submission.</p>;
   }
 
