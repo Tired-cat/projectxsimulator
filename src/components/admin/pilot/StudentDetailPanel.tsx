@@ -342,9 +342,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} sub={sub} sessionId={sessionId} />}
         {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
-        {activeTab === 'sequence' && (
-          <p className="text-xs text-muted-foreground py-4">Loading Board sequence...</p>
-        )}
+        {activeTab === 'sequence' && <BoardSequenceTab events={boardEvents} />}
       </div>
     </div>
   );
