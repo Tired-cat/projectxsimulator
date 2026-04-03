@@ -80,26 +80,10 @@ export default function Auth() {
         toast({ title: 'Check your email', description: `A confirmation link has been sent. You'll be enrolled in "${classData.name}" after verifying.` });
       }
     } else {
-      // Sign in — if class code provided, validate and enroll
+      // Sign in — no class code needed, ClassCodeGate handles enrollment
       const { error } = await signIn(email, password);
       if (error) {
         toast({ title: 'Sign in failed', description: error, variant: 'destructive' });
-      } else if (normalizedClassCode) {
-        // Try to enroll in the class after login
-        const { data: classRows } = await supabase
-          .rpc('lookup_class_by_code', { _class_code: normalizedClassCode });
-        const classData = classRows?.[0] ?? null;
-
-        if (classData) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from('student_enrollments').upsert(
-              { user_id: user.id, class_id: classData.id } as any,
-              { onConflict: 'user_id,class_id' }
-            );
-            toast({ title: 'Enrolled!', description: `You've been added to "${classData.name}".` });
-          }
-        }
       }
     }
 
@@ -183,19 +167,21 @@ export default function Auth() {
                   <Label htmlFor="s-pass">Password</Label>
                   <Input id="s-pass" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="s-code">Class Code</Label>
-                  <Input
-                    id="s-code"
-                    value={classCode}
-                    onChange={(e) => setClassCode(normalizeClassCode(e.target.value))}
-                    placeholder="e.g. 4821"
-                    maxLength={4}
-                    className="text-center text-lg tracking-widest font-mono"
-                    required={isSignUp}
-                  />
-                  <p className="text-xs text-muted-foreground">Enter the 4-digit code from your professor</p>
-                </div>
+                {isSignUp && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="s-code">Class Code</Label>
+                    <Input
+                      id="s-code"
+                      value={classCode}
+                      onChange={(e) => setClassCode(normalizeClassCode(e.target.value))}
+                      placeholder="e.g. 4821"
+                      maxLength={4}
+                      className="text-center text-lg tracking-widest font-mono"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">Enter the 4-digit code from your professor</p>
+                  </div>
+                )}
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? 'Please wait…' : isSignUp ? 'Create Account' : 'Sign In'}
                 </Button>
