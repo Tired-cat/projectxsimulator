@@ -95,9 +95,6 @@ export default function PilotStruggleSignals({ classId }: Props) {
       // Row 2
       const pctPredEmpty = totalSubs > 0 ? (new Set(sub.filter((r) => r.predictive_card_count === 0).map((r) => r.session_id)).size / totalSubs) * 100 : 0;
 
-      // Row 3
-      const pctCtxZero = totalSubs > 0 ? (new Set(sub.filter((r) => r.contextualise_pairs_count === 0).map((r) => r.session_id)).size / totalSubs) * 100 : 0;
-
       // Row 4
       const rstCounts = new Map<string, number>();
       rst.filter((r) => r.reset_type === 'board_reset').forEach((r) => {
