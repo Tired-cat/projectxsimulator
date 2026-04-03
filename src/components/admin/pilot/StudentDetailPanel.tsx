@@ -370,7 +370,7 @@ function formatEvidenceId(id: string): string {
 const QUADRANT_ORDER = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
 
 
-function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; generatedStory: string | null }) {
+function ReasoningBoardTab({ cards, generatedStory, writtenDiagnosis }: { cards: BoardCard[]; generatedStory: string | null; writtenDiagnosis: string | null }) {
   const byQuadrant = useMemo(() => {
     const map: Record<string, BoardCard[]> = {
       descriptive: [], diagnostic: [], prescriptive: [], predictive: [],
