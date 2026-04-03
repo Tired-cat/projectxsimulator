@@ -172,7 +172,6 @@ export default function PilotPerStudentTable({ classId }: Props) {
         const sub = subMap.get(session.id);
         let cards: number | null = null;
         let quadrants: number | null = null;
-        let contextualise: number | null = null;
         let decision: StudentRow['decision'] = null;
 
         if (sub) {
