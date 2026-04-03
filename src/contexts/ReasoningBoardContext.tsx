@@ -100,14 +100,39 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const updateChipAnnotation = useCallback((blockId: ReasoningBlockId, chipId: string, annotation: string) => {
-    setBoard(prev => ({
-      ...prev,
-      [blockId]: prev[blockId].map(chip =>
-        chip.id === chipId ? { ...chip, annotation } : chip
-      ),
-    }));
+  const generateDiagnosisFromAnnotations = useCallback((currentBoard: ReasoningBoardState): string => {
+    const QUADRANT_ORDER: ReasoningBlockId[] = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
+    const QUADRANT_LABELS: Record<ReasoningBlockId, string> = {
+      descriptive: 'Descriptive',
+      diagnostic: 'Diagnostic',
+      predictive: 'Predictive',
+      prescriptive: 'Prescriptive',
+    };
+    const lines: string[] = [];
+    for (const quadrant of QUADRANT_ORDER) {
+      const chips = (currentBoard[quadrant] || []).filter(
+        c => c.annotation && c.annotation.trim().length > 0
+      );
+      for (const chip of chips) {
+        lines.push(`${QUADRANT_LABELS[quadrant]}: "${chip.annotation!.trim()}"`);
+      }
+    }
+    return lines.join('\n');
   }, []);
+
+  const updateChipAnnotation = useCallback((blockId: ReasoningBlockId, chipId: string, annotation: string) => {
+    setBoard(prev => {
+      const updatedBoard = {
+        ...prev,
+        [blockId]: prev[blockId].map(chip =>
+          chip.id === chipId ? { ...chip, annotation } : chip
+        ),
+      };
+      const newDiagnosis = generateDiagnosisFromAnnotations(updatedBoard);
+      setWrittenDiagnosis(newDiagnosis);
+      return updatedBoard;
+    });
+  }, [generateDiagnosisFromAnnotations]);
 
   const clearBoard = useCallback(() => {
     setBoard(prev => {
