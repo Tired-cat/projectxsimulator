@@ -154,6 +154,27 @@ async function fetchFirstDrags(sessionIds: string[]): Promise<FirstDragEvent[]> 
   return rows;
 }
 
+interface BoardStateRow {
+  session_id: string;
+  cards: any;
+  written_diagnosis: string | null;
+}
+
+async function fetchBoardStates(sessionIds: string[]): Promise<BoardStateRow[]> {
+  if (sessionIds.length === 0) return [];
+  const rows: BoardStateRow[] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < sessionIds.length; i += chunkSize) {
+    const chunk = sessionIds.slice(i, i + chunkSize);
+    const { data } = await supabase
+      .from('reasoning_board_state')
+      .select('session_id, cards, written_diagnosis')
+      .in('session_id', chunk);
+    if (data) rows.push(...(data as BoardStateRow[]));
+  }
+  return rows;
+}
+
 /* ── metric card ────────────────────────────────── */
 function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
   return (
