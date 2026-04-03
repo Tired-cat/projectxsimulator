@@ -87,6 +87,9 @@ interface BoardCard {
   pairedWith?: string;
   paired_with?: string;
   createdAt?: number;
+  annotation?: string;
+  contextChip?: BoardCard;
+  contextChips?: BoardCard[];
 }
 
 /* ── Decision logic ───────────────────────────── */
