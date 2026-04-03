@@ -994,3 +994,93 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
     </div>
   );
 }
+
+/* ── Tab 5: Board Sequence ──────────────────────── */
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  drag_to_board: 'drag', contextualise: 'contextualise', remove_card: 'removed card', clear_board: 'cleared board', move_on_board: 'moved',
+};
+
+function getDotStyle(event: BoardEvent): { color: string; size: number } {
+  if (event.event_type === 'contextualise') return { color: '#6B4F8A', size: 10 };
+  if (event.event_type === 'remove_card') return { color: '#888780', size: 8 };
+  if (event.event_type === 'clear_board') return { color: '#A32D2D', size: 8 };
+  const q = event.quadrant?.toLowerCase() ?? '';
+  return { color: QUAD_COLORS[q] ?? '#888780', size: 8 };
+}
+
+function getEventDescription(e: BoardEvent): string {
+  const eid = e.evidence_id ? formatEvidenceId(e.evidence_id) : '';
+  const quad = e.quadrant ? e.quadrant.charAt(0).toUpperCase() + e.quadrant.slice(1) : '';
+  switch (e.event_type) {
+    case 'drag_to_board':
+    case 'move_on_board':
+      return `${eid} → ${quad}`;
+    case 'contextualise':
+      return `${eid} ↔ ${e.paired_with ? formatEvidenceId(e.paired_with) : '?'} — paired in ${quad}`;
+    case 'remove_card':
+      return `${eid} removed from ${quad}`;
+    case 'clear_board':
+      return 'Entire board cleared';
+    default:
+      return `${e.event_type}: ${eid}`;
+  }
+}
+
+function getEventNote(e: BoardEvent): string | null {
+  const eid = (e.evidence_id ?? '').toLowerCase();
+  const seq = e.sequence_number ?? 0;
+  if (seq === 1 && eid.includes('_views')) return 'First drag was a views item — student started with the views framing';
+  if (seq === 1 && eid.includes('_revenue')) return 'First drag was revenue data — student led with the right metric';
+  if (e.event_type === 'contextualise') return 'Contextualise used — student paired two pieces of evidence';
+  if (e.event_type === 'remove_card') return 'Student removed a card — may have changed their reasoning';
+  if (e.event_type === 'clear_board') return 'Full board reset — student started their reasoning over';
+  if (eid === 'pro_chair_tiktok') return 'Note: Pro Chair from TikTok was dragged — BUG-02 may have been resolved for this student';
+  return null;
+}
+
+function BoardSequenceTab({ events }: { events: BoardEvent[] }) {
+  if (!events.length) {
+    return <p className="text-xs text-muted-foreground py-4 italic">No board interaction data was captured for this session.</p>;
+  }
+
+  const dragCount = events.filter(e => e.event_type === 'drag_to_board' || e.event_type === 'move_on_board').length;
+  const contextCount = events.filter(e => e.event_type === 'contextualise').length;
+  const removeCount = events.filter(e => e.event_type === 'remove_card').length;
+  const clearCount = events.filter(e => e.event_type === 'clear_board').length;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-medium text-foreground">Exact order every card was placed on the board</p>
+      <div className="relative pl-6" style={{ minHeight: 40 }}>
+        <div className="absolute left-[5px] top-2 bottom-2 w-px" style={{ backgroundColor: 'hsl(var(--border))' }} />
+        {events.map((e, i) => {
+          const dot = getDotStyle(e);
+          const desc = getEventDescription(e);
+          const note = getEventNote(e);
+          const timeStr = new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const label = EVENT_TYPE_LABELS[e.event_type] ?? e.event_type;
+          const seqLabel = e.sequence_number ? `#${e.sequence_number}` : '';
+          return (
+            <div key={i} className="relative mb-3.5">
+              <span
+                className="absolute rounded-full"
+                style={{
+                  width: dot.size, height: dot.size, backgroundColor: dot.color,
+                  left: -(24 - (dot.size / 2)) + 5, top: 3,
+                }}
+              />
+              <div>
+                <p className="text-[10px] text-muted-foreground">{timeStr} · {label} {seqLabel}</p>
+                <p className="text-[11px] font-medium text-foreground mt-0.5">{desc}</p>
+                {note && <p className="text-[10px] text-muted-foreground italic mt-0.5">{note}</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        {dragCount} drag event{dragCount !== 1 ? 's' : ''} · {contextCount} Contextualise pair{contextCount !== 1 ? 's' : ''} · {removeCount} removal{removeCount !== 1 ? 's' : ''}{clearCount > 0 ? ` · ${clearCount} board clear${clearCount !== 1 ? 's' : ''}` : ''}
+      </p>
+    </div>
+  );
+}
