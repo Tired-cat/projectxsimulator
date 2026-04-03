@@ -229,7 +229,26 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
       }
       const visitedReasoningCount = visitedReasoning.size;
       const placedCard = await distinctSessionsIn('board_events', 'event_type', 'drag_to_board');
-      const usedContextualise = await distinctSessionsIn('board_events', 'event_type', 'contextualise');
+      // Count sessions where at least 1 chip has a non-empty annotation
+      let addedAnnotation = 0;
+      if (sessionIds.length > 0) {
+        const annotatedSessions = new Set<string>();
+        for (let i = 0; i < sessionIds.length; i += 100) {
+          const chunk = sessionIds.slice(i, i + 100);
+          const { data: boardStates } = await supabase
+            .from('reasoning_board_state')
+            .select('session_id, cards')
+            .in('session_id', chunk);
+          (boardStates ?? []).forEach((row: any) => {
+            const cards = Array.isArray(row.cards) ? row.cards : [];
+            const hasAnnotation = cards.some(
+              (chip: any) => chip.annotation && chip.annotation.trim() !== ''
+            );
+            if (hasAnnotation) annotatedSessions.add(row.session_id);
+          });
+        }
+        addedAnnotation = annotatedSessions.size;
+      }
       const requestedAI = await distinctSessionsIn('ai_feedback_events');
 
       const fSteps: FunnelStep[] = [
@@ -239,7 +258,7 @@ export default function PilotHealth({ classId }: PilotHealthProps) {
         { label: 'Made allocation change', count: madeAllocation, color: '#6B4F8A' },
         { label: 'Visited Reasoning Board', count: visitedReasoningCount, color: '#6B4F8A' },
         { label: 'Placed ≥1 card', count: placedCard, color: '#D4A053' },
-        { label: 'Used Contextualise', count: usedContextualise, color: '#D4A053' },
+        { label: 'Added ≥1 annotation', count: addedAnnotation, color: '#D4A053' },
         { label: 'Requested AI feedback', count: requestedAI, color: '#4CAF50' },
         { label: 'Submitted', count: subCount, color: '#4CAF50' },
       ];
