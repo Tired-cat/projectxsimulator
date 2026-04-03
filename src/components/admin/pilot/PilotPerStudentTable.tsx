@@ -6,18 +6,17 @@ import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpDown, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TableSkeleton } from './PilotSkeletons';
 import StudentDetailPanel from './StudentDetailPanel';
 
 interface Props {
   classId: string | null;
-  selectedSessionId: string | null;
-  onSelectSession: (sessionId: string | null) => void;
 }
 
 interface StudentRow {
+  userId: string;
   sessionId: string | null;
   email: string;
   durationMin: number | null;
@@ -30,14 +29,24 @@ interface StudentRow {
   decision: 'Correct' | 'Partial' | 'Incorrect' | 'No change' | null;
 }
 
-type SortKey = keyof StudentRow;
+interface DetailTarget {
+  userId: string;
+  sessionId: string;
+  email: string;
+}
+
+type SortKey = keyof Omit<StudentRow, 'userId'>;
 type SortDir = 'asc' | 'desc';
 
 const PAGE_SIZE = 20;
 
-export default function PilotPerStudentTable({ classId, selectedSessionId, onSelectSession }: Props) {
+export default function PilotPerStudentTable({ classId }: Props) {
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Detail view state — when set, replaces the table
+  const [detailTarget, setDetailTarget] = useState<DetailTarget | null>(null);
+  const [resolvingSession, setResolvingSession] = useState(false);
 
   // filters
   const [decisionFilter, setDecisionFilter] = useState('all');
@@ -83,12 +92,21 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
       const { data: sessData } = await sessQ;
       const sessions = sessData ?? [];
 
-      // Map user_id -> session (use latest if multiple)
+      // Map user_id -> best session (completed first, then most recent)
       const userSessions = new Map<string, typeof sessions[0]>();
       sessions.forEach((s) => {
         const existing = userSessions.get(s.user_id);
-        if (!existing || s.started_at > existing.started_at) {
+        if (!existing) {
           userSessions.set(s.user_id, s);
+        } else {
+          // Prefer completed over not completed, then most recent
+          const existingCompleted = existing.is_completed;
+          const newCompleted = s.is_completed;
+          if (newCompleted && !existingCompleted) {
+            userSessions.set(s.user_id, s);
+          } else if (newCompleted === existingCompleted && s.started_at > existing.started_at) {
+            userSessions.set(s.user_id, s);
+          }
         }
       });
 
@@ -134,7 +152,7 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
 
         if (!session) {
           return {
-            sessionId: null, email,
+            userId, sessionId: null, email,
             durationMin: null, tutorial: 'Skipped' as const,
             cards: null, quadrants: null, contextualise: null,
             allocChanges: 0, feedback: false, decision: null,
@@ -175,7 +193,7 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
         }
 
         return {
-          sessionId: session.id, email, durationMin, tutorial,
+          userId, sessionId: session.id, email, durationMin, tutorial,
           cards, quadrants, contextualise,
           allocChanges: allocCounts.get(session.id) ?? 0,
           feedback: feedbackSessions.has(session.id),
@@ -190,6 +208,38 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
 
   // Reset page when filters change
   useEffect(() => { setPage(0); }, [decisionFilter, tutorialFilter, feedbackFilter, search, sortKey, sortDir]);
+
+  // --- Row click handler: resolve best session then open detail ---
+  const handleRowClick = useCallback(async (row: StudentRow) => {
+    if (resolvingSession) return;
+
+    // If the table already has a session, use it directly
+    if (row.sessionId) {
+      setDetailTarget({ userId: row.userId, sessionId: row.sessionId, email: row.email });
+      return;
+    }
+
+    // No session in table — resolve from DB (prioritize completed, then most recent)
+    setResolvingSession(true);
+    try {
+      let q = supabase
+        .from('sessions')
+        .select('id, is_completed, started_at')
+        .eq('user_id', row.userId)
+        .order('is_completed', { ascending: false })
+        .order('started_at', { ascending: false })
+        .limit(1);
+
+      if (classId) q = q.eq('class_id', classId);
+
+      const { data } = await q;
+      if (data && data.length > 0) {
+        setDetailTarget({ userId: row.userId, sessionId: data[0].id, email: row.email });
+      }
+    } finally {
+      setResolvingSession(false);
+    }
+  }, [classId, resolvingSession]);
 
   // Filtered + sorted rows
   const filtered = useMemo(() => {
@@ -238,6 +288,33 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
     return <TableSkeleton rows={8} cols={9} />;
   }
 
+  // ── DETAIL VIEW (full-page replacement) ─────────────────
+  if (detailTarget) {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setDetailTarget(null)}
+          className="h-8 px-3 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          All students
+        </Button>
+
+        <div className="flex items-center gap-2 px-1">
+          <h3 className="text-sm font-semibold text-foreground">{detailTarget.email}</h3>
+        </div>
+
+        <StudentDetailPanel
+          sessionId={detailTarget.sessionId}
+          onClose={() => setDetailTarget(null)}
+        />
+      </div>
+    );
+  }
+
+  // ── TABLE VIEW ──────────────────────────────────────────
   const DECISION_COLORS: Record<string, string> = {
     Correct: '#4A7C59', Partial: '#D4A017', Incorrect: '#C4622D', 'No change': '#888780',
   };
@@ -325,51 +402,47 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">No students match the current filters.</td></tr>
-                ) : pageRows.map((row, i) => {
-                  const isSelected = row.sessionId != null && row.sessionId === selectedSessionId;
-                  return (
-                    <tr
-                      key={row.sessionId ?? `no-session-${i}`}
-                      className={cn(
-                        'border-b border-border/30 last:border-0 cursor-pointer transition-colors',
-                        'hover:bg-muted/40',
-                        isSelected && 'bg-[#6B4F8A]/5 border-l-2 border-l-[#6B4F8A]'
-                      )}
-                      onClick={() => row.sessionId && onSelectSession(isSelected ? null : row.sessionId)}
-                    >
-                      <td className="py-2 px-3 font-medium text-foreground max-w-[200px] truncate" title={row.email}>
-                        {row.email.length > 28 ? row.email.slice(0, 28) + '…' : row.email}
-                      </td>
-                      <td className="py-2 px-3 text-right text-muted-foreground">
-                        {row.durationMin != null ? `${row.durationMin}m` : '—'}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <span
-                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-                          style={{ backgroundColor: TUTORIAL_COLORS[row.tutorial] }}
-                        >
-                          {row.tutorial}
+                ) : pageRows.map((row, i) => (
+                  <tr
+                    key={row.sessionId ?? `no-session-${i}`}
+                    className={cn(
+                      'border-b border-border/30 last:border-0 cursor-pointer transition-colors',
+                      'hover:bg-muted/40',
+                    )}
+                    onClick={() => handleRowClick(row)}
+                  >
+                    <td className="py-2 px-3 font-medium text-foreground max-w-[200px] truncate" title={row.email}>
+                      {row.email.length > 28 ? row.email.slice(0, 28) + '…' : row.email}
+                    </td>
+                    <td className="py-2 px-3 text-right text-muted-foreground">
+                      {row.durationMin != null ? `${row.durationMin}m` : '—'}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      <span
+                        className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                        style={{ backgroundColor: TUTORIAL_COLORS[row.tutorial] }}
+                      >
+                        {row.tutorial}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right text-muted-foreground">{row.cards ?? '—'}</td>
+                    <td className="py-2 px-3 text-center text-muted-foreground">{row.quadrants != null ? `${row.quadrants}/4` : '—'}</td>
+                    <td className="py-2 px-3 text-right text-muted-foreground">{row.contextualise ?? '—'}</td>
+                    <td className="py-2 px-3 text-right text-muted-foreground">{row.sessionId ? row.allocChanges : '—'}</td>
+                    <td className="py-2 px-3 text-center">
+                      {row.sessionId == null ? '—' : (
+                        <span className={cn('font-medium', row.feedback ? 'text-[#4A7C59]' : 'text-muted-foreground')}>
+                          {row.feedback ? 'Yes' : 'No'}
                         </span>
-                      </td>
-                      <td className="py-2 px-3 text-right text-muted-foreground">{row.cards ?? '—'}</td>
-                      <td className="py-2 px-3 text-center text-muted-foreground">{row.quadrants != null ? `${row.quadrants}/4` : '—'}</td>
-                      <td className="py-2 px-3 text-right text-muted-foreground">{row.contextualise ?? '—'}</td>
-                      <td className="py-2 px-3 text-right text-muted-foreground">{row.sessionId ? row.allocChanges : '—'}</td>
-                      <td className="py-2 px-3 text-center">
-                        {row.sessionId == null ? '—' : (
-                          <span className={cn('font-medium', row.feedback ? 'text-[#4A7C59]' : 'text-muted-foreground')}>
-                            {row.feedback ? 'Yes' : 'No'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        {row.decision ? (
-                          <span className="font-bold" style={{ color: DECISION_COLORS[row.decision] }}>{row.decision}</span>
-                        ) : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      {row.decision ? (
+                        <span className="font-bold" style={{ color: DECISION_COLORS[row.decision] }}>{row.decision}</span>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -393,14 +466,6 @@ export default function PilotPerStudentTable({ classId, selectedSessionId, onSel
           </div>
         </CardContent>
       </Card>
-
-      {/* ── DETAIL PANEL ─────────────────────────── */}
-      {selectedSessionId && (
-        <StudentDetailPanel
-          sessionId={selectedSessionId}
-          onClose={() => onSelectSession(null)}
-        />
-      )}
     </div>
   );
 }
