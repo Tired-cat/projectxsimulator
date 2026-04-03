@@ -23,6 +23,8 @@ interface StudentRow {
   tutorial: 'Completed' | 'Abandoned' | 'Skipped';
   cards: number | null;
   quadrants: number | null;
+  annotations: number | null;
+  diagnosis: boolean | null;
   allocChanges: number;
   feedback: boolean;
   decision: 'Correct' | 'Partial' | 'Incorrect' | 'No change' | null;
