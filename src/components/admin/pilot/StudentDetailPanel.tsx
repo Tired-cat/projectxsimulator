@@ -164,7 +164,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
     (async () => {
       setLoading(true);
 
-      const [sessionRes, profileRes, subRes, allocRes, aiRes, navRes, resetRes, boardRes] = await Promise.all([
+      const [sessionRes, profileRes, subRes, allocRes, aiRes, navRes, resetRes, boardRes, boardEventsRes] = await Promise.all([
         supabase.from('sessions')
           .select('started_at, completed_at, is_completed, tutorial_completed, tutorial_opened')
           .eq('id', sessionId).single(),
