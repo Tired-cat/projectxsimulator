@@ -87,6 +87,9 @@ interface BoardCard {
   pairedWith?: string;
   paired_with?: string;
   createdAt?: number;
+  annotation?: string;
+  contextChip?: BoardCard;
+  contextChips?: BoardCard[];
 }
 
 /* ── Decision logic ───────────────────────────── */
@@ -394,34 +397,35 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
               ) : (
                 <div className="space-y-1.5">
                   {qCards.map((card, i) => {
-                    const evidenceId = card.sourceId || card.id || `card-${i}`;
-                    const displayLabel = card.label || formatEvidenceId(evidenceId);
-                    const pairedWith = card.pairedWith || card.paired_with;
+                    const displayLabel = card.label || formatEvidenceId(card.sourceId || card.id || `card-${i}`);
+                    const hasContext = card.contextChip || (card.contextChips && card.contextChips.length > 0);
+                    const contextCards = card.contextChips ?? (card.contextChip ? [card.contextChip] : []);
+
                     return (
                       <div
                         key={i}
                         className="rounded-md bg-white/80 dark:bg-background/80 px-2.5 py-[7px]"
                         style={{
                           border: `0.5px solid ${color}4D`,
-                          borderBottomWidth: pairedWith ? '2px' : '0.5px',
-                          borderBottomColor: pairedWith ? color : `${color}4D`,
+                          borderBottomWidth: hasContext ? '2px' : '0.5px',
+                          borderBottomColor: hasContext ? color : `${color}4D`,
                         }}
                       >
-                        <p className="text-[11px] text-foreground leading-snug">{displayLabel}</p>
+                        <p className="text-[11px] font-medium leading-snug" style={{ color }}>{displayLabel}</p>
                         {card.value && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">{card.value}</p>
                         )}
-                        {pairedWith && (
-                          <div className="flex items-center gap-1 mt-1">
+                        {contextCards.length > 0 && contextCards.map((ctx, ci) => (
+                          <div key={ci} className="flex items-center gap-1 mt-1.5">
                             <span className="inline-flex items-center gap-0">
-                              <span className="inline-block w-[7px] h-[7px] rounded-sm border border-muted-foreground/50" />
-                              <span className="inline-block w-[7px] h-[7px] rounded-sm border border-muted-foreground/50 -ml-[3px]" />
+                              <span className="inline-block w-[7px] h-[7px] rounded-sm border border-muted-foreground/40" />
+                              <span className="inline-block w-[7px] h-[7px] rounded-sm border border-muted-foreground/40 -ml-[3px]" />
                             </span>
                             <span className="text-[10px] italic text-muted-foreground">
-                              Paired with: {formatEvidenceId(pairedWith)}
+                              Contextualised with → {ctx.label || formatEvidenceId(ctx.sourceId || ctx.id || '')}
                             </span>
                           </div>
-                        )}
+                        ))}
                       </div>
                     );
                   })}
