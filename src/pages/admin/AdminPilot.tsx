@@ -1,13 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, lazy, useState, useEffect, useMemo } from 'react';
 import { useAdminClassFilter } from '@/contexts/AdminClassFilterContext';
 import { supabase } from '@/integrations/supabase/client';
-import PilotHealth from '@/components/admin/pilot/PilotHealth';
-import PilotReasoningBoard from '@/components/admin/pilot/PilotReasoningBoard';
-import PilotAllocationDecisions from '@/components/admin/pilot/PilotAllocationDecisions';
-import PilotFeatureUsage from '@/components/admin/pilot/PilotFeatureUsage';
-import PilotAiFeedback from '@/components/admin/pilot/PilotAiFeedback';
-import PilotStruggleSignals from '@/components/admin/pilot/PilotStruggleSignals';
-import PilotPerStudentTable from '@/components/admin/pilot/PilotPerStudentTable';
 import {
   Select,
   SelectContent,
@@ -17,8 +10,16 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Users } from 'lucide-react';
+import { RouteLoader } from '@/components/RouteLoader';
 
-/* ── tab definitions ────────────────────────────── */
+const PilotHealth = lazy(() => import('@/components/admin/pilot/PilotHealth'));
+const PilotReasoningBoard = lazy(() => import('@/components/admin/pilot/PilotReasoningBoard'));
+const PilotAllocationDecisions = lazy(() => import('@/components/admin/pilot/PilotAllocationDecisions'));
+const PilotFeatureUsage = lazy(() => import('@/components/admin/pilot/PilotFeatureUsage'));
+const PilotAiFeedback = lazy(() => import('@/components/admin/pilot/PilotAiFeedback'));
+const PilotStruggleSignals = lazy(() => import('@/components/admin/pilot/PilotStruggleSignals'));
+const PilotPerStudentTable = lazy(() => import('@/components/admin/pilot/PilotPerStudentTable'));
+
 const TABS = [
   'Pilot health',
   'Reasoning board',
@@ -31,7 +32,6 @@ const TABS = [
 
 type PilotTab = (typeof TABS)[number];
 
-/* ── placeholder per-tab content ────────────────── */
 function TabPlaceholder({ tab }: { tab: PilotTab }) {
   return (
     <div className="flex items-center justify-center h-64 rounded-lg border border-dashed border-border bg-muted/20">
@@ -42,18 +42,14 @@ function TabPlaceholder({ tab }: { tab: PilotTab }) {
   );
 }
 
-/* ── main component ─────────────────────────────── */
 export default function AdminPilot() {
-  const { classId, setClassId, classes, loading: classesLoading } = useAdminClassFilter();
+  const { classId, setClassId, classes } = useAdminClassFilter();
   const [activeTab, setActiveTab] = useState<PilotTab>('Pilot health');
   const [studentCount, setStudentCount] = useState<number | null>(null);
-  
 
-  /* fetch student count for selected class */
   useEffect(() => {
     async function fetchCount() {
       if (!classId) {
-        // all classes — count distinct users enrolled
         const { count } = await supabase
           .from('student_enrollments')
           .select('*', { count: 'exact', head: true });
@@ -69,7 +65,6 @@ export default function AdminPilot() {
     fetchCount();
   }, [classId]);
 
-  /* build the label for the selected class */
   const selectedLabel = useMemo(() => {
     if (!classId) return 'All classes';
     const cls = classes.find((c) => c.id === classId);
@@ -77,9 +72,29 @@ export default function AdminPilot() {
     return `${cls.name} — ${cls.section_code} (${cls.class_code})`;
   }, [classId, classes]);
 
+  const activeView = (() => {
+    switch (activeTab) {
+      case 'Pilot health':
+        return <PilotHealth classId={classId} />;
+      case 'Reasoning board':
+        return <PilotReasoningBoard classId={classId} />;
+      case 'Allocation decisions':
+        return <PilotAllocationDecisions classId={classId} />;
+      case 'Feature usage':
+        return <PilotFeatureUsage classId={classId} />;
+      case 'AI feedback':
+        return <PilotAiFeedback classId={classId} />;
+      case 'Struggle signals':
+        return <PilotStruggleSignals classId={classId} />;
+      case 'Per-student table':
+        return <PilotPerStudentTable classId={classId} />;
+      default:
+        return <TabPlaceholder tab={activeTab} />;
+    }
+  })();
+
   return (
     <div className="space-y-0 -m-6">
-      {/* ── secondary top bar ────────────────────── */}
       <div className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border bg-[hsl(40,28%,97%)]">
         <div>
           <h2 className="text-lg font-bold font-[var(--font-heading)] text-foreground leading-tight">
@@ -89,7 +104,6 @@ export default function AdminPilot() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* student count badge */}
           {studentCount !== null && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md">
               <Users className="h-3.5 w-3.5" />
@@ -97,13 +111,12 @@ export default function AdminPilot() {
             </div>
           )}
 
-          {/* class filter */}
           <Select
             value={classId ?? '__all__'}
             onValueChange={(v) => setClassId(v === '__all__' ? null : v)}
           >
             <SelectTrigger className="w-[260px] h-8 text-xs">
-              <SelectValue placeholder="All classes" />
+              <SelectValue placeholder={selectedLabel} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All classes</SelectItem>
@@ -117,7 +130,6 @@ export default function AdminPilot() {
         </div>
       </div>
 
-      {/* ── horizontal tab bar ───────────────────── */}
       <div className="border-b border-border bg-background px-6">
         <div className="flex gap-0 overflow-x-auto">
           {TABS.map((tab) => (
@@ -138,25 +150,10 @@ export default function AdminPilot() {
         </div>
       </div>
 
-      {/* ── content area ─────────────────────────── */}
       <div className="p-6">
-        {activeTab === 'Pilot health' ? (
-          <PilotHealth classId={classId} />
-        ) : activeTab === 'Reasoning board' ? (
-          <PilotReasoningBoard classId={classId} />
-        ) : activeTab === 'Allocation decisions' ? (
-          <PilotAllocationDecisions classId={classId} />
-        ) : activeTab === 'Feature usage' ? (
-          <PilotFeatureUsage classId={classId} />
-        ) : activeTab === 'AI feedback' ? (
-          <PilotAiFeedback classId={classId} />
-        ) : activeTab === 'Struggle signals' ? (
-          <PilotStruggleSignals classId={classId} />
-        ) : activeTab === 'Per-student table' ? (
-          <PilotPerStudentTable classId={classId} />
-        ) : (
-          <TabPlaceholder tab={activeTab} />
-        )}
+        <Suspense fallback={<RouteLoader label="Loading pilot analytics…" />}>
+          {activeView}
+        </Suspense>
       </div>
     </div>
   );
