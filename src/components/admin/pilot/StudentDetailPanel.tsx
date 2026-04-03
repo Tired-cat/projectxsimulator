@@ -75,6 +75,20 @@ interface NavEvent {
   visit_number: number | null;
 }
 
+interface BoardCard {
+  id?: string;
+  label?: string;
+  value?: string;
+  context?: string;
+  chipKind?: string;
+  sourceId?: string;
+  channelName?: string;
+  metricName?: string;
+  pairedWith?: string;
+  paired_with?: string;
+  createdAt?: number;
+}
+
 /* ── Decision logic ───────────────────────────── */
 type DecisionOutcome = 'Correct' | 'Partial' | 'Incorrect' | 'Not submitted';
 
