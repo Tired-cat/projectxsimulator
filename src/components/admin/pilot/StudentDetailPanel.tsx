@@ -148,7 +148,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
     (async () => {
       setLoading(true);
 
-      const [sessionRes, profileRes, subRes, allocRes, aiRes, navRes, resetRes] = await Promise.all([
+      const [sessionRes, profileRes, subRes, allocRes, aiRes, navRes, resetRes, boardRes] = await Promise.all([
         supabase.from('sessions')
           .select('started_at, completed_at, is_completed, tutorial_completed, tutorial_opened')
           .eq('id', sessionId).single(),
@@ -173,6 +173,10 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .select('id')
           .eq('session_id', sessionId)
           .eq('reset_type', 'board_reset'),
+        supabase.from('reasoning_board_state')
+          .select('cards')
+          .eq('session_id', sessionId)
+          .maybeSingle(),
       ]);
 
       if (!cancelled) {
@@ -186,6 +190,23 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         setHasFeedback(aiRes.data != null);
         setNavEvents((navRes.data ?? []) as NavEvent[]);
         setBoardResets((resetRes.data ?? []).length);
+
+        // Parse board cards — can be object keyed by quadrant or an array
+        const raw = boardRes.data?.cards;
+        let parsedCards: BoardCard[] = [];
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          // Object format: { descriptive: [...], diagnostic: [...], ... }
+          const obj = raw as Record<string, BoardCard[]>;
+          for (const [quadrant, cards] of Object.entries(obj)) {
+            if (Array.isArray(cards)) {
+              cards.forEach(c => parsedCards.push({ ...c, chipKind: c.chipKind, _quadrant: quadrant } as any));
+            }
+          }
+        } else if (Array.isArray(raw)) {
+          parsedCards = raw as BoardCard[];
+        }
+        setBoardCards(parsedCards);
+
         setLoading(false);
       }
     })();
