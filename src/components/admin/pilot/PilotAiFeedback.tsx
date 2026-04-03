@@ -84,9 +84,15 @@ export default function PilotAiFeedback({ classId }: Props) {
     return times.reduce((a, b) => a + b, 0) / times.length / 60;
   }, [adjusted]);
 
-  // board state delta
+  // board state delta — only rows where board_state_after is populated and at least one _after > 0
   const deltaData = useMemo(() => {
-    const withAfter = rows.filter((r) => r.post_feedback_action === 'adjusted' && r.descriptive_cards_after != null);
+    const withAfter = rows.filter((r) =>
+      r.descriptive_cards_after != null &&
+      r.diagnostic_cards_after != null &&
+      r.prescriptive_cards_after != null &&
+      r.predictive_cards_after != null &&
+      ((r.descriptive_cards_after ?? 0) > 0 || (r.diagnostic_cards_after ?? 0) > 0 || (r.prescriptive_cards_after ?? 0) > 0 || (r.predictive_cards_after ?? 0) > 0)
+    );
     if (!withAfter.length) return [];
     const quads = ['Descriptive', 'Diagnostic', 'Prescriptive', 'Predictive'] as const;
     return quads.map((q) => {
