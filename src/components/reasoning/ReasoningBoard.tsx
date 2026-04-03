@@ -320,6 +320,23 @@ function ChipCard({
           )}
         </div>
 
+        {/* Annotate button */}
+        {canAnnotate && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowAnnotation(p => !p); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="Add my interpretation"
+            className={cn(
+              'flex-shrink-0 p-0.5 rounded transition-colors',
+              chip.annotation
+                ? 'text-primary'
+                : 'text-muted-foreground/40 hover:text-primary'
+            )}
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
+
         {/* Remove button */}
         <button
           onClick={onRemove}
