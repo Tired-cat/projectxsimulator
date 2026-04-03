@@ -316,7 +316,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
 
       {/* ── TAB CONTENT ──────────────────────────────── */}
       <div className="pt-1">
-        {activeTab === 'reasoning' && <BoardStateTab sub={sub} />}
+        {activeTab === 'reasoning' && <ReasoningBoardTab cards={boardCards} generatedStory={sub?.generated_story ?? null} />}
         {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} />}
         {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
