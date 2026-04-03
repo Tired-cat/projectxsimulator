@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { X, GripVertical, FlaskConical, Check, Trash2, Pencil } from 'lucide-react';
+import { X, GripVertical, FlaskConical, Trash2, Pencil } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
 import {
   AlertDialog,
@@ -22,7 +22,6 @@ import type { EvidenceDragData, EvidenceDropData } from '@/lib/evidenceDnd';
 import {
   getBlockDropId,
   getBoardChipDragId,
-  getContextDropId,
 } from '@/lib/evidenceDnd';
 import { cn } from '@/lib/utils';
 import { ReasoningNarrative } from './ReasoningNarrative';
@@ -247,8 +246,6 @@ function ChipCard({
   const isDelta = chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease';
   const isIncrease = chip.chipKind === 'delta-increase';
   const isDecrease = chip.chipKind === 'delta-decrease';
-  const contextItems = chip.contextChips ?? (chip.contextChip ? [chip.contextChip] : []);
-  const hasContext = contextItems.length > 0;
 
   const [showAnnotation, setShowAnnotation] = useState(false);
   const [draft, setDraft] = useState(chip.annotation ?? '');
@@ -271,14 +268,6 @@ function ChipCard({
     } satisfies EvidenceDragData,
   });
 
-  const { setNodeRef: setContextDropRef, isOver: isContextOver } = useDroppable({
-    id: getContextDropId(blockId, chip.id),
-    data: {
-      kind: 'context-target',
-      blockId,
-      targetChipId: chip.id,
-    } satisfies EvidenceDropData,
-  });
 
   return (
     <div
@@ -398,32 +387,6 @@ function ChipCard({
         </div>
       )}
 
-      {/* Contextualise zone — supports multiple context chips */}
-      <div className="mx-2.5 mb-2 space-y-1">
-        {contextItems.map((ctx, i) => (
-          <div key={`${ctx.id}-${i}`} className="px-2 py-1.5 rounded border border-border bg-muted/30 text-[10px] flex items-center gap-1.5">
-            <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-            <span className="text-foreground/70 truncate">
-              Contextualised with <strong>{ctx.label}</strong>
-            </span>
-          </div>
-        ))}
-        <div
-          ref={setContextDropRef}
-          className={cn(
-            'px-2 py-1.5 rounded border border-dashed text-[10px] text-center transition-all',
-            isContextOver
-              ? 'border-primary bg-primary/5 text-primary'
-              : 'border-border/50 text-muted-foreground/60'
-          )}
-        >
-          {isContextOver
-            ? 'Drop to contextualise'
-            : hasContext
-              ? '+ Add another supporting piece of evidence'
-              : 'Contextualise this — drag another bar here to support or explain this observation.'}
-        </div>
-      </div>
     </div>
   );
 }
