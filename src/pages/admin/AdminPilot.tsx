@@ -153,7 +153,7 @@ export default function AdminPilot() {
         ) : activeTab === 'Struggle signals' ? (
           <PilotStruggleSignals classId={classId} />
         ) : activeTab === 'Per-student table' ? (
-          <PilotPerStudentTable classId={classId} selectedSessionId={selectedSessionId} onSelectSession={setSelectedSessionId} />
+          <PilotPerStudentTable classId={classId} />
         ) : (
           <TabPlaceholder tab={activeTab} />
         )}
