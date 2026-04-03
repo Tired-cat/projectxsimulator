@@ -13,7 +13,7 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-// ── At a Glance: data-referenced, uses labels & values directly ──
+// -- At a Glance: data-referenced, uses labels & values directly --
 
 function formatEvidence(chip: EvidenceChip): string {
   const base = `${chip.label}: ${chip.value}`;
@@ -76,7 +76,7 @@ function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId
   return templates[idx].replace('[items]', phrase);
 }
 
-// ── Full Reasoning Story: value-derived, relationship-focused, no raw data ──
+// -- Full Reasoning Story: value-derived, relationship-focused, no raw data --
 
 function extractNumeric(chip: EvidenceChip): number | null {
   if (chip.deltaValue != null) return chip.deltaValue;
@@ -536,60 +536,40 @@ export function ReasoningNarrative() {
         </div>
       </div>
 
-      {/* Full Reasoning Story + In Your Own Words */}
-      <div className="px-3 pb-4">
-        <div className="relative rounded-2xl border border-[#E7DCC7] bg-[#FBF6EB] shadow-sm px-5 py-4">
-          <span
-            aria-hidden="true"
-            className="absolute left-3 top-1 text-[62px] leading-none font-serif text-[#C8B79E]/55 pointer-events-none select-none"
-          >
-            "
-          </span>
-          <div className="relative flex items-center gap-2 mb-3">
-            <span className="h-2 w-2 rounded-full bg-[#C4622D]" />
-            <h3 className="text-lg font-bold tracking-wide text-[#3A3025]">MY FULL REASONING STORY</h3>
+      {/* Full Reasoning Story */}
+      <div className="px-3 pb-5 space-y-3">
+        <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground">
+          Full reasoning story
+        </h3>
+        <div className="rounded-xl border border-border/70 bg-card shadow-md px-5 py-6 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] text-muted-foreground">Auto-updates as you add evidence</span>
+            <span className="h-1.5 w-10 rounded-full bg-muted" aria-hidden />
           </div>
-          <div className="relative pr-1">
-            {storySentences.length === 0 ? (
-              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#4B4136]/70 italic">
-                Your reasoning story will appear here once you begin adding evidence.
-              </p>
-            ) : (
-              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#2E2A24]">
-                {storySentences.map((entry, index) => (
-                  <span
-                    key={`${entry.blockId}-${index}`}
-                    style={{ color: BLOCK_STYLE[entry.blockId].accent }}
-                  >
-                    {entry.text}{' '}
-                  </span>
-                ))}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* "In Your Own Words" — exposes writtenDiagnosis for qualitative reasoning */}
-      <div className="px-3 pb-5">
-        <div className="rounded-xl border border-border/60 bg-card p-4">
-          <label
-            htmlFor="written-diagnosis"
-            className="block text-xs font-bold text-foreground mb-1 uppercase tracking-wide"
-          >
-            In Your Own Words
-          </label>
-          <p className="text-[10px] text-muted-foreground mb-2">
-            What was your single most important insight from this analysis?
-          </p>
-          <textarea
-            id="written-diagnosis"
-            className="w-full text-sm rounded-lg border border-border bg-transparent px-3 py-2 placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/60 resize-none leading-relaxed"
-            rows={3}
-            placeholder="e.g. Not all attention is equally valuable — Newspaper's low-traffic, high-conversion profile outperforms TikTok's raw reach..."
-            value={writtenDiagnosis}
-            onChange={(e) => setWrittenDiagnosis(e.target.value)}
-          />
+          {storySentences.length === 0 ? (
+            <p className="max-w-[72ch] text-sm leading-relaxed text-muted-foreground italic">
+              Your reasoning story will appear here once you begin adding evidence.
+            </p>
+          ) : (
+            <ol className="space-y-3 max-w-[72ch] text-[15px] leading-7 text-foreground/90 list-decimal list-inside">
+              {storySentences.map((entry, index) => (
+                <li key={`${entry.blockId}-${index}`} className="flex items-start gap-3 pl-1">
+                  <span
+                    className="mt-2 h-2.5 w-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: BLOCK_STYLE[entry.blockId].accent }}
+                    aria-hidden
+                  />
+                  <span className="block">
+                    <span className="font-semibold" style={{ color: BLOCK_STYLE[entry.blockId].accent }}>
+                      {BLOCK_STYLE[entry.blockId].label}:
+                    </span>{' '}
+                    {entry.text}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       </div>
 
