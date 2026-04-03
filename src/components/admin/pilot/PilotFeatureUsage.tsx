@@ -238,10 +238,7 @@ export default function PilotFeatureUsage({ classId }: Props) {
     // Row 1 — Tutorial completed
     const tutCompletedIds = new Set(sessions.filter((s) => s.tutorial_completed).map((s) => s.id));
 
-    // Row 2 — Contextualise
-    const contextIds = new Set(subs.filter((s) => s.contextualise_pairs_count > 0).map((s) => s.session_id));
-
-    // Row 3 — AI feedback
+    // Row 2 — AI feedback
     // aiFeedbackSessions already a Set
 
     // Row 4 — Product mix
