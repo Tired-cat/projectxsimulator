@@ -53,7 +53,7 @@ async function fetchSubmissions(sessionIds: string[]): Promise<SubmissionRow[]> 
     const chunk = sessionIds.slice(i, i + chunkSize);
     const { data } = await supabase
       .from('submissions')
-      .select('session_id, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count, contextualise_pairs_count')
+      .select('session_id, descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count, contextualise_pairs_count, final_tiktok_spend, final_newspaper_spend')
       .in('session_id', chunk);
     if (data) rows.push(...(data as SubmissionRow[]));
   }
