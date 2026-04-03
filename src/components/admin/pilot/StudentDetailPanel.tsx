@@ -346,7 +346,7 @@ function formatEvidenceId(id: string): string {
 
 /* ── Tab 1: Reasoning Board ─────────────────────── */
 const QUADRANT_ORDER = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
-const STORY_COLORS = ['#D4A017', '#C4622D', '#4A7C59', '#6B4F8A'];
+
 
 function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; generatedStory: string | null }) {
   const byQuadrant = useMemo(() => {
@@ -360,10 +360,7 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
     return map;
   }, [cards]);
 
-  const storySentences = useMemo(() => {
-    if (!generatedStory) return [];
-    return generatedStory.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-  }, [generatedStory]);
+
 
   if (cards.length === 0) {
     return <p className="text-xs text-muted-foreground py-4 italic">No evidence was placed on the reasoning board.</p>;
@@ -436,29 +433,81 @@ function ReasoningBoardTab({ cards, generatedStory }: { cards: BoardCard[]; gene
       </div>
 
       {/* Reasoning Story */}
+      <hr className="border-border" />
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-2">Reasoning story</p>
-        {storySentences.length > 0 ? (
-          <div className="space-y-1.5">
-            {storySentences.map((sentence, i) => (
-              <div
-                key={i}
-                className="text-xs text-foreground bg-muted/20 rounded-md py-2 px-3 leading-relaxed border-l-[3px]"
-                style={{ borderLeftColor: STORY_COLORS[i % STORY_COLORS.length] }}
-              >
-                {sentence}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground italic">No reasoning story generated.</p>
-        )}
+        <p className="text-xs font-medium text-foreground mb-2">My Full Reasoning Story</p>
+        <ReasoningStoryBlocks generatedStory={generatedStory} />
       </div>
     </div>
   );
 }
 
-/* ── Tab 2: Allocation Path ─────────────────────── */
+const STORY_BLOCK_STYLES = [
+  { bg: '#FAEEDA', border: '#D4A017', color: '#854F0B', label: 'Descriptive' },
+  { bg: '#FAECE7', border: '#C4622D', color: '#993C1D', label: 'Diagnostic' },
+  { bg: '#EAF3DE', border: '#4A7C59', color: '#3B6D11', label: 'Prescriptive' },
+  { bg: '#EEEDFE', border: '#6B4F8A', color: '#3C3489', label: 'Predictive' },
+];
+const MISSING_PLACEHOLDER = '(No reasoning captured for this step)';
+
+function ReasoningStoryBlocks({ generatedStory }: { generatedStory: string | null }) {
+  if (!generatedStory) {
+    return <p className="text-[11px] text-muted-foreground italic">No reasoning story was generated for this submission.</p>;
+  }
+
+  const rawChunks = generatedStory.split(/\.\s+/).map(s => s.trim()).filter(s => s.length > 0);
+
+  // Normalize to exactly 4 blocks
+  let blocks: string[];
+  if (rawChunks.length >= 4) {
+    blocks = [
+      rawChunks[0],
+      rawChunks[1],
+      rawChunks[2],
+      rawChunks.slice(3).join('. '),
+    ];
+  } else {
+    blocks = [...rawChunks];
+    while (blocks.length < 4) blocks.push(MISSING_PLACEHOLDER);
+  }
+
+  // Ensure trailing periods
+  blocks = blocks.map(b => b === MISSING_PLACEHOLDER ? b : (b.endsWith('.') ? b : b + '.'));
+
+  const hasMissing = blocks.some(b => b === MISSING_PLACEHOLDER);
+
+  return (
+    <div>
+      <div className="flex flex-col gap-1">
+        {blocks.map((text, i) => {
+          const style = STORY_BLOCK_STYLES[i];
+          return (
+            <div
+              key={i}
+              className="rounded-r-[5px] py-2 px-2.5 border-l-2"
+              style={{
+                backgroundColor: style.bg,
+                borderLeftColor: style.border,
+                color: text === MISSING_PLACEHOLDER ? '#888780' : style.color,
+                fontStyle: text === MISSING_PLACEHOLDER ? 'italic' : 'normal',
+                fontSize: '11px',
+                lineHeight: 1.6,
+              }}
+            >
+              {text}
+            </div>
+          );
+        })}
+      </div>
+      {hasMissing && (
+        <p className="text-[10px] text-[#D4A017] mt-2">
+          One or more reasoning steps were not captured in the generated story.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AllocationPathTab({ events }: { events: AllocEvent[] }) {
   const chartData = useMemo(() => {
     if (!events.length) return [];
