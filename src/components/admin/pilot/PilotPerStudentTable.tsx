@@ -343,6 +343,8 @@ export default function PilotPerStudentTable({ classId }: Props) {
     { key: 'tutorial', label: 'Tutorial', align: 'center' },
     { key: 'cards', label: 'Cards', align: 'right' },
     { key: 'quadrants', label: 'Quadrants', align: 'center' },
+    { key: 'annotations', label: 'Annotations', align: 'right' },
+    { key: 'diagnosis', label: 'Diagnosis', align: 'center' },
     { key: 'allocChanges', label: 'Alloc. changes', align: 'right' },
     { key: 'feedback', label: 'Feedback', align: 'center' },
     { key: 'decision', label: 'Decision', align: 'center' },
