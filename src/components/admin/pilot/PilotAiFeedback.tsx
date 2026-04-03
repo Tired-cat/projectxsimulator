@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, ReferenceLine,
 } from 'recharts';
-import { Timer, CheckCircle, Send, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Timer, CheckCircle, Send, AlertTriangle } from 'lucide-react';
 
 interface Props { classId: string | null; }
 
