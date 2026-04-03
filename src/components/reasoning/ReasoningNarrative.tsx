@@ -13,7 +13,7 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-// -- At a Glance: data-referenced, uses labels & values directly --
+// ── At a Glance: data-referenced, uses labels & values directly ──
 
 function formatEvidence(chip: EvidenceChip): string {
   const base = `${chip.label}: ${chip.value}`;
@@ -76,7 +76,7 @@ function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId
   return templates[idx].replace('[items]', phrase);
 }
 
-// -- Full Reasoning Story: value-derived, relationship-focused, no raw data --
+// ── Full Reasoning Story: value-derived, relationship-focused, no raw data ──
 
 function extractNumeric(chip: EvidenceChip): number | null {
   if (chip.deltaValue != null) return chip.deltaValue;
