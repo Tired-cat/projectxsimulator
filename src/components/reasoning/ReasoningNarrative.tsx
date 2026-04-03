@@ -413,6 +413,19 @@ export function ReasoningNarrative() {
     return sentences;
   }, [board]);
 
+  const annotatedByBlock = useMemo(() => {
+    const result: Partial<Record<ReasoningBlockId, { chip: EvidenceChip; blockStyle: typeof BLOCK_STYLE[ReasoningBlockId] }[]>> = {};
+    for (const blockId of BLOCK_ORDER) {
+      const chips = (board[blockId] || []).filter(c => c.annotation && c.annotation.trim().length > 0);
+      if (chips.length > 0) {
+        result[blockId] = chips.map(c => ({ chip: c, blockStyle: BLOCK_STYLE[blockId] }));
+      }
+    }
+    return result;
+  }, [board]);
+
+  const hasAnyAnnotations = Object.keys(annotatedByBlock).length > 0;
+
   return (
     <div className="flex-shrink-0 border-t border-border/60">
       {/* At a Glance */}
