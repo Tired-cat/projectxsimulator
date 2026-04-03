@@ -460,6 +460,33 @@ function ReasoningBoardTab({ cards, generatedStory, writtenDiagnosis }: { cards:
         })}
       </div>
 
+      {/* Written Diagnosis */}
+      {writtenDiagnosis && writtenDiagnosis.trim().length > 0 && (
+        <>
+          <hr className="border-border" />
+          <div>
+            <p className="text-xs font-medium text-foreground mb-1">Written Diagnosis</p>
+            <p className="text-[10px] text-muted-foreground mb-2 italic">Auto-generated from annotations</p>
+            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
+              {writtenDiagnosis.split('\n').filter(l => l.trim()).map((line, i) => {
+                const match = line.match(/^(Descriptive|Diagnostic|Prescriptive|Predictive):\s*"(.+)"$/i);
+                if (match) {
+                  const qKey = match[1].toLowerCase();
+                  const color = QUAD_COLORS[qKey] || 'inherit';
+                  return (
+                    <p key={i} className="text-[11px] leading-snug">
+                      <span className="font-semibold" style={{ color }}>{match[1]}:</span>{' '}
+                      <span className="text-foreground/80 italic">"{match[2]}"</span>
+                    </p>
+                  );
+                }
+                return <p key={i} className="text-[11px] text-foreground/80">{line}</p>;
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Reasoning Story */}
       <hr className="border-border" />
       <div>
