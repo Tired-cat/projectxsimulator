@@ -290,10 +290,9 @@ export default function PilotReasoningBoard({ classId }: Props) {
   return (
     <div className="space-y-6">
       {/* ── top row metric cards ───────────────────── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <MetricCard label="Avg cards placed" value={avgCardsPlaced} icon={<LayoutGrid className="h-4 w-4" />} />
         <MetricCard label="All 4 quadrants filled" value={allFourPct} icon={<Grid2x2 className="h-4 w-4" />} />
-        <MetricCard label="Used Contextualise" value={usedContextPct} icon={<Link2 className="h-4 w-4" />} />
         <MetricCard label="Avg board resets" value={avgBoardResets} icon={<RotateCcw className="h-4 w-4" />} />
       </div>
 
