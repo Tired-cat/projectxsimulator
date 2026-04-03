@@ -40,15 +40,15 @@ function minutesBetween(start: string, end: string): number {
 }
 
 function durationBucket(mins: number): string {
-  if (mins < 3) return '0-3m';
-  if (mins < 7) return '3-7m';
-  if (mins < 12) return '7-12m';
-  if (mins < 20) return '12-20m';
+  if (mins < 20) return '<20m';
   if (mins < 30) return '20-30m';
-  return '30+m';
+  if (mins < 45) return '30-45m';
+  if (mins < 60) return '45-60m';
+  if (mins < 90) return '60-90m';
+  return '90+m';
 }
 
-const BUCKET_ORDER = ['0-3m', '3-7m', '7-12m', '12-20m', '20-30m', '30+m'];
+const BUCKET_ORDER = ['<20m', '20-30m', '30-45m', '45-60m', '60-90m', '90+m'];
 
 const TAB_LABEL_MAP: Record<string, string> = {
   home: 'Home',
