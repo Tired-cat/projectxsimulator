@@ -292,22 +292,22 @@ export default function PilotPerStudentTable({ classId }: Props) {
   if (detailTarget) {
     return (
       <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setDetailTarget(null)}
-          className="h-8 px-3 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          All students
-        </Button>
-
-        <div className="flex items-center gap-2 px-1">
-          <h3 className="text-sm font-semibold text-foreground">{detailTarget.email}</h3>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDetailTarget(null)}
+            className="h-8 px-3 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            All students
+          </Button>
+          <span className="text-xs text-muted-foreground">Student profile</span>
         </div>
 
         <StudentDetailPanel
           sessionId={detailTarget.sessionId}
+          userId={detailTarget.userId}
           onClose={() => setDetailTarget(null)}
         />
       </div>

@@ -5,14 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { X, ArrowUp } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
   sessionId: string;
+  userId: string;
   onClose: () => void;
 }
 
+/* ── Colour tokens ────────────────────────────── */
 const QUAD_COLORS: Record<string, string> = {
   descriptive: '#D4A017', diagnostic: '#C4622D', prescriptive: '#4A7C59', predictive: '#6B4F8A',
 };
@@ -20,91 +22,259 @@ const QUAD_LABELS: Record<string, string> = {
   descriptive: 'Descriptive', diagnostic: 'Diagnostic', prescriptive: 'Prescriptive', predictive: 'Predictive',
 };
 
+/* ── Data interfaces ──────────────────────────── */
+interface SessionData {
+  started_at: string;
+  completed_at: string | null;
+  is_completed: boolean;
+  tutorial_completed: boolean;
+  tutorial_opened: boolean;
+}
+
+interface ProfileData {
+  email: string | null;
+}
+
 interface SubData {
-  descriptive_card_count: number; diagnostic_card_count: number;
-  prescriptive_card_count: number; predictive_card_count: number;
+  descriptive_card_count: number;
+  diagnostic_card_count: number;
+  prescriptive_card_count: number;
+  predictive_card_count: number;
+  contextualise_pairs_count: number;
+  final_tiktok_spend: number | null;
+  final_instagram_spend: number | null;
+  final_facebook_spend: number | null;
+  final_newspaper_spend: number | null;
+  feedback_rounds_used: number;
   generated_story: string | null;
+  submitted_at: string;
 }
 
 interface AllocEvent {
-  channel: string; new_value: number | null; sequence_number: number | null;
+  channel: string;
+  new_value: number | null;
+  sequence_number: number | null;
 }
 
 interface AiFeedback {
   ai_feedback_text: string | null;
   post_feedback_action: string | null;
   time_adjusting_seconds: number | null;
-  descriptive_cards_before: number; diagnostic_cards_before: number;
-  prescriptive_cards_before: number; predictive_cards_before: number;
-  descriptive_cards_after: number | null; diagnostic_cards_after: number | null;
-  prescriptive_cards_after: number | null; predictive_cards_after: number | null;
+  descriptive_cards_before: number;
+  diagnostic_cards_before: number;
+  prescriptive_cards_before: number;
+  predictive_cards_before: number;
+  descriptive_cards_after: number | null;
+  diagnostic_cards_after: number | null;
+  prescriptive_cards_after: number | null;
+  predictive_cards_after: number | null;
 }
 
 interface NavEvent {
-  tab: string; entered_at: string; time_spent_seconds: number | null; visit_number: number | null;
+  tab: string;
+  entered_at: string;
+  time_spent_seconds: number | null;
+  visit_number: number | null;
 }
 
-export default function StudentDetailPanel({ sessionId, onClose }: Props) {
+/* ── Decision logic ───────────────────────────── */
+type DecisionOutcome = 'Correct' | 'Partial' | 'Incorrect' | 'Not submitted';
+
+function getDecision(sub: SubData | null): DecisionOutcome {
+  if (!sub) return 'Not submitted';
+  const tkCorrect = (sub.final_tiktok_spend ?? 9000) <= 9000;
+  const npCorrect = (sub.final_newspaper_spend ?? 1000) >= 1000;
+  if (tkCorrect && npCorrect) return 'Correct';
+  if (tkCorrect || npCorrect) return 'Partial';
+  return 'Incorrect';
+}
+
+const DECISION_BADGE: Record<DecisionOutcome, { bg: string; text: string }> = {
+  Correct: { bg: '#4A7C59', text: 'Correct decision' },
+  Partial: { bg: '#D4A017', text: 'Partial decision' },
+  Incorrect: { bg: '#C4622D', text: 'Incorrect decision' },
+  'Not submitted': { bg: '#888780', text: 'Not submitted' },
+};
+
+/* ── Tutorial badge ───────────────────────────── */
+function getTutorialBadge(session: SessionData | null) {
+  if (!session) return { bg: '#888780', text: 'No session' };
+  if (session.tutorial_completed) return { bg: '#6B4F8A', text: 'Tutorial completed' };
+  if (session.tutorial_opened) return { bg: '#D4A017', text: 'Abandoned tutorial' };
+  return { bg: '#888780', text: 'Tutorial skipped' };
+}
+
+/* ══════════════════════════════════════════════════
+   MAIN COMPONENT
+   ══════════════════════════════════════════════════ */
+export default function StudentDetailPanel({ sessionId, userId, onClose }: Props) {
+  const [session, setSession] = useState<SessionData | null>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [sub, setSub] = useState<SubData | null>(null);
   const [allocEvents, setAllocEvents] = useState<AllocEvent[]>([]);
   const [aiFeedback, setAiFeedback] = useState<AiFeedback | null>(null);
   const [navEvents, setNavEvents] = useState<NavEvent[]>([]);
+  const [hasFeedback, setHasFeedback] = useState(false);
+  const [allocCount, setAllocCount] = useState(0);
+  const [boardResets, setBoardResets] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [subRes, allocRes, aiRes, navRes] = await Promise.all([
-        supabase.from('submissions').select('descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count, generated_story').eq('session_id', sessionId).maybeSingle(),
-        supabase.from('allocation_events').select('channel, new_value, sequence_number').eq('session_id', sessionId).order('sequence_number', { ascending: true }),
-        supabase.from('ai_feedback_events').select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after').eq('session_id', sessionId).maybeSingle(),
-        supabase.from('navigation_events').select('tab, entered_at, time_spent_seconds, visit_number').eq('session_id', sessionId).order('entered_at', { ascending: true }),
+
+      const [sessionRes, profileRes, subRes, allocRes, aiRes, navRes, resetRes] = await Promise.all([
+        supabase.from('sessions')
+          .select('started_at, completed_at, is_completed, tutorial_completed, tutorial_opened')
+          .eq('id', sessionId).single(),
+        supabase.from('profiles')
+          .select('email')
+          .eq('id', userId).single(),
+        supabase.from('submissions')
+          .select('descriptive_card_count, diagnostic_card_count, prescriptive_card_count, predictive_card_count, contextualise_pairs_count, final_tiktok_spend, final_instagram_spend, final_facebook_spend, final_newspaper_spend, feedback_rounds_used, generated_story, submitted_at')
+          .eq('session_id', sessionId).maybeSingle(),
+        supabase.from('allocation_events')
+          .select('channel, new_value, sequence_number')
+          .eq('session_id', sessionId)
+          .order('sequence_number', { ascending: true }),
+        supabase.from('ai_feedback_events')
+          .select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after')
+          .eq('session_id', sessionId).maybeSingle(),
+        supabase.from('navigation_events')
+          .select('tab, entered_at, time_spent_seconds, visit_number')
+          .eq('session_id', sessionId)
+          .order('entered_at', { ascending: true }),
+        supabase.from('resets')
+          .select('id')
+          .eq('session_id', sessionId)
+          .eq('reset_type', 'board_reset'),
       ]);
+
       if (!cancelled) {
+        setSession(sessionRes.data as SessionData | null);
+        setProfile(profileRes.data as ProfileData | null);
         setSub(subRes.data as SubData | null);
-        setAllocEvents((allocRes.data ?? []) as AllocEvent[]);
+        const alloc = (allocRes.data ?? []) as AllocEvent[];
+        setAllocEvents(alloc);
+        setAllocCount(alloc.length);
         setAiFeedback(aiRes.data as AiFeedback | null);
+        setHasFeedback(aiRes.data != null);
         setNavEvents((navRes.data ?? []) as NavEvent[]);
+        setBoardResets((resetRes.data ?? []).length);
         setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [sessionId]);
+  }, [sessionId, userId]);
 
   if (loading) {
     return (
-      <Card className="mt-3">
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">Loading student detail…</CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="h-6 w-48 bg-muted/50 rounded animate-pulse" />
+        <div className="grid grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-20 bg-muted/30 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
     );
   }
 
+  const decision = getDecision(sub);
+  const decisionBadge = DECISION_BADGE[decision];
+  const tutorialBadge = getTutorialBadge(session);
+  const feedbackBadge = hasFeedback
+    ? { bg: '#4A7C59', text: 'AI feedback used' }
+    : { bg: '#888780', text: 'No feedback' };
+
+  // Duration
+  let durationDisplay = '—';
+  let startedTimeDisplay = '';
+  if (session) {
+    if (session.started_at) {
+      startedTimeDisplay = `started ${new Date(session.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    if (session.completed_at && session.started_at) {
+      const mins = (new Date(session.completed_at).getTime() - new Date(session.started_at).getTime()) / 60000;
+      durationDisplay = `${mins.toFixed(1)}m`;
+    }
+  }
+
+  // Cards placed
+  const totalCards = sub
+    ? sub.descriptive_card_count + sub.diagnostic_card_count + sub.prescriptive_card_count + sub.predictive_card_count
+    : 0;
+  const filledQuadrants = sub
+    ? [sub.descriptive_card_count, sub.diagnostic_card_count, sub.prescriptive_card_count, sub.predictive_card_count].filter(c => c > 0).length
+    : 0;
+
+  // Date display
+  const dateDisplay = session?.started_at
+    ? new Date(session.started_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : '';
+
   return (
-    <Card className="mt-3 border-[#6B4F8A]/30">
-      <CardContent className="pt-4 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-foreground">Student detail</h3>
-          <button onClick={onClose} className="p-1 rounded hover:bg-muted transition-colors">
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
+    <div className="space-y-5">
+      {/* ── ROW 2: Email + scenario date + badges ────── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            {profile?.email ?? 'Unknown'}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            LumbarPro · {dateDisplay}
+          </p>
         </div>
 
-        <Tabs defaultValue="board">
-          <TabsList className="h-8 mb-4">
-            <TabsTrigger value="board" className="text-xs px-3 h-7">Board state</TabsTrigger>
-            <TabsTrigger value="alloc" className="text-xs px-3 h-7">Allocation path</TabsTrigger>
-            <TabsTrigger value="ai" className="text-xs px-3 h-7">AI feedback</TabsTrigger>
-            <TabsTrigger value="nav" className="text-xs px-3 h-7">Navigation</TabsTrigger>
-          </TabsList>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {[decisionBadge, tutorialBadge, feedbackBadge].map((badge, i) => (
+            <span
+              key={i}
+              className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold text-white whitespace-nowrap"
+              style={{ backgroundColor: badge.bg }}
+            >
+              {badge.text}
+            </span>
+          ))}
+        </div>
+      </div>
 
-          <TabsContent value="board"><BoardStateTab sub={sub} /></TabsContent>
-          <TabsContent value="alloc"><AllocationPathTab events={allocEvents} /></TabsContent>
-          <TabsContent value="ai"><AiFeedbackTab data={aiFeedback} /></TabsContent>
-          <TabsContent value="nav"><NavigationTab events={navEvents} /></TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+      {/* ── SUMMARY STAT CARDS ───────────────────────── */}
+      <div className="grid grid-cols-5 gap-3">
+        <StatCard label="Duration" value={durationDisplay} sub={startedTimeDisplay} />
+        <StatCard label="Cards placed" value={String(totalCards)} sub={`across ${filledQuadrants}/4 quadrants`} />
+        <StatCard label="Contextualise pairs" value={String(sub?.contextualise_pairs_count ?? 0)} />
+        <StatCard label="Allocation changes" value={String(allocCount)} />
+        <StatCard label="Board resets" value={String(boardResets)} />
+      </div>
+
+      {/* ── TABS ─────────────────────────────────────── */}
+      <Tabs defaultValue="board">
+        <TabsList className="h-8 mb-4">
+          <TabsTrigger value="board" className="text-xs px-3 h-7">Board state</TabsTrigger>
+          <TabsTrigger value="alloc" className="text-xs px-3 h-7">Allocation path</TabsTrigger>
+          <TabsTrigger value="ai" className="text-xs px-3 h-7">AI feedback</TabsTrigger>
+          <TabsTrigger value="nav" className="text-xs px-3 h-7">Navigation</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="board"><BoardStateTab sub={sub} /></TabsContent>
+        <TabsContent value="alloc"><AllocationPathTab events={allocEvents} /></TabsContent>
+        <TabsContent value="ai"><AiFeedbackTab data={aiFeedback} /></TabsContent>
+        <TabsContent value="nav"><NavigationTab events={navEvents} /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ── Stat Card ──────────────────────────────────── */
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="bg-muted/30 rounded-lg p-3">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-xl font-medium text-foreground mt-1">{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
+    </div>
   );
 }
 
@@ -157,7 +327,6 @@ function BoardStateTab({ sub }: { sub: SubData | null }) {
 function AllocationPathTab({ events }: { events: AllocEvent[] }) {
   const chartData = useMemo(() => {
     if (!events.length) return [];
-    // Build timeline per channel
     const bySeq = new Map<number, Record<string, number>>();
     events.forEach((e) => {
       if (e.sequence_number == null || e.new_value == null) return;
@@ -212,7 +381,6 @@ function AiFeedbackTab({ data }: { data: AiFeedback | null }) {
 
   return (
     <div className="space-y-4">
-      {/* Before */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground mb-2">Before feedback</p>
         <div className="flex gap-3">
@@ -228,21 +396,18 @@ function AiFeedbackTab({ data }: { data: AiFeedback | null }) {
         </div>
       </div>
 
-      {/* Feedback text */}
       {data.ai_feedback_text && (
         <div className="rounded-md p-3 bg-[#6B4F8A]/10 border border-[#6B4F8A]/20">
           <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{data.ai_feedback_text}</p>
         </div>
       )}
 
-      {/* Action */}
       <p className="text-xs text-muted-foreground">
         Student chose to: <span className="font-semibold text-foreground">
           {data.post_feedback_action === 'adjusted' ? 'Adjust' : 'Submit immediately'}
         </span>
       </p>
 
-      {/* After (if adjusted) */}
       {data.post_feedback_action === 'adjusted' && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground mb-2">After feedback</p>
@@ -286,7 +451,7 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
     return `${m}m ${s}s`;
   };
 
-  const formatTime = (iso: string) => {
+  const formatTimeStr = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
@@ -306,7 +471,7 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
           {events.map((e, i) => (
             <tr key={i} className="border-b border-border/30 last:border-0">
               <td className="py-1.5 px-3 font-medium text-foreground capitalize">{e.tab.replace(/_/g, ' ')}</td>
-              <td className="py-1.5 px-3 text-muted-foreground">{formatTime(e.entered_at)}</td>
+              <td className="py-1.5 px-3 text-muted-foreground">{formatTimeStr(e.entered_at)}</td>
               <td className="py-1.5 px-3 text-right text-muted-foreground">{formatDuration(e.time_spent_seconds)}</td>
               <td className="py-1.5 px-3 text-center text-muted-foreground">{e.visit_number ?? '—'}</td>
             </tr>
