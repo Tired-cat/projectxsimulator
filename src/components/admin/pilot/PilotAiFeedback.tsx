@@ -92,11 +92,9 @@ export default function PilotAiFeedback({ classId }: Props) {
     return () => { cancelled = true; };
   }, [classId]);
 
-  const sessionsWithFeedback = useMemo(() => new Set(rows.map((r) => r.session_id)).size, [rows]);
   const adjusted = useMemo(() => rows.filter((r) => r.post_feedback_action === 'adjusted'), [rows]);
   const submitted = useMemo(() => rows.filter((r) => r.post_feedback_action === 'submitted_immediately'), [rows]);
 
-  const pctRequested = completedCount > 0 ? ((sessionsWithFeedback / completedCount) * 100).toFixed(0) : '0';
   const pctAdjusted = rows.length > 0 ? ((adjusted.length / rows.length) * 100).toFixed(0) : '0';
   const pctSubmitted = rows.length > 0 ? ((submitted.length / rows.length) * 100).toFixed(0) : '0';
 
