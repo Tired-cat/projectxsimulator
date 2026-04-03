@@ -163,14 +163,7 @@ export function ReasoningBoard() {
                         style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                       >
                         <span>Drop evidence here</span>
-<<<<<<< HEAD
-                        {BLOCK_EMPTY_HINTS[block.id] && (
-                          <span className="text-muted-foreground/60 text-[9px] font-medium">{BLOCK_EMPTY_HINTS[block.id]}</span>
-                        )}
-                        <span className="text-muted-foreground/50 text-[9px]">Multiple items welcome</span>
-=======
                         <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
->>>>>>> main
                         {block.id === 'predictive' && (
                           <span className="text-muted-foreground/60 text-[9px] text-center mt-0.5">
                             Fill Prescriptive first — predicts what happens after your action
