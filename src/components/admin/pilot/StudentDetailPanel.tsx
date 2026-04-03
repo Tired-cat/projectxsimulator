@@ -227,6 +227,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           parsedCards = raw as BoardCard[];
         }
         setBoardCards(parsedCards);
+        setBoardEvents((boardEventsRes.data ?? []) as BoardEvent[]);
 
         setLoading(false);
       }
