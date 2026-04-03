@@ -13,7 +13,7 @@ function seededRandom(seed: string): number {
   return Math.abs(hash) / 2147483647;
 }
 
-// ── At a Glance: data-referenced, uses labels & values directly ──
+// -- At a Glance: data-referenced, uses labels & values directly --
 
 function formatEvidence(chip: EvidenceChip): string {
   const base = `${chip.label}: ${chip.value}`;
@@ -76,7 +76,7 @@ function generateGlanceSentence(chips: EvidenceChip[], blockId: ReasoningBlockId
   return templates[idx].replace('[items]', phrase);
 }
 
-// ── Full Reasoning Story: value-derived, relationship-focused, no raw data ──
+// -- Full Reasoning Story: value-derived, relationship-focused, no raw data --
 
 function extractNumeric(chip: EvidenceChip): number | null {
   if (chip.deltaValue != null) return chip.deltaValue;
@@ -501,6 +501,45 @@ export function ReasoningNarrative() {
       </div>
 
       {/* Full Reasoning Story */}
+<<<<<<< HEAD
+      <div className="px-3 pb-5 space-y-3">
+        <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground">
+          Full reasoning story
+        </h3>
+        <div className="rounded-xl border border-border/70 bg-card shadow-md px-5 py-6 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] text-muted-foreground">Auto-updates as you add evidence</span>
+            <span className="h-1.5 w-10 rounded-full bg-muted" aria-hidden />
+          </div>
+
+          {storySentences.length === 0 ? (
+            <p className="max-w-[72ch] text-sm leading-relaxed text-muted-foreground italic">
+              Your reasoning story will appear here once you begin adding evidence.
+            </p>
+          ) : (
+            <ol className="space-y-3 max-w-[72ch] text-[15px] leading-7 text-foreground/90 list-decimal list-inside">
+              {storySentences.map((entry, index) => (
+                <li key={`${entry.blockId}-${index}`} className="flex items-start gap-3 pl-1">
+                  <span
+                    className="mt-2 h-2.5 w-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: BLOCK_STYLE[entry.blockId].accent }}
+                    aria-hidden
+                  />
+                  <span className="block">
+                    <span className="font-semibold" style={{ color: BLOCK_STYLE[entry.blockId].accent }}>
+                      {BLOCK_STYLE[entry.blockId].label}:
+                    </span>{' '}
+                    {entry.text}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+
+      {/* Contextual Notes — grouped by quadrant, shown when any note exists */}
+=======
       <div className="px-3 pb-4">
         <div className="relative rounded-2xl border border-[#E7DCC7] bg-[#FBF6EB] shadow-sm px-5 py-4">
           <span
@@ -533,6 +572,7 @@ export function ReasoningNarrative() {
           </div>
         </div>
       </div>
+>>>>>>> main
       {hasAnyAnnotations && (
         <div className="px-3 pb-5">
           <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground mb-3">
