@@ -408,6 +408,18 @@ const BLOCK_STYLE: Record<ReasoningBlockId, { label: string; accent: string; tin
 export function ReasoningNarrative() {
   const { board, writtenDiagnosis, setWrittenDiagnosis } = useReasoningBoard();
 
+  // Contextual Notes: chips with non-empty annotations, grouped by block
+  const annotatedByBlock = useMemo(() => {
+    const result: Partial<Record<ReasoningBlockId, EvidenceChip[]>> = {};
+    for (const blockId of BLOCK_ORDER) {
+      const chips = board[blockId].filter(c => c.annotation && c.annotation.trim().length > 0);
+      if (chips.length > 0) result[blockId] = chips;
+    }
+    return result;
+  }, [board]);
+
+  const hasAnyAnnotations = Object.keys(annotatedByBlock).length > 0;
+
   // At a Glance: data-referenced sentences
   const glanceSentences = useMemo(() => {
     const result: Record<ReasoningBlockId, string> = { descriptive: '', diagnostic: '', predictive: '', prescriptive: '' };
@@ -580,6 +592,41 @@ export function ReasoningNarrative() {
           />
         </div>
       </div>
+
+      {/* Contextual Notes — grouped by quadrant, shown when any note exists */}
+      {hasAnyAnnotations && (
+        <div className="px-3 pb-5">
+          <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground mb-3">
+            CONTEXTUAL NOTES
+          </h3>
+          <div className="space-y-3">
+            {BLOCK_ORDER.map((blockId) => {
+              const chips = annotatedByBlock[blockId];
+              if (!chips || chips.length === 0) return null;
+              const style = BLOCK_STYLE[blockId];
+              return (
+                <div
+                  key={blockId}
+                  className="rounded-xl border border-border/40 border-l-4 p-3"
+                  style={{ borderLeftColor: style.accent, backgroundColor: style.tint }}
+                >
+                  <div className="text-xs font-bold mb-2" style={{ color: style.accent }}>
+                    {style.label}
+                  </div>
+                  <div className="space-y-2">
+                    {chips.map((chip) => (
+                      <div key={chip.id} className="text-[12px]">
+                        <span className="font-medium text-foreground/80">{chip.label}: {chip.value}</span>
+                        <p className="italic text-foreground/70 mt-0.5 leading-snug">"{chip.annotation}"</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
