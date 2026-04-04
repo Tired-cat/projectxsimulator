@@ -404,11 +404,7 @@ export function ReasoningNarrative() {
         priorChannels.add(`${channelOf(chip)}|${metricOf(chip)}`);
       }
 
-      const connector = QUADRANT_CONNECTORS[blockId];
-      const text = connector
-        ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
-        : sentence;
-      sentences.push({ text, blockId });
+      sentences.push({ text: sentence, blockId });
     }
     return sentences;
   }, [board]);
@@ -502,35 +498,36 @@ export function ReasoningNarrative() {
 
       {/* Full Reasoning Story */}
       <div className="px-3 pb-4">
-        <div className="relative rounded-2xl border border-[#E7DCC7] bg-[#FBF6EB] shadow-sm px-5 py-4">
-          <span
-            aria-hidden="true"
-            className="absolute left-3 top-1 text-[62px] leading-none font-serif text-[#C8B79E]/55 pointer-events-none select-none"
-          >
-            "
-          </span>
-          <div className="relative flex items-center gap-2 mb-3">
-            <span className="h-2 w-2 rounded-full bg-[#C4622D]" />
-            <h3 className="text-lg font-bold tracking-wide text-[#3A3025]">MY FULL REASONING STORY</h3>
-          </div>
-          <div className="relative pr-1">
-            {storySentences.length === 0 ? (
-              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#4B4136]/70 italic">
-                Your reasoning story will appear here once you begin adding evidence.
-              </p>
-            ) : (
-              <p className="max-w-[68ch] text-[16px] leading-[1.8] text-[#2E2A24]">
-                {storySentences.map((entry, index) => (
-                  <span
-                    key={`${entry.blockId}-${index}`}
-                    style={{ color: BLOCK_STYLE[entry.blockId].accent }}
-                  >
-                    {entry.text}{' '}
-                  </span>
-                ))}
-              </p>
-            )}
-          </div>
+        <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground mb-3">
+          FULL REASONING STORY
+        </h3>
+        <div className="rounded-2xl border border-[#E7DCC7] bg-[#FBF6EB] shadow-sm px-6 py-5">
+          <p className="text-xs text-muted-foreground italic mb-5">Auto-updates as you add evidence</p>
+          {storySentences.length === 0 ? (
+            <p className="max-w-[68ch] text-[15px] leading-[1.8] text-[#4B4136]/70 italic">
+              Your reasoning story will appear here once you begin adding evidence.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {storySentences.map((entry, index) => {
+                const style = BLOCK_STYLE[entry.blockId];
+                return (
+                  <div key={`${entry.blockId}-${index}`} className="flex gap-3 items-start">
+                    <span
+                      className="mt-[9px] h-2.5 w-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: style.accent }}
+                    />
+                    <p className="max-w-[68ch] text-[15px] leading-[1.85] text-[#2E2A24]">
+                      <span className="font-bold" style={{ color: style.accent }}>
+                        {style.label}:
+                      </span>{' '}
+                      {entry.text.charAt(0).toUpperCase() + entry.text.slice(1)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       {hasAnyAnnotations && (
