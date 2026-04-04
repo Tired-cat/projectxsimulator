@@ -31,7 +31,6 @@ import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { FeedbackPage } from '@/components/simulation/FeedbackPage';
-import { ReflectionScreen } from '@/components/simulation/ReflectionScreen';
 import { buildFullReasoningStory } from '@/components/reasoning/ReasoningNarrative';
 import {
   Accordion,
