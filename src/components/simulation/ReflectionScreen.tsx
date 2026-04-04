@@ -28,7 +28,7 @@ interface Question {
 
 const QUESTIONS: Question[] = [
   { key: 'q1_story_accuracy', text: 'Did the My Full Reasoning Story reflect what you actually meant? If not, where did it miss?', limit: 100 },
-  { key: 'q2_expression_gaps', text: 'Was there anything you intended to reason about that you couldn't express by dragging evidence onto the board?', limit: 100 },
+  { key: 'q2_expression_gaps', text: "Was there anything you intended to reason about that you couldn't express by dragging evidence onto the board?", limit: 100 },
   { key: 'q3_annotation_usefulness', text: 'Did adding your own interpretation notes to the evidence chips help you think more clearly? Why or why not?', limit: 100 },
   { key: 'q4_unexpected_conflicts', text: 'If the simulation showed something different from what you expected — what was the conflict and what do you think caused it?', limit: 100 },
   { key: 'q5_general_feedback', text: 'Any other feedback — what felt natural, what felt confusing, what would you change?', limit: 150 },
