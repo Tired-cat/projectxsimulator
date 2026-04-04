@@ -52,7 +52,13 @@ export default function Enroll() {
 
     const classData = classRows?.[0] ?? null;
 
-    if (lookupErr || !classData) {
+    if (lookupErr) {
+      setError('Connection error. Please check your internet and try again.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (!classData) {
       setError('Class code not found. Check with your professor.');
       setSubmitting(false);
       return;
