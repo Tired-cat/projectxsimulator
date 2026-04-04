@@ -15,7 +15,6 @@ const ProfessorDashboard = lazy(() => import('./pages/ProfessorDashboard'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const Enroll = lazy(() => import('./pages/Enroll'));
 const Unauthorized = lazy(() => import('./pages/Unauthorized'));
-const Reflection = lazy(() => import('./pages/Reflection'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const queryClient = new QueryClient();
@@ -66,16 +65,6 @@ const App = () => (
                 <RoleGuard allowed={['student']}>
                   <Suspense fallback={<RouteLoader fullScreen />}>
                     <Index />
-                  </Suspense>
-                </RoleGuard>
-              }
-            />
-            <Route
-              path="/reflection"
-              element={
-                <RoleGuard allowed={['student']}>
-                  <Suspense fallback={<RouteLoader fullScreen />}>
-                    <Reflection />
                   </Suspense>
                 </RoleGuard>
               }
