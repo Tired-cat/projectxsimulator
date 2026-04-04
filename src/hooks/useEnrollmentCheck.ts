@@ -9,6 +9,9 @@ import { supabase } from '@/integrations/supabase/client';
 export function useEnrollmentCheck(userId: string | undefined, role: string | null) {
   const [enrolled, setEnrolled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkKey, setCheckKey] = useState(0);
+
+  const recheck = () => setCheckKey((k) => k + 1);
 
   useEffect(() => {
     // Non-student roles skip enrollment check entirely
@@ -19,6 +22,7 @@ export function useEnrollmentCheck(userId: string | undefined, role: string | nu
     }
 
     let cancelled = false;
+    setLoading(true);
 
     async function check() {
       const { data, error } = await supabase
@@ -41,7 +45,7 @@ export function useEnrollmentCheck(userId: string | undefined, role: string | nu
 
     check();
     return () => { cancelled = true; };
-  }, [userId, role]);
+  }, [userId, role, checkKey]);
 
-  return { enrolled, loading };
+  return { enrolled, loading, recheck };
 }
