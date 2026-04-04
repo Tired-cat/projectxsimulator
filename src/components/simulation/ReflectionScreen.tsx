@@ -21,17 +21,17 @@ const QUADRANT_LABELS: Record<ReasoningBlockId, string> = {
 };
 
 interface Question {
-  key: 'q1_story_accuracy' | 'q2_expression_gaps' | 'q3_annotation_usefulness' | 'q4_unexpected_conflicts' | 'q5_general_feedback';
+  key: 'q1_reasoning_genuine' | 'q2_framework_clarity' | 'q3_story_vs_thinking' | 'q4_feedback_impact' | 'q5_comparison';
   text: string;
   limit: number;
 }
 
 const QUESTIONS: Question[] = [
-  { key: 'q1_story_accuracy', text: 'Did the My Full Reasoning Story reflect what you actually meant? If not, where did it miss?', limit: 100 },
-  { key: 'q2_expression_gaps', text: "Was there anything you intended to reason about that you couldn't express by dragging evidence onto the board?", limit: 100 },
-  { key: 'q3_annotation_usefulness', text: 'Did adding your own interpretation notes to the evidence chips help you think more clearly? Why or why not?', limit: 100 },
-  { key: 'q4_unexpected_conflicts', text: 'If the simulation showed something different from what you expected — what was the conflict and what do you think caused it?', limit: 100 },
-  { key: 'q5_general_feedback', text: 'Any other feedback — what felt natural, what felt confusing, what would you change?', limit: 150 },
+  { key: 'q1_reasoning_genuine', text: 'Did the My Full Reasoning Story reflect what you actually meant? If not, where did it miss?', limit: 100 },
+  { key: 'q2_framework_clarity', text: "Was there anything you intended to reason about that you couldn't express by dragging evidence onto the board?", limit: 100 },
+  { key: 'q3_story_vs_thinking', text: 'Did adding your own interpretation notes to the evidence chips help you think more clearly? Why or why not?', limit: 100 },
+  { key: 'q4_feedback_impact', text: 'If the simulation showed something different from what you expected — what was the conflict and what do you think caused it?', limit: 100 },
+  { key: 'q5_comparison', text: 'Any other feedback — what felt natural, what felt confusing, what would you change?', limit: 150 },
 ];
 
 const countWords = (text: string): number => {
@@ -132,11 +132,11 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
   const [generatedStory, setGeneratedStory] = useState('');
   const [aiFeedbackText, setAiFeedbackText] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({
-    q1_story_accuracy: '',
-    q2_expression_gaps: '',
-    q3_annotation_usefulness: '',
-    q4_unexpected_conflicts: '',
-    q5_general_feedback: '',
+    q1_reasoning_genuine: '',
+    q2_framework_clarity: '',
+    q3_story_vs_thinking: '',
+    q4_feedback_impact: '',
+    q5_comparison: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
