@@ -44,34 +44,39 @@ export const REASONING_BLOCKS: {
   question: string;
   color: string;
   bgColor: string;
+  icon: string;
 }[] = [
   {
     id: 'descriptive',
     title: 'Descriptive',
     question: 'What happened?',
-    color: 'hsl(var(--primary))',
-    bgColor: 'hsl(var(--primary) / 0.08)',
+    color: '#D4A017',
+    bgColor: 'rgba(212, 160, 23, 0.08)',
+    icon: '👁',
   },
   {
     id: 'diagnostic',
     title: 'Diagnostic',
     question: 'Why did it happen?',
-    color: 'hsl(38 92% 50%)',
-    bgColor: 'hsl(38 92% 50% / 0.08)',
+    color: '#C4622D',
+    bgColor: 'rgba(196, 98, 45, 0.08)',
+    icon: 'ℚ',
   },
   {
     id: 'prescriptive',
     title: 'Prescriptive',
     question: 'What should we do?',
-    color: 'hsl(142 71% 45%)',
-    bgColor: 'hsl(142 71% 45% / 0.08)',
+    color: '#4A7C59',
+    bgColor: 'rgba(74, 124, 89, 0.08)',
+    icon: '✧',
   },
   {
     id: 'predictive',
     title: 'Predictive',
     question: 'What happens after your decision?',
-    color: 'hsl(271 81% 56%)',
-    bgColor: 'hsl(271 81% 56% / 0.08)',
+    color: '#6B4F8A',
+    bgColor: 'rgba(107, 79, 138, 0.08)',
+    icon: '∿',
   },
 ];
 

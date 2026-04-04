@@ -48,7 +48,7 @@ export function ReasoningBoard() {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-foreground">Reasoning Board</h2>
             <p className="text-[10px] text-muted-foreground truncate">
-              Drag evidence into any block to build your reasoning
+              Keep evidence tidy across the four blocks; your narrative updates live below.
             </p>
           </div>
           {totalChips > 0 && (
@@ -81,8 +81,19 @@ export function ReasoningBoard() {
           )}
         </div>
 
+        {/* Reasoning sequence breadcrumb */}
+        <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">1 Observe</span>
+          <span>→</span>
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">2 Diagnose</span>
+          <span>→</span>
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">3 Decide</span>
+          <span>→</span>
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">4 Predict</span>
+        </div>
+
         {totalChips === 0 && (
-          <div className="mt-4 p-3 bg-muted/50 border border-dashed border-border rounded-lg text-center space-y-1">
+          <div className="mt-3 p-3 bg-muted/50 border border-dashed border-border rounded-lg text-center space-y-1">
             <p className="text-xs text-muted-foreground">
               Click <strong>Reason</strong> on <strong>Channel Performance</strong> or <strong>Product Mix</strong>, then drag evidence here.
             </p>
@@ -91,12 +102,13 @@ export function ReasoningBoard() {
             </p>
           </div>
         )}
-
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-4">
-          {/* 4 reasoning blocks */}
+          {/* Section title */}
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground/70">Reasoning Blocks</h3>
+
           <div className="grid grid-cols-2 gap-3 content-start">
             {REASONING_BLOCKS.map((block, blockIndex) => {
               const chips = board[block.id];
@@ -111,7 +123,7 @@ export function ReasoningBoard() {
                       <div
                         ref={setNodeRef}
                         className={cn(
-                          'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[140px]',
+                          'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[160px]',
                           isHovered
                             ? 'border-dashed scale-[1.01] shadow-lg'
                             : 'border-border/60'
@@ -123,49 +135,51 @@ export function ReasoningBoard() {
                       >
                   {/* Block header */}
                   <div
-                    className="flex-shrink-0 px-3 pt-2 pb-1.5 rounded-t-xl border-b border-border/40"
+                    className="flex-shrink-0 px-3 pt-2.5 pb-2 rounded-t-xl border-b border-border/40"
                     style={{ backgroundColor: block.bgColor }}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span
-                          className="flex-shrink-0 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+                          className="flex-shrink-0 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
                           style={{ backgroundColor: block.color }}
                         >
                           {stepNumber}
                         </span>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold" style={{ color: block.color }}>
-                            {block.title}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm" aria-hidden>{block.icon}</span>
+                            <span className="text-xs font-bold" style={{ color: block.color }}>
+                              {block.title}
+                            </span>
                           </div>
                           <div className="text-[10px] text-muted-foreground italic truncate">
                             {block.question}
                           </div>
                         </div>
                       </div>
-                      {chips.length > 0 ? (
+                      {chips.length > 0 && (
                         <div
                           className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: block.color + '20', color: block.color }}
                         >
                           {chips.length}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
 
                   {/* Drop zone / chip list */}
-                  <div className="flex-1 p-2 space-y-1.5">
+                  <div className="flex-1 p-2.5 space-y-2">
                     {chips.length === 0 ? (
                       <div
                         className={cn(
-                          'h-full min-h-[60px] flex flex-col items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground transition-colors gap-1 px-2',
+                          'h-full min-h-[70px] flex flex-col items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground transition-colors gap-1 px-2',
                           isHovered ? 'border-current' : 'border-border/40'
                         )}
                         style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                       >
                         <span>Drop evidence here</span>
-                        <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
                         {block.id === 'predictive' && (
                           <span className="text-muted-foreground/50 italic text-[9px] text-center mt-0.5">
                             Fill Prescriptive first — predicts what happens after your action
@@ -184,8 +198,8 @@ export function ReasoningBoard() {
                             onRemove={() => removeChip(block.id, chip.id)}
                           />
                         ))}
-                        <div className="text-[9px] text-muted-foreground/40 italic text-center pt-0.5">
-                          You can add multiple pieces of evidence here
+                        <div className="text-[9px] text-muted-foreground/40 italic text-center pt-1">
+                          Add more to strengthen this block
                         </div>
                       </>
                     )}
@@ -269,6 +283,9 @@ function ChipCard({
   });
 
 
+  // Generate default description line
+  const defaultText = `${chip.label.split(':')[0]} ${chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease' ? 'changed by' : 'is'} ${chip.value}`;
+
   return (
     <div
       ref={setNodeRef}
@@ -279,24 +296,32 @@ function ChipCard({
         isDragging && 'opacity-30'
       )}
     >
-      <div className="flex items-start gap-2 p-2.5">
+      <div className="flex items-start gap-2 p-3">
         {/* Drag handle */}
         <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground mt-0.5 flex-shrink-0" />
 
         {/* Chip content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {isDelta && (
               <span className={`text-xs ${isIncrease ? 'text-emerald-600' : 'text-destructive'}`}>
                 {isIncrease ? '▲' : '▼'}
               </span>
             )}
-            <span className="text-xs font-semibold text-foreground truncate">{chip.label}:</span>
-            <span className="text-xs font-bold flex-shrink-0" style={{ color: blockColor }}>
+            <span className="text-xs font-semibold text-foreground">{chip.label}:</span>
+            <span className="text-xs font-bold" style={{ color: blockColor }}>
               {chip.value}
             </span>
           </div>
           <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{chip.context}</div>
+
+          {/* Default description line */}
+          {!chip.annotation && !showAnnotation && (
+            <div className="mt-1.5 px-2 py-1 rounded bg-muted/50 border border-border/40 text-[10px] text-muted-foreground leading-snug">
+              {defaultText}
+            </div>
+          )}
+
           {/* Smart insight */}
           {insight && (
             <div className={`mt-1.5 px-2 py-1 rounded text-[10px] font-medium ${
@@ -309,20 +334,21 @@ function ChipCard({
           )}
         </div>
 
-        {/* Annotate button */}
+        {/* Annotate button — styled as "Add note" */}
         {canAnnotate && (
           <button
             onClick={(e) => { e.stopPropagation(); setShowAnnotation(p => !p); }}
             onPointerDown={(e) => e.stopPropagation()}
             title="Add my interpretation"
             className={cn(
-              'flex-shrink-0 p-0.5 rounded transition-colors',
+              'flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-medium transition-colors',
               chip.annotation
-                ? 'text-primary'
-                : 'text-muted-foreground/40 hover:text-primary'
+                ? 'border-primary/30 text-primary bg-primary/5'
+                : 'border-border text-muted-foreground hover:text-primary hover:border-primary/30'
             )}
           >
             <Pencil className="h-3 w-3" />
+            {chip.annotation ? '' : 'Add note'}
           </button>
         )}
 
@@ -336,10 +362,10 @@ function ChipCard({
         </button>
       </div>
 
-      {/* Annotation popover */}
+      {/* Annotation editor */}
       {showAnnotation && canAnnotate && (
         <div
-          className="px-2.5 pb-2 pt-1"
+          className="px-3 pb-2.5 pt-1"
           onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
@@ -378,7 +404,7 @@ function ChipCard({
       {/* Annotation preview */}
       {chip.annotation && !showAnnotation && (
         <div
-          className="mx-2.5 mb-1.5 px-2 py-1 rounded bg-primary/5 border border-primary/20 text-[10px] text-foreground/70 italic leading-snug cursor-pointer hover:bg-primary/10 transition-colors"
+          className="mx-3 mb-2 px-2 py-1.5 rounded bg-primary/5 border border-primary/20 text-[10px] text-foreground/70 italic leading-snug cursor-pointer hover:bg-primary/10 transition-colors"
           onClick={(e) => { e.stopPropagation(); setShowAnnotation(true); }}
           onPointerDown={(e) => e.stopPropagation()}
           title="Click to edit"
@@ -386,7 +412,6 @@ function ChipCard({
           "{chip.annotation.length > 60 ? chip.annotation.slice(0, 60) + '…' : chip.annotation}"
         </div>
       )}
-
     </div>
   );
 }
