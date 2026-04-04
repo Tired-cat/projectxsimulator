@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap, BarChart3, Layout, MessageSquare } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
@@ -161,6 +161,48 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
           </div>
         </CardContent>
       </Card>
+
+      {/* Three Tools Section */}
+      <div className="space-y-5">
+        <div className="text-center space-y-1">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/70">Three Tools, One Reasoning Exercise</h3>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-4">
+          <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
+            <CardContent className="p-5 text-center space-y-3">
+              <div className="mx-auto w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-primary" />
+              </div>
+              <h4 className="font-bold text-foreground text-[15px]">Explore the data</h4>
+              <p className="text-[13px] leading-relaxed text-muted-foreground">
+                Drag the budget sliders and watch how spend, clicks, and revenue shift across channels.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
+            <CardContent className="p-5 text-center space-y-3">
+              <div className="mx-auto w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Layout className="w-5 h-5 text-primary" />
+              </div>
+              <h4 className="font-bold text-foreground text-[15px]">Place evidence on the board</h4>
+              <p className="text-[13px] leading-relaxed text-muted-foreground">
+                Drag data from the charts onto the four quadrants — what happened, why, what to do, and what will happen next.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
+            <CardContent className="p-5 text-center space-y-3">
+              <div className="mx-auto w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-primary" />
+              </div>
+              <h4 className="font-bold text-foreground text-[15px]">Get feedback & refine</h4>
+              <p className="text-[13px] leading-relaxed text-muted-foreground">
+                Request AI feedback on your reasoning, then adjust your board and budget before submitting.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* The Scenario */}
       <Card className="border-2 border-amber-500/30 bg-amber-500/5">
