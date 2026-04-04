@@ -154,7 +154,7 @@ function SimulationContent() {
     eventType: string,
     evidenceType: string | null,
     evidenceId: string | null,
-    quadrant: string,
+    quadrant: string | null,
     pairedWith?: string | null,
   ) => {
     if (!sessionId || !user) return;
@@ -236,13 +236,20 @@ function SimulationContent() {
       logBoardEvent(cleared ? 'annotation_cleared' : 'annotation_saved', null, evidenceId, quadrant);
     };
 
+    const handleReasonMode = (e: Event) => {
+      const { activated } = (e as CustomEvent).detail;
+      logBoardEvent(activated ? 'reason_mode_activated' : 'reason_mode_deactivated', null, null, null as any);
+    };
+
     window.addEventListener('board:remove-chip', handleRemove);
     window.addEventListener('board:clear', handleClear);
     window.addEventListener('board:annotation', handleAnnotation);
+    window.addEventListener('board:reason-mode', handleReasonMode);
     return () => {
       window.removeEventListener('board:remove-chip', handleRemove);
       window.removeEventListener('board:clear', handleClear);
       window.removeEventListener('board:annotation', handleAnnotation);
+      window.removeEventListener('board:reason-mode', handleReasonMode);
     };
   }, [sessionId, user, logBoardEvent]);
 

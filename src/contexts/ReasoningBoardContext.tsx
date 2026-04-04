@@ -35,7 +35,13 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   const [writtenDiagnosis, setWrittenDiagnosis] = useState('');
 
   const toggleReasonMode = useCallback(() => {
-    setReasonMode(prev => !prev);
+    setReasonMode(prev => {
+      const next = !prev;
+      window.dispatchEvent(new CustomEvent('board:reason-mode', {
+        detail: { activated: next },
+      }));
+      return next;
+    });
   }, []);
 
   const loadBoard = useCallback((state: ReasoningBoardState, diagnosis: string) => {
