@@ -139,6 +139,7 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
     q5_comparison: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
