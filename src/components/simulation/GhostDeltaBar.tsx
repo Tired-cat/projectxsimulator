@@ -54,6 +54,8 @@ export function GhostDeltaBar({
     : 0;
 
   const metricLabel = viewMode === 'budget' ? 'Budget' : viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
+  // Canonical metric key for evidence_id: use 'views' instead of 'clicks' to match analytics convention
+  const metricKey = viewMode === 'clicks' ? 'views' : viewMode;
 
   const mainPayload = useMemo<ExternalEvidencePayload>(() => {
     const displayValue = formatValue ? formatValue(currentValue) : currentValue.toLocaleString();
@@ -61,22 +63,22 @@ export function GhostDeltaBar({
       label: `${channel.name} ${metricLabel}`,
       value: displayValue,
       context: `${metricLabel} • Channel Performance`,
-      sourceId: `${channelId}_${viewMode}`,
+      sourceId: `${channelId}_${metricKey}`,
       chipKind: 'metric',
       channelName: channel.name,
       metricName: metricLabel.toLowerCase(),
     };
-  }, [channel.name, channelId, currentValue, formatValue, metricLabel, viewMode]);
+  }, [channel.name, channelId, currentValue, formatValue, metricLabel, metricKey]);
 
   const baselinePayload = useMemo<ExternalEvidencePayload>(() => ({
     label: `${channel.name} Baseline ${metricLabel}`,
     value: baselineValue?.toLocaleString() ?? '0',
     context: `Baseline ${metricLabel} • Channel Performance`,
-    sourceId: `${channelId}_baseline_${viewMode}`,
+    sourceId: `${channelId}_baseline_${metricKey}`,
     chipKind: 'baseline',
     channelName: channel.name,
     metricName: metricLabel.toLowerCase(),
-  }), [channel.name, channelId, baselineValue, metricLabel, viewMode]);
+  }), [channel.name, channelId, baselineValue, metricLabel, metricKey]);
 
   const deltaPayload = useMemo<ExternalEvidencePayload>(() => {
     const isInc = delta > 0;
@@ -84,13 +86,13 @@ export function GhostDeltaBar({
       label: `${channel.name} ${metricLabel}`,
       value: `${isInc ? '+' : ''}${delta.toLocaleString()}`,
       context: `${isInc ? 'Increased' : 'Decreased'} ${metricLabel} • Channel Performance`,
-      sourceId: `${channelId}_delta_${viewMode}`,
+      sourceId: `${channelId}_delta_${metricKey}`,
       chipKind: isInc ? 'delta-increase' : 'delta-decrease',
       channelName: channel.name,
       metricName: metricLabel.toLowerCase(),
       deltaValue: delta,
     };
-  }, [channel.name, channelId, delta, metricLabel, viewMode]);
+  }, [channel.name, channelId, delta, metricLabel, metricKey]);
 
   // Budget tab: only allow evidence drag in reason mode (otherwise column handles spend-adjustment drag).
   // All other tabs (views/revenue/profit): always draggable — no spend adjustment to conflict with.

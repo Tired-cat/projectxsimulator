@@ -65,7 +65,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
 
   const segments = [
     { 
-      id: 'bottle', 
+      id: 'water_bottle', 
       label: PRODUCTS.BOTTLE.name, 
       revenue: productData.bottleRevenue,
       units: productData.bottleSales,
@@ -79,7 +79,7 @@ export function ProductMixChart({ channelMetrics }: ProductMixChartProps) {
       color: 'hsl(142, 71%, 45%)' // Green
     },
     { 
-      id: 'chair', 
+      id: 'pro_chair', 
       label: PRODUCTS.CHAIR.name, 
       revenue: productData.chairRevenue,
       units: productData.chairSales,
