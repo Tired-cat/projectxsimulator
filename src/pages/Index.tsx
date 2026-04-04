@@ -57,6 +57,7 @@ function SimulationContent() {
   const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(null);
   const [usedAi, setUsedAi] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showReflection, setShowReflection] = useState(false);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [feedbackEventId, setFeedbackEventId] = useState<string | null>(null);
   const [showFeedbackConfirm, setShowFeedbackConfirm] = useState(false);
