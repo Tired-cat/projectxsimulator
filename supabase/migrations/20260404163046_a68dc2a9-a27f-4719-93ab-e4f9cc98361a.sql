@@ -1,0 +1,5 @@
+ALTER TABLE public.post_simulation_reflections RENAME COLUMN q1_story_accuracy TO q1_reasoning_genuine;
+ALTER TABLE public.post_simulation_reflections RENAME COLUMN q2_expression_gaps TO q2_framework_clarity;
+ALTER TABLE public.post_simulation_reflections RENAME COLUMN q3_annotation_usefulness TO q3_story_vs_thinking;
+ALTER TABLE public.post_simulation_reflections RENAME COLUMN q4_unexpected_conflicts TO q4_feedback_impact;
+ALTER TABLE public.post_simulation_reflections RENAME COLUMN q5_general_feedback TO q5_comparison;

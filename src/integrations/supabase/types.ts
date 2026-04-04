@@ -319,33 +319,33 @@ export type Database = {
       post_simulation_reflections: {
         Row: {
           id: string
-          q1_story_accuracy: string | null
-          q2_expression_gaps: string | null
-          q3_annotation_usefulness: string | null
-          q4_unexpected_conflicts: string | null
-          q5_general_feedback: string | null
+          q1_reasoning_genuine: string | null
+          q2_framework_clarity: string | null
+          q3_story_vs_thinking: string | null
+          q4_feedback_impact: string | null
+          q5_comparison: string | null
           session_id: string
           submitted_at: string | null
           user_id: string
         }
         Insert: {
           id?: string
-          q1_story_accuracy?: string | null
-          q2_expression_gaps?: string | null
-          q3_annotation_usefulness?: string | null
-          q4_unexpected_conflicts?: string | null
-          q5_general_feedback?: string | null
+          q1_reasoning_genuine?: string | null
+          q2_framework_clarity?: string | null
+          q3_story_vs_thinking?: string | null
+          q4_feedback_impact?: string | null
+          q5_comparison?: string | null
           session_id: string
           submitted_at?: string | null
           user_id: string
         }
         Update: {
           id?: string
-          q1_story_accuracy?: string | null
-          q2_expression_gaps?: string | null
-          q3_annotation_usefulness?: string | null
-          q4_unexpected_conflicts?: string | null
-          q5_general_feedback?: string | null
+          q1_reasoning_genuine?: string | null
+          q2_framework_clarity?: string | null
+          q3_story_vs_thinking?: string | null
+          q4_feedback_impact?: string | null
+          q5_comparison?: string | null
           session_id?: string
           submitted_at?: string | null
           user_id?: string
