@@ -137,6 +137,7 @@ const DETAIL_TABS = [
   { id: 'ai', label: 'AI feedback' },
   { id: 'navigation', label: 'Navigation' },
   { id: 'sequence', label: 'Board sequence' },
+  { id: 'reflection', label: 'Reflection' },
 ] as const;
 
 type DetailTab = typeof DETAIL_TABS[number]['id'];
