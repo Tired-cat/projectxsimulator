@@ -374,8 +374,8 @@ function SimulationContent() {
       }
 
       await submit();
-      setSubmitted(true);
-      toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
+      setShowFeedback(false);
+      setShowReflection(true);
     } catch (err) {
       console.error('Submit error:', err);
       toast({ title: 'Submit failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
