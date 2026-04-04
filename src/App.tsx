@@ -61,6 +61,16 @@ const App = () => (
               }
             />
             <Route
+              path="/reflection"
+              element={
+                <RoleGuard allowed={['student']}>
+                  <Suspense fallback={<RouteLoader fullScreen />}>
+                    <Reflection />
+                  </Suspense>
+                </RoleGuard>
+              }
+            />
+            <Route
               path="/"
               element={
                 <RoleGuard allowed={['student']}>
