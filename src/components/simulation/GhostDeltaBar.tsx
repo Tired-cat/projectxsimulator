@@ -74,11 +74,11 @@ export function GhostDeltaBar({
     label: `${channel.name} Baseline ${metricLabel}`,
     value: baselineValue?.toLocaleString() ?? '0',
     context: `Baseline ${metricLabel} • Channel Performance`,
-    sourceId: `${channelId}_baseline_${viewMode}`,
+    sourceId: `${channelId}_baseline_${metricKey}`,
     chipKind: 'baseline',
     channelName: channel.name,
     metricName: metricLabel.toLowerCase(),
-  }), [channel.name, channelId, baselineValue, metricLabel, viewMode]);
+  }), [channel.name, channelId, baselineValue, metricLabel, metricKey]);
 
   const deltaPayload = useMemo<ExternalEvidencePayload>(() => {
     const isInc = delta > 0;
