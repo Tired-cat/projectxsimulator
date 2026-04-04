@@ -1179,3 +1179,74 @@ function BoardSequenceTab({ events }: { events: BoardEvent[] }) {
     </div>
   );
 }
+
+/* ── Tab 6: Reflection ──────────────────────────── */
+const REFLECTION_QUESTIONS = [
+  { key: 'q1_reasoning_genuine', label: 'Before you placed any evidence on the board, did you already know which quadrant it belonged in — or did you figure it out by trying things and adjusting?' },
+  { key: 'q2_framework_clarity', label: 'In your own words, what is the difference between the Diagnostic step and the Prescriptive step?' },
+  { key: 'q3_story_vs_thinking', label: 'Compare what you reasoned through before starting with what appeared in your Reasoning Story.' },
+  { key: 'q4_feedback_impact', label: 'After seeing the AI feedback, did you change anything — and if yes, what made you change it?' },
+  { key: 'q5_comparison', label: 'What did Project X do differently from your existing simulation — and did that feel useful or unnecessary?' },
+] as const;
+
+interface ReflectionRow {
+  q1_reasoning_genuine: string | null;
+  q2_framework_clarity: string | null;
+  q3_story_vs_thinking: string | null;
+  q4_feedback_impact: string | null;
+  q5_comparison: string | null;
+  submitted_at: string | null;
+}
+
+function ReflectionTab({ sessionId }: { sessionId: string }) {
+  const [data, setData] = useState<ReflectionRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data: row } = await supabase
+        .from('post_simulation_reflections')
+        .select('q1_reasoning_genuine, q2_framework_clarity, q3_story_vs_thinking, q4_feedback_impact, q5_comparison, submitted_at')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+      setData(row as ReflectionRow | null);
+      setNotFound(!row);
+      setLoading(false);
+    })();
+  }, [sessionId]);
+
+  if (loading) {
+    return <div className="h-20 bg-muted/30 rounded-lg animate-pulse" />;
+  }
+
+  if (notFound || !data) {
+    return (
+      <p className="text-center text-sm text-muted-foreground py-10">
+        This student has not completed the reflection yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {REFLECTION_QUESTIONS.map(q => {
+        const answer = data[q.key as keyof ReflectionRow] as string | null;
+        return (
+          <div key={q.key}>
+            <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">{q.label}</p>
+            <div className="rounded-md bg-muted/40 border border-border py-2.5 px-3" style={{ lineHeight: '1.6' }}>
+              <p className="text-[13px]">{answer || <span className="italic text-muted-foreground">No answer</span>}</p>
+            </div>
+          </div>
+        );
+      })}
+      {data.submitted_at && (
+        <p className="text-[10px] text-muted-foreground">
+          Reflection submitted {new Date(data.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} at {new Date(data.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </p>
+      )}
+    </div>
+  );
+}
