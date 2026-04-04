@@ -54,6 +54,8 @@ export function GhostDeltaBar({
     : 0;
 
   const metricLabel = viewMode === 'budget' ? 'Budget' : viewMode === 'clicks' ? 'Views' : viewMode === 'revenue' ? 'Revenue' : viewMode === 'profit' ? 'Profit' : 'Views';
+  // Canonical metric key for evidence_id: use 'views' instead of 'clicks' to match analytics convention
+  const metricKey = viewMode === 'clicks' ? 'views' : viewMode;
 
   const mainPayload = useMemo<ExternalEvidencePayload>(() => {
     const displayValue = formatValue ? formatValue(currentValue) : currentValue.toLocaleString();
@@ -61,7 +63,7 @@ export function GhostDeltaBar({
       label: `${channel.name} ${metricLabel}`,
       value: displayValue,
       context: `${metricLabel} • Channel Performance`,
-      sourceId: `${channelId}_${viewMode}`,
+      sourceId: `${channelId}_${metricKey}`,
       chipKind: 'metric',
       channelName: channel.name,
       metricName: metricLabel.toLowerCase(),
