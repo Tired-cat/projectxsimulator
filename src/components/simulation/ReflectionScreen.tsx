@@ -310,9 +310,12 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
                 onClick={handleSubmit}
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Submit reflection
+                {submitting ? 'Saving...' : 'Submit reflection'}
               </Button>
-              {!allValid && (
+              {submitError && (
+                <p className="text-[11px] text-destructive text-center">{submitError}</p>
+              )}
+              {!allValid && !submitError && (
                 <p className="text-[11px] text-muted-foreground text-center">
                   Please answer all questions (at least a sentence each)
                 </p>
