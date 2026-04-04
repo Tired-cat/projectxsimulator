@@ -27,11 +27,11 @@ interface Question {
 }
 
 const QUESTIONS: Question[] = [
-  { key: 'q1_reasoning_genuine', text: 'Did the My Full Reasoning Story reflect what you actually meant? If not, where did it miss?', limit: 100 },
-  { key: 'q2_framework_clarity', text: "Was there anything you intended to reason about that you couldn't express by dragging evidence onto the board?", limit: 100 },
-  { key: 'q3_story_vs_thinking', text: 'Did adding your own interpretation notes to the evidence chips help you think more clearly? Why or why not?', limit: 100 },
-  { key: 'q4_feedback_impact', text: 'If the simulation showed something different from what you expected — what was the conflict and what do you think caused it?', limit: 100 },
-  { key: 'q5_comparison', text: 'Any other feedback — what felt natural, what felt confusing, what would you change?', limit: 150 },
+  { key: 'q1_reasoning_genuine', text: 'Before you placed any evidence on the board, did you already know which quadrant it belonged in — or did you figure it out by trying things and adjusting?', limit: 100 },
+  { key: 'q2_framework_clarity', text: "In your own words, what is the difference between the Diagnostic step and the Prescriptive step? Did that difference feel clear while you were working, or did it only make sense afterwards?", limit: 100 },
+  { key: 'q3_story_vs_thinking', text: 'Compare what you reasoned through before starting with what appeared in your Reasoning Story. Where did they match, and where did they differ?', limit: 100 },
+  { key: 'q4_feedback_impact', text: "After seeing the AI feedback, did you change anything — and if yes, what made you change it? If you didn't change anything, why not?", limit: 100 },
+  { key: 'q5_comparison', text: "You've done a marketing simulation before as part of this course. What did Project X do differently — and did that difference feel useful or unnecessary?", limit: 150 },
 ];
 
 const countWords = (text: string): number => {
