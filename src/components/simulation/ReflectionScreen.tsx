@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Send } from 'lucide-react';
+import { buildFullReasoningStory } from '@/components/reasoning/ReasoningNarrative';
 import type { ReasoningBoardState, ReasoningBlockId, EvidenceChip } from '@/types/evidenceChip';
 
 const QUADRANT_COLORS: Record<ReasoningBlockId, string> = {
@@ -43,6 +44,7 @@ interface ReflectionScreenProps {
   onComplete: () => void;
 }
 
+/* ── Read-only chip ── */
 function ReadOnlyChip({ chip }: { chip: EvidenceChip }) {
   return (
     <div className="rounded px-2 py-1.5 text-xs bg-card border border-border">
@@ -55,10 +57,11 @@ function ReadOnlyChip({ chip }: { chip: EvidenceChip }) {
   );
 }
 
+/* ── Read-only quadrant ── */
 function ReadOnlyQuadrant({ blockId, chips }: { blockId: ReasoningBlockId; chips: EvidenceChip[] }) {
   const color = QUADRANT_COLORS[blockId];
   return (
-    <div className="rounded-lg border p-3 min-h-[100px]" style={{ borderColor: color + '60' }}>
+    <div className="rounded-lg border p-3 min-h-[80px]" style={{ borderColor: color + '60' }}>
       <h4 className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color }}>
         {QUADRANT_LABELS[blockId]}
       </h4>
@@ -75,9 +78,48 @@ function ReadOnlyQuadrant({ blockId, chips }: { blockId: ReasoningBlockId; chips
   );
 }
 
+/* ── AI Feedback section ── */
+function AiFeedbackSection({ feedbackText }: { feedbackText: string }) {
+  // Try to parse JSON structured feedback
+  let sections: { label: string; content: string }[] = [];
+  try {
+    const parsed = JSON.parse(feedbackText);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const keys = ['Budget', 'Reasoning', 'Diagnosis', 'Overall'];
+      for (const key of keys) {
+        const val = parsed[key] || parsed[key.toLowerCase()];
+        if (val && typeof val === 'string' && val.trim()) {
+          sections.push({ label: key, content: val.trim() });
+        }
+      }
+    }
+  } catch {
+    // Not JSON — treat as plain text
+    if (feedbackText.trim()) {
+      sections = [{ label: 'Feedback', content: feedbackText.trim() }];
+    }
+  }
+
+  if (sections.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {sections.map(s => (
+        <div key={s.label}>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{s.label}</p>
+          <p className="text-sm mt-0.5 whitespace-pre-wrap">{s.content}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Main component ── */
 export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionScreenProps) {
   const [board, setBoard] = useState<ReasoningBoardState>({ descriptive: [], diagnostic: [], prescriptive: [], predictive: [] });
   const [writtenDiagnosis, setWrittenDiagnosis] = useState('');
+  const [generatedStory, setGeneratedStory] = useState('');
+  const [aiFeedbackText, setAiFeedbackText] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({
     q1_story_accuracy: '',
     q2_expression_gaps: '',
@@ -89,27 +131,47 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from('reasoning_board_state')
-      .select('cards, written_diagnosis')
-      .eq('session_id', sessionId)
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const cards = data.cards as any;
-          if (cards && typeof cards === 'object' && !Array.isArray(cards)) {
-            setBoard({
-              descriptive: cards.descriptive ?? [],
-              diagnostic: cards.diagnostic ?? [],
-              prescriptive: cards.prescriptive ?? [],
-              predictive: cards.predictive ?? [],
-            });
-          }
-          setWrittenDiagnosis(data.written_diagnosis ?? '');
+    const fetchData = async () => {
+      // Fetch board state + AI feedback in parallel
+      const [boardRes, feedbackRes] = await Promise.all([
+        supabase
+          .from('reasoning_board_state')
+          .select('cards, written_diagnosis')
+          .eq('session_id', sessionId)
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('ai_feedback_events')
+          .select('ai_feedback_text')
+          .eq('session_id', sessionId)
+          .eq('user_id', userId)
+          .order('requested_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (boardRes.data) {
+        const cards = boardRes.data.cards as any;
+        if (cards && typeof cards === 'object' && !Array.isArray(cards)) {
+          const boardState: ReasoningBoardState = {
+            descriptive: cards.descriptive ?? [],
+            diagnostic: cards.diagnostic ?? [],
+            prescriptive: cards.prescriptive ?? [],
+            predictive: cards.predictive ?? [],
+          };
+          setBoard(boardState);
+          setGeneratedStory(buildFullReasoningStory(boardState));
         }
-        setLoaded(true);
-      });
+        setWrittenDiagnosis(boardRes.data.written_diagnosis ?? '');
+      }
+
+      if (feedbackRes.data?.ai_feedback_text) {
+        setAiFeedbackText(feedbackRes.data.ai_feedback_text as string);
+      }
+
+      setLoaded(true);
+    };
+    fetchData();
   }, [sessionId, userId]);
 
   const updateAnswer = useCallback((key: string, value: string) => {
@@ -145,25 +207,50 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-y-auto">
       <div className="max-w-[1100px] mx-auto p-6">
         <div className="flex flex-col md:flex-row gap-8">
-          {/* LEFT — Read-only board (sticky on desktop) */}
-          <div className="w-full md:w-[45%] md:self-start md:sticky md:top-0 md:pt-0">
-            <p className="text-[12px] text-muted-foreground uppercase tracking-wider font-medium mb-4">
+
+          {/* LEFT — Read-only board + narrative + AI feedback */}
+          <div className="w-full md:w-[45%] md:self-start md:sticky md:top-6 space-y-5">
+            <p className="text-[12px] text-muted-foreground uppercase tracking-wider font-medium">
               What you built
             </p>
+
+            {/* 2×2 quadrant grid */}
             <div className="grid grid-cols-2 gap-3">
               {(['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as ReasoningBlockId[]).map(id => (
                 <ReadOnlyQuadrant key={id} blockId={id} chips={board[id]} />
               ))}
             </div>
+
+            {/* Written diagnosis */}
             {writtenDiagnosis && (
-              <div className="mt-5 rounded-lg bg-muted/40 border border-border p-4">
+              <div className="rounded-lg bg-muted/40 border border-border p-4">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
                   Your written diagnosis
                 </p>
                 <p className="text-sm whitespace-pre-wrap">{writtenDiagnosis}</p>
+              </div>
+            )}
+
+            {/* Generated narrative */}
+            {generatedStory && (
+              <div className="rounded-lg bg-muted/40 border border-border p-4">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
+                  My Full Reasoning Story
+                </p>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{generatedStory}</p>
+              </div>
+            )}
+
+            {/* AI feedback */}
+            {aiFeedbackText && (
+              <div className="rounded-lg bg-muted/40 border border-border p-4">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
+                  AI Feedback you received
+                </p>
+                <AiFeedbackSection feedbackText={aiFeedbackText} />
               </div>
             )}
           </div>
@@ -197,7 +284,7 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
               );
             })}
 
-            <div className="space-y-2">
+            <div className="space-y-2 pb-8">
               <Button
                 className="w-full gap-2"
                 disabled={!allValid || submitting}
