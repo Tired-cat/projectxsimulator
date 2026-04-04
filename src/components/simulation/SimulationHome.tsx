@@ -136,6 +136,32 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
         </p>
       </div>
 
+      {/* Your Objective */}
+      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-accent/5 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+        <CardContent className="p-6 relative">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary/15 rounded-xl ring-1 ring-primary/20">
+              <Target className="w-6 h-6 text-primary" />
+            </div>
+            <div className="flex-1 space-y-4">
+              <h3 className="font-bold text-lg text-foreground">Your Objective</h3>
+              <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
+                Something in this budget doesn't add up. Dig into the data, find what's actually happening, and <strong className="text-foreground">show your evidence</strong>.
+              </p>
+              <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
+                Place your evidence on the <strong className="text-primary">Reasoning Board</strong>, add your interpretation to each piece, and build your argument across all four steps. Get <strong className="text-primary">&nbsp;feedback</strong> when you're ready — then use it . Analyze the clues and adjust your thinking.
+              </p>
+              <div className="p-3.5 bg-primary/[0.07] rounded-lg border border-primary/15">
+                <p className="text-[13px] leading-relaxed text-foreground/90 italic">
+                  The strongest cases aren't the ones with the highest revenue. They're the ones with the <strong className="text-primary font-semibold not-italic">clearest reasoning</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* The Scenario */}
       <Card className="border-2 border-amber-500/30 bg-amber-500/5">
         <CardContent className="p-6">
@@ -161,32 +187,6 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
                   <div className="text-2xl font-bold text-yellow-600">$500</div>
                   <div className="text-xs text-muted-foreground">Only 2.5% of budget</div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Your Objective */}
-      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-accent/5 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-        <CardContent className="p-6 relative">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-primary/15 rounded-xl ring-1 ring-primary/20">
-              <Target className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1 space-y-4">
-              <h3 className="font-bold text-lg text-foreground">Your Objective</h3>
-              <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
-                Something in this budget doesn't add up. Dig into the data, find what's actually happening, and <strong className="text-foreground">show your evidence</strong>.
-              </p>
-              <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
-                Place your evidence on the <strong className="text-primary">Reasoning Board</strong>, add your interpretation to each piece, and build your argument across all four steps. Get <strong className="text-primary">&nbsp;feedback</strong> when you're ready — then use it . Analyze the clues and adjust your thinking.
-              </p>
-              <div className="p-3.5 bg-primary/[0.07] rounded-lg border border-primary/15">
-                <p className="text-[13px] leading-relaxed text-foreground/90 italic">
-                  The strongest cases aren't the ones with the highest revenue. They're the ones with the <strong className="text-primary font-semibold not-italic">clearest reasoning</strong>.
-                </p>
               </div>
             </div>
           </div>
