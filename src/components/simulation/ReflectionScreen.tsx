@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Send } from 'lucide-react';
 import type { ReasoningBoardState, ReasoningBlockId, EvidenceChip } from '@/types/evidenceChip';
@@ -34,9 +33,9 @@ const QUESTIONS: Question[] = [
   { key: 'q5_general_feedback', text: 'Any other feedback — what felt natural, what felt confusing, what would you change?', limit: 150 },
 ];
 
-function countWords(text: string): number {
-  return text.split(/\s+/).filter(w => w.length > 0).length;
-}
+const countWords = (text: string): number => {
+  return text.trim().split(/\s+/).filter(word => word.length >= 2).length;
+};
 
 interface ReflectionScreenProps {
   sessionId: string;
@@ -89,7 +88,6 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
   const [submitting, setSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Load board state
   useEffect(() => {
     supabase
       .from('reasoning_board_state')
@@ -120,7 +118,7 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
 
   const allValid = QUESTIONS.every(q => {
     const wc = countWords(answers[q.key]);
-    return wc >= 10 && wc <= q.limit;
+    return wc >= 3 && wc <= q.limit;
   });
 
   const handleSubmit = useCallback(async () => {
@@ -140,76 +138,83 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
 
   if (!loaded) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row bg-background overflow-hidden">
-      {/* LEFT — Read-only board */}
-      <ScrollArea className="lg:w-1/2 w-full lg:h-full h-auto lg:border-r border-b border-border p-6">
-        <div className="max-w-lg mx-auto">
-          <p className="text-[12px] text-muted-foreground uppercase tracking-wider font-medium mb-4">
-            What you built
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {(['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as ReasoningBlockId[]).map(id => (
-              <ReadOnlyQuadrant key={id} blockId={id} chips={board[id]} />
-            ))}
-          </div>
-          {writtenDiagnosis && (
-            <div className="mt-5 rounded-lg bg-muted/40 border border-border p-4">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
-                Your written diagnosis
-              </p>
-              <p className="text-sm whitespace-pre-wrap">{writtenDiagnosis}</p>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-
-      {/* RIGHT — Questions */}
-      <ScrollArea className="lg:w-1/2 w-full lg:h-full flex-1 p-6">
-        <div className="max-w-lg mx-auto space-y-6">
-          <div>
-            <h2 className="text-base font-medium">Before you finish</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Take 2 minutes to reflect. Your answers help us improve the simulation.
+    <div className="min-h-screen bg-background">
+      <div className="max-w-[1100px] mx-auto p-6">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* LEFT — Read-only board (sticky on desktop) */}
+          <div className="w-full md:w-[45%] md:self-start md:sticky md:top-0 md:pt-0">
+            <p className="text-[12px] text-muted-foreground uppercase tracking-wider font-medium mb-4">
+              What you built
             </p>
+            <div className="grid grid-cols-2 gap-3">
+              {(['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as ReasoningBlockId[]).map(id => (
+                <ReadOnlyQuadrant key={id} blockId={id} chips={board[id]} />
+              ))}
+            </div>
+            {writtenDiagnosis && (
+              <div className="mt-5 rounded-lg bg-muted/40 border border-border p-4">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
+                  Your written diagnosis
+                </p>
+                <p className="text-sm whitespace-pre-wrap">{writtenDiagnosis}</p>
+              </div>
+            )}
           </div>
 
-          {QUESTIONS.map(q => {
-            const wc = countWords(answers[q.key]);
-            const overLimit = wc > q.limit;
-            return (
-              <div key={q.key} className="space-y-1.5">
-                <p className="text-[13px] font-medium">{q.text}</p>
-                <Textarea
-                  className="resize-none text-sm"
-                  rows={3}
-                  value={answers[q.key]}
-                  onChange={e => updateAnswer(q.key, e.target.value)}
-                  placeholder="Type your answer…"
-                />
-                <p className={`text-[11px] ${overLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {wc} / {q.limit} words
-                </p>
-              </div>
-            );
-          })}
+          {/* RIGHT — Questions */}
+          <div className="w-full md:w-[55%] space-y-6">
+            <div>
+              <h2 className="text-base font-medium">Before you finish</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Take 2 minutes to reflect. Your answers help us improve the simulation.
+              </p>
+            </div>
 
-          <Button
-            className="w-full gap-2"
-            disabled={!allValid || submitting}
-            onClick={handleSubmit}
-          >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Submit reflection
-          </Button>
+            {QUESTIONS.map(q => {
+              const wc = countWords(answers[q.key]);
+              const overLimit = wc > q.limit;
+              return (
+                <div key={q.key} className="space-y-1.5">
+                  <p className="text-[13px] font-medium">{q.text}</p>
+                  <Textarea
+                    className="resize-none text-sm"
+                    rows={3}
+                    value={answers[q.key]}
+                    onChange={e => updateAnswer(q.key, e.target.value)}
+                    placeholder="Type your answer…"
+                  />
+                  <p className={`text-[11px] ${overLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {wc} / {q.limit} words
+                  </p>
+                </div>
+              );
+            })}
+
+            <div className="space-y-2">
+              <Button
+                className="w-full gap-2"
+                disabled={!allValid || submitting}
+                onClick={handleSubmit}
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Submit reflection
+              </Button>
+              {!allValid && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Please answer all questions (at least a sentence each)
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
