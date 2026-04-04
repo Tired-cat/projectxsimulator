@@ -404,11 +404,7 @@ export function ReasoningNarrative() {
         priorChannels.add(`${channelOf(chip)}|${metricOf(chip)}`);
       }
 
-      const connector = QUADRANT_CONNECTORS[blockId];
-      const text = connector
-        ? connector + sentence.charAt(0).toLowerCase() + sentence.slice(1)
-        : sentence;
-      sentences.push({ text, blockId });
+      sentences.push({ text: sentence, blockId });
     }
     return sentences;
   }, [board]);
