@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,10 +19,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [classCode, setClassCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  const normalizeClassCode = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
 
   // If already logged in, redirect
   useEffect(() => {
@@ -33,7 +29,7 @@ export default function Auth() {
     const resetFields = () => {
     setPassword('');
     setDisplayName('');
-    setClassCode('');
+    
     setIsSignUp(false);
   };
 
@@ -41,43 +37,21 @@ export default function Auth() {
     e.preventDefault();
     setSubmitting(true);
 
-    const normalizedClassCode = normalizeClassCode(classCode.trim());
-
     if (isSignUp) {
-      // Validate class code first
-      if (!normalizedClassCode) {
-        toast({ title: 'Class code required', description: 'Please enter the 4-digit class code from your professor.', variant: 'destructive' });
-        setSubmitting(false);
-        return;
-      }
-
-      const { data: classRows, error: classError } = await supabase
-        .rpc('lookup_class_by_code', { _class_code: normalizedClassCode });
-      const classData = classRows?.[0] ?? null;
-
-      if (classError || !classData) {
-        toast({ title: 'Invalid class code', description: 'No class found with that code. Please check with your professor.', variant: 'destructive' });
-        setSubmitting(false);
-        return;
-      }
-
       const { error } = await signUp(email, password, 'student', displayName);
       if (error) {
         if (error.toLowerCase().includes('already exists')) {
           toast({
             title: 'Account already exists',
-            description: 'An account with this email already exists. Please sign in below and enter your class code to enroll.',
+            description: 'An account with this email already exists. Please sign in instead.',
             variant: 'destructive',
           });
           setIsSignUp(false);
-          // Keep class code so they can sign in with it
         } else {
           toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
         }
       } else {
-        // Enroll after signup — we need to wait for auth state, so store class info
-        localStorage.setItem('pending_enrollment_class_id', classData.id);
-        toast({ title: 'Check your email', description: `A confirmation link has been sent. You'll be enrolled in "${classData.name}" after verifying.` });
+        toast({ title: 'Check your email', description: 'A confirmation link has been sent to your email address.' });
       }
     } else {
       // Sign in — no class code needed, ClassCodeGate handles enrollment
@@ -167,21 +141,6 @@ export default function Auth() {
                   <Label htmlFor="s-pass">Password</Label>
                   <Input id="s-pass" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
                 </div>
-                {isSignUp && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="s-code">Class Code</Label>
-                    <Input
-                      id="s-code"
-                      value={classCode}
-                      onChange={(e) => setClassCode(normalizeClassCode(e.target.value))}
-                      placeholder="e.g. 4821"
-                      maxLength={4}
-                      className="text-center text-lg tracking-widest font-mono"
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">Enter the 4-digit code from your professor</p>
-                  </div>
-                )}
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? 'Please wait…' : isSignUp ? 'Create Account' : 'Sign In'}
                 </Button>
