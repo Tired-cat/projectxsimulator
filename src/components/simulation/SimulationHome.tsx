@@ -14,10 +14,7 @@ interface SimulationHomeProps {
   boardSeqRef?: React.MutableRefObject<number>;
 }
 
-const REVENUE_GOAL = 100000;
-
 export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, userId, boardSeqRef }: SimulationHomeProps) {
-  const progressPercent = Math.min((currentRevenue / REVENUE_GOAL) * 100, 100);
   const { startTutorial } = useTutorial();
   const tutorialClickedRef = useRef(false);
   const scenarioReadFiredRef = useRef(false);
