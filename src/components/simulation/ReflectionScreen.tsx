@@ -85,16 +85,27 @@ function AiFeedbackSection({ feedbackText }: { feedbackText: string }) {
   try {
     const parsed = JSON.parse(feedbackText);
     if (typeof parsed === 'object' && parsed !== null) {
-      const keys = ['Budget', 'Reasoning', 'Diagnosis', 'Overall'];
-      for (const key of keys) {
-        const val = parsed[key] || parsed[key.toLowerCase()];
+      const keyMap: Record<string, string> = {
+        budgetFeedback: 'Budget',
+        reasoningFeedback: 'Reasoning',
+        diagnosisFeedback: 'Diagnosis',
+        overallNudge: 'Overall',
+        Budget: 'Budget',
+        Reasoning: 'Reasoning',
+        Diagnosis: 'Diagnosis',
+        Overall: 'Overall',
+      };
+      for (const [jsonKey, label] of Object.entries(keyMap)) {
+        const val = parsed[jsonKey];
         if (val && typeof val === 'string' && val.trim()) {
-          sections.push({ label: key, content: val.trim() });
+          // Avoid duplicates if both camelCase and PascalCase exist
+          if (!sections.find(s => s.label === label)) {
+            sections.push({ label, content: val.trim() });
+          }
         }
       }
     }
   } catch {
-    // Not JSON — treat as plain text
     if (feedbackText.trim()) {
       sections = [{ label: 'Feedback', content: feedbackText.trim() }];
     }
@@ -277,8 +288,8 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
                     onChange={e => updateAnswer(q.key, e.target.value)}
                     placeholder="Type your answer…"
                   />
-                  <p className={`text-[11px] ${overLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    {wc} / {q.limit} words
+                  <p className={`text-[11px] ${overLimit ? 'text-destructive' : wc < 3 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                    {wc} / {q.limit} words {wc < 3 && <span className="font-medium">(minimum 3 words)</span>}
                   </p>
                 </div>
               );
