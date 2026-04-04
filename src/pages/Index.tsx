@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { BarChart3, AlertCircle, PieChart, Settings, LogOut, Send } from 'lucide-react';
@@ -31,7 +31,6 @@ import type { EvidenceDragData, EvidenceDropData, ExternalEvidencePayload } from
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { FeedbackPage } from '@/components/simulation/FeedbackPage';
-import { ReflectionScreen } from '@/components/simulation/ReflectionScreen';
 import { buildFullReasoningStory } from '@/components/reasoning/ReasoningNarrative';
 import {
   Accordion,
@@ -57,7 +56,7 @@ function SimulationContent() {
   const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(null);
   const [usedAi, setUsedAi] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [showReflection, setShowReflection] = useState(false);
+  const reflectionNavigate = useNavigate();
   const [hasFeedback, setHasFeedback] = useState(false);
   const [feedbackEventId, setFeedbackEventId] = useState<string | null>(null);
   const [showFeedbackConfirm, setShowFeedbackConfirm] = useState(false);
@@ -375,12 +374,12 @@ function SimulationContent() {
 
       await submit();
       setShowFeedback(false);
-      setShowReflection(true);
+      reflectionNavigate('/reflection', { replace: true });
     } catch (err) {
       console.error('Submit error:', err);
       toast({ title: 'Submit failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
     }
-  }, [submit, feedbackEventId, board, channelSpend, showFeedback]);
+  }, [submit, feedbackEventId, board, channelSpend, showFeedback, reflectionNavigate]);
 
   // Check on mount if feedback already exists for this session
   useEffect(() => {
@@ -741,20 +740,6 @@ function SimulationContent() {
         </div>
       )}
 
-      {/* Reflection screen — appears after submission, before final locked state */}
-      {showReflection && sessionId && user && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <ReflectionScreen
-            sessionId={sessionId}
-            userId={user.id}
-            onComplete={() => {
-              setShowReflection(false);
-              setSubmitted(true);
-              toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
-            }}
-          />
-        </div>
-      )}
     </>
   );
 }
