@@ -397,7 +397,7 @@ function SimulationContent() {
     if (!sessionId || !user) return;
 
     const contextPairsCount = Object.values(board).reduce(
-      (sum, chips) => sum + chips.filter((c: any) => c.pairedWith).length,
+      (sum, chips) => sum + chips.filter((c: any) => c.contextChips?.length > 0 || c.contextChip).length,
       0,
     );
 
