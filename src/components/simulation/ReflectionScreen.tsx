@@ -288,8 +288,8 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
                     onChange={e => updateAnswer(q.key, e.target.value)}
                     placeholder="Type your answer…"
                   />
-                  <p className={`text-[11px] ${overLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    {wc} / {q.limit} words
+                  <p className={`text-[11px] ${overLimit ? 'text-destructive' : wc < 3 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                    {wc} / {q.limit} words {wc < 3 && <span className="font-medium">(minimum 3 words)</span>}
                   </p>
                 </div>
               );
