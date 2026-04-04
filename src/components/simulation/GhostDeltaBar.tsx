@@ -68,7 +68,7 @@ export function GhostDeltaBar({
       channelName: channel.name,
       metricName: metricLabel.toLowerCase(),
     };
-  }, [channel.name, channelId, currentValue, formatValue, metricLabel, viewMode]);
+  }, [channel.name, channelId, currentValue, formatValue, metricLabel, metricKey]);
 
   const baselinePayload = useMemo<ExternalEvidencePayload>(() => ({
     label: `${channel.name} Baseline ${metricLabel}`,
