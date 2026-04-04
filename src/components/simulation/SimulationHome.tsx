@@ -193,28 +193,6 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
         </CardContent>
       </Card>
 
-      {/* The Learning Trap */}
-      <Card className="border-2 border-primary/30 bg-primary/5">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-primary/20 rounded-xl">
-              <Lightbulb className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg text-foreground mb-2">💡 The Hidden Trap</h3>
-              <p className="text-muted-foreground mb-4">
-                This simulation teaches you to look beyond vanity metrics. Switch between 
-                <strong> "Views"</strong> and <strong>"Revenue"</strong> filters to see how 
-                different channels perform on different metrics.
-              </p>
-              <p className="text-muted-foreground">
-                <strong>Hint:</strong> Check the <em>Product Mix</em> chart to see what each 
-                channel is actually selling. Cheap clicks don't always mean good ROI!
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Products Overview */}
       <div className="space-y-4">
