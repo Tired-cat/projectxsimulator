@@ -177,15 +177,15 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
             </div>
             <div className="flex-1 space-y-4">
               <h3 className="font-bold text-lg text-foreground">Your Objective</h3>
-              <p className="text-[13.5px] leading-relaxed text-muted-foreground">
-                Something in this budget doesn't add up. Dig into the data, find what's actually happening, and <strong className="text-foreground">explain it in your own words</strong>.
+              <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
+                Something in this budget doesn't add up. Dig into the data, find what's actually happening, and <strong className="text-foreground">show your evidence</strong>.
               </p>
-              <p className="text-[13.5px] leading-relaxed text-muted-foreground">
-                Place your evidence on the <strong className="text-primary">Reasoning Board</strong>, add your interpretation to each piece, and build your argument across all four steps. Get <strong className="text-primary">AI feedback</strong> when you're ready — then use it.
+              <p className="text-[13.5px] leading-relaxed text-secondary-foreground">
+                Place your evidence on the <strong className="text-primary">Reasoning Board</strong>, add your interpretation to each piece, and build your argument across all four steps. Get <strong className="text-primary">&nbsp;feedback</strong> when you're ready — then use it . Analyze the clues and adjust your thinking.
               </p>
               <div className="p-3.5 bg-primary/[0.07] rounded-lg border border-primary/15">
                 <p className="text-[13px] leading-relaxed text-foreground/90 italic">
-                  The strongest submissions aren't the ones with the highest revenue. They're the ones with the <strong className="text-primary font-semibold not-italic">clearest reasoning</strong>.
+                  The strongest cases aren't the ones with the highest revenue. They're the ones with the <strong className="text-primary font-semibold not-italic">clearest reasoning</strong>.
                 </p>
               </div>
             </div>
