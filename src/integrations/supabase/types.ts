@@ -316,6 +316,57 @@ export type Database = {
           },
         ]
       }
+      post_simulation_reflections: {
+        Row: {
+          id: string
+          q1_story_accuracy: string | null
+          q2_expression_gaps: string | null
+          q3_annotation_usefulness: string | null
+          q4_unexpected_conflicts: string | null
+          q5_general_feedback: string | null
+          session_id: string
+          submitted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          q1_story_accuracy?: string | null
+          q2_expression_gaps?: string | null
+          q3_annotation_usefulness?: string | null
+          q4_unexpected_conflicts?: string | null
+          q5_general_feedback?: string | null
+          session_id: string
+          submitted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          q1_story_accuracy?: string | null
+          q2_expression_gaps?: string | null
+          q3_annotation_usefulness?: string | null
+          q4_unexpected_conflicts?: string | null
+          q5_general_feedback?: string | null
+          session_id?: string
+          submitted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_simulation_reflections_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_simulation_reflections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
