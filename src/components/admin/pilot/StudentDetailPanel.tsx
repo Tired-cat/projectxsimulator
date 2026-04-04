@@ -346,6 +346,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
         {activeTab === 'sequence' && <BoardSequenceTab events={boardEvents} />}
+        {activeTab === 'reflection' && <ReflectionTab sessionId={sessionId} />}
       </div>
     </div>
   );
