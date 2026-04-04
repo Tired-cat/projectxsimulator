@@ -86,13 +86,13 @@ export function GhostDeltaBar({
       label: `${channel.name} ${metricLabel}`,
       value: `${isInc ? '+' : ''}${delta.toLocaleString()}`,
       context: `${isInc ? 'Increased' : 'Decreased'} ${metricLabel} • Channel Performance`,
-      sourceId: `${channelId}_delta_${viewMode}`,
+      sourceId: `${channelId}_delta_${metricKey}`,
       chipKind: isInc ? 'delta-increase' : 'delta-decrease',
       channelName: channel.name,
       metricName: metricLabel.toLowerCase(),
       deltaValue: delta,
     };
-  }, [channel.name, channelId, delta, metricLabel, viewMode]);
+  }, [channel.name, channelId, delta, metricLabel, metricKey]);
 
   // Budget tab: only allow evidence drag in reason mode (otherwise column handles spend-adjustment drag).
   // All other tabs (views/revenue/profit): always draggable — no spend adjustment to conflict with.
