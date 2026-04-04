@@ -329,7 +329,7 @@ function SimulationContent() {
       // If submitting from the feedback page (or after adjusting), update ai_feedback_events
       if (feedbackEventId) {
         const contextPairsCount = Object.values(board).reduce(
-          (sum, chips) => sum + chips.filter((c: any) => c.pairedWith).length,
+          (sum, chips) => sum + chips.filter((c: any) => c.contextChips?.length > 0 || c.contextChip).length,
           0,
         );
         const updatePayload: Record<string, any> = {
