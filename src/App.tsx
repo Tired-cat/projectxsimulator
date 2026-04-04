@@ -20,6 +20,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 const queryClient = new QueryClient();
 
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
