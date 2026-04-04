@@ -132,11 +132,11 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
   const [generatedStory, setGeneratedStory] = useState('');
   const [aiFeedbackText, setAiFeedbackText] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({
-    q1_story_accuracy: '',
-    q2_expression_gaps: '',
-    q3_annotation_usefulness: '',
-    q4_unexpected_conflicts: '',
-    q5_general_feedback: '',
+    q1_reasoning_genuine: '',
+    q2_framework_clarity: '',
+    q3_story_vs_thinking: '',
+    q4_feedback_impact: '',
+    q5_comparison: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
