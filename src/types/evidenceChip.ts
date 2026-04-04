@@ -13,6 +13,7 @@ export interface EvidenceChip {
   deltaValue?: number;
   // Student-authored annotation on this chip
   annotation?: string;
+  annotation_saved_at?: string | null;
   // Contextualisation - supporting evidence chips attached to this chip
   // contextChip is kept for backward compat (= contextChips[0])
   contextChip?: EvidenceChip | null;

@@ -123,10 +123,11 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
   const updateChipAnnotation = useCallback((blockId: ReasoningBlockId, chipId: string, annotation: string) => {
     // Compute updated board synchronously from current state so both
     // board and writtenDiagnosis update in the same render batch
+    const annotationSavedAt = annotation && annotation.trim() ? new Date().toISOString() : null;
     const updatedBoard = {
       ...board,
       [blockId]: board[blockId].map(chip =>
-        chip.id === chipId ? { ...chip, annotation } : chip
+        chip.id === chipId ? { ...chip, annotation, annotation_saved_at: annotationSavedAt } : chip
       ),
     };
     const newDiagnosis = generateDiagnosisFromAnnotations(updatedBoard);
