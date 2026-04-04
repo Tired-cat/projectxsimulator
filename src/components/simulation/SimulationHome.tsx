@@ -106,7 +106,7 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
   }, [fireScenarioRead]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div ref={containerRef} className="max-w-4xl mx-auto space-y-8">
       {/* Tutorial Banner */}
       <button
         onClick={handleTutorialClick}
