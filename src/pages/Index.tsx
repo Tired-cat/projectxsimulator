@@ -154,7 +154,7 @@ function SimulationContent() {
     eventType: string,
     evidenceType: string | null,
     evidenceId: string | null,
-    quadrant: string,
+    quadrant: string | null,
     pairedWith?: string | null,
   ) => {
     if (!sessionId || !user) return;
