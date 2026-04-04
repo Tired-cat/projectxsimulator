@@ -106,7 +106,9 @@ export function ReasoningBoard() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-4">
-          {/* 4 reasoning blocks */}
+          {/* Section title */}
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground/70">Reasoning Blocks</h3>
+
           <div className="grid grid-cols-2 gap-3 content-start">
             {REASONING_BLOCKS.map((block, blockIndex) => {
               const chips = board[block.id];
@@ -121,7 +123,7 @@ export function ReasoningBoard() {
                       <div
                         ref={setNodeRef}
                         className={cn(
-                          'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[140px]',
+                          'flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[160px]',
                           isHovered
                             ? 'border-dashed scale-[1.01] shadow-lg'
                             : 'border-border/60'
@@ -133,49 +135,51 @@ export function ReasoningBoard() {
                       >
                   {/* Block header */}
                   <div
-                    className="flex-shrink-0 px-3 pt-2 pb-1.5 rounded-t-xl border-b border-border/40"
+                    className="flex-shrink-0 px-3 pt-2.5 pb-2 rounded-t-xl border-b border-border/40"
                     style={{ backgroundColor: block.bgColor }}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span
-                          className="flex-shrink-0 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+                          className="flex-shrink-0 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
                           style={{ backgroundColor: block.color }}
                         >
                           {stepNumber}
                         </span>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold" style={{ color: block.color }}>
-                            {block.title}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm" aria-hidden>{block.icon}</span>
+                            <span className="text-xs font-bold" style={{ color: block.color }}>
+                              {block.title}
+                            </span>
                           </div>
                           <div className="text-[10px] text-muted-foreground italic truncate">
                             {block.question}
                           </div>
                         </div>
                       </div>
-                      {chips.length > 0 ? (
+                      {chips.length > 0 && (
                         <div
                           className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: block.color + '20', color: block.color }}
                         >
                           {chips.length}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
 
                   {/* Drop zone / chip list */}
-                  <div className="flex-1 p-2 space-y-1.5">
+                  <div className="flex-1 p-2.5 space-y-2">
                     {chips.length === 0 ? (
                       <div
                         className={cn(
-                          'h-full min-h-[60px] flex flex-col items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground transition-colors gap-1 px-2',
+                          'h-full min-h-[70px] flex flex-col items-center justify-center rounded-lg border border-dashed text-[10px] text-muted-foreground transition-colors gap-1 px-2',
                           isHovered ? 'border-current' : 'border-border/40'
                         )}
                         style={isHovered ? { borderColor: block.color, color: block.color } : undefined}
                       >
                         <span>Drop evidence here</span>
-                        <span className="text-muted-foreground/50 italic text-[9px]">You can add multiple pieces of evidence here</span>
                         {block.id === 'predictive' && (
                           <span className="text-muted-foreground/50 italic text-[9px] text-center mt-0.5">
                             Fill Prescriptive first — predicts what happens after your action
@@ -194,8 +198,8 @@ export function ReasoningBoard() {
                             onRemove={() => removeChip(block.id, chip.id)}
                           />
                         ))}
-                        <div className="text-[9px] text-muted-foreground/40 italic text-center pt-0.5">
-                          You can add multiple pieces of evidence here
+                        <div className="text-[9px] text-muted-foreground/40 italic text-center pt-1">
+                          Add more to strengthen this block
                         </div>
                       </>
                     )}
