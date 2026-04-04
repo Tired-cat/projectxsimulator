@@ -375,7 +375,7 @@ function SimulationContent() {
 
       await submit();
       setShowFeedback(false);
-      setShowReflection(true);
+      navigate('/reflection', { replace: true });
     } catch (err) {
       console.error('Submit error:', err);
       toast({ title: 'Submit failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
