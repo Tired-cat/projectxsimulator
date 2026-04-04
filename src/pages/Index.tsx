@@ -741,20 +741,6 @@ function SimulationContent() {
         </div>
       )}
 
-      {/* Reflection screen — appears after submission, before final locked state */}
-      {showReflection && sessionId && user && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <ReflectionScreen
-            sessionId={sessionId}
-            userId={user.id}
-            onComplete={() => {
-              setShowReflection(false);
-              setSubmitted(true);
-              toast({ title: '✅ Submitted!', description: 'Your work has been submitted successfully. The simulation is now locked.' });
-            }}
-          />
-        </div>
-      )}
     </>
   );
 }
