@@ -211,7 +211,7 @@ function SimulationContent() {
     }
   }, [addChip, moveChip, contextualiseChip, chipFromPayload, logBoardEvent, mapChipKindToEvidenceType, board]);
 
-  // Listen for remove_card and clear_board events from ReasoningBoardContext
+  // Listen for remove_card, clear_board, and annotation events from ReasoningBoardContext
   useEffect(() => {
     if (!sessionId || !user) return;
 
@@ -231,11 +231,18 @@ function SimulationContent() {
       }).then(() => {});
     };
 
+    const handleAnnotation = (e: Event) => {
+      const { evidenceId, quadrant, cleared } = (e as CustomEvent).detail;
+      logBoardEvent(cleared ? 'annotation_cleared' : 'annotation_saved', null, evidenceId, quadrant);
+    };
+
     window.addEventListener('board:remove-chip', handleRemove);
     window.addEventListener('board:clear', handleClear);
+    window.addEventListener('board:annotation', handleAnnotation);
     return () => {
       window.removeEventListener('board:remove-chip', handleRemove);
       window.removeEventListener('board:clear', handleClear);
+      window.removeEventListener('board:annotation', handleAnnotation);
     };
   }, [sessionId, user, logBoardEvent]);
 

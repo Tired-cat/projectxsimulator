@@ -124,15 +124,27 @@ export function ReasoningBoardProvider({ children }: { children: ReactNode }) {
     // Compute updated board synchronously from current state so both
     // board and writtenDiagnosis update in the same render batch
     const annotationSavedAt = annotation && annotation.trim() ? new Date().toISOString() : null;
+    const chip = board[blockId].find(c => c.id === chipId);
     const updatedBoard = {
       ...board,
-      [blockId]: board[blockId].map(chip =>
-        chip.id === chipId ? { ...chip, annotation, annotation_saved_at: annotationSavedAt } : chip
+      [blockId]: board[blockId].map(c =>
+        c.id === chipId ? { ...c, annotation, annotation_saved_at: annotationSavedAt } : c
       ),
     };
     const newDiagnosis = generateDiagnosisFromAnnotations(updatedBoard);
     setBoard(updatedBoard);
     setWrittenDiagnosis(newDiagnosis);
+
+    // Dispatch event for board_events logging
+    if (chip) {
+      window.dispatchEvent(new CustomEvent('board:annotation', {
+        detail: {
+          evidenceId: chip.sourceId,
+          quadrant: blockId,
+          cleared: !annotation || !annotation.trim(),
+        },
+      }));
+    }
   }, [board, generateDiagnosisFromAnnotations]);
 
   const clearBoard = useCallback(() => {
