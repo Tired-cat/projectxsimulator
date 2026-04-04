@@ -131,7 +131,7 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
           Marketing Analytics Exercise
         </div>
         <h2 className="text-4xl font-bold text-foreground">
-          Can You Reach $100,000 in Revenue?
+          Why isn't TikTok working?
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           You're the marketing manager at LumbarPro, a company selling ergonomic products. 
