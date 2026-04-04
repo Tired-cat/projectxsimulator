@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap, BarChart3, Layout, MessageSquare } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
