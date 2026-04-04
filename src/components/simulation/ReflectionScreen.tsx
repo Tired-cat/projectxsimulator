@@ -271,7 +271,7 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
             <div>
               <h2 className="text-base font-medium">Before you finish</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                Take 2 minutes to reflect. Your answers help us improve the simulation.
+                A few minutes to reflect. Your answers help us improve the simulation.
               </p>
             </div>
 
