@@ -85,16 +85,27 @@ function AiFeedbackSection({ feedbackText }: { feedbackText: string }) {
   try {
     const parsed = JSON.parse(feedbackText);
     if (typeof parsed === 'object' && parsed !== null) {
-      const keys = ['Budget', 'Reasoning', 'Diagnosis', 'Overall'];
-      for (const key of keys) {
-        const val = parsed[key] || parsed[key.toLowerCase()];
+      const keyMap: Record<string, string> = {
+        budgetFeedback: 'Budget',
+        reasoningFeedback: 'Reasoning',
+        diagnosisFeedback: 'Diagnosis',
+        overallNudge: 'Overall',
+        Budget: 'Budget',
+        Reasoning: 'Reasoning',
+        Diagnosis: 'Diagnosis',
+        Overall: 'Overall',
+      };
+      for (const [jsonKey, label] of Object.entries(keyMap)) {
+        const val = parsed[jsonKey];
         if (val && typeof val === 'string' && val.trim()) {
-          sections.push({ label: key, content: val.trim() });
+          // Avoid duplicates if both camelCase and PascalCase exist
+          if (!sections.find(s => s.label === label)) {
+            sections.push({ label, content: val.trim() });
+          }
         }
       }
     }
   } catch {
-    // Not JSON — treat as plain text
     if (feedbackText.trim()) {
       sections = [{ label: 'Feedback', content: feedbackText.trim() }];
     }
