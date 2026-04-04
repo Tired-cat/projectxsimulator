@@ -11,14 +11,17 @@ interface SimulationHomeProps {
   currentRevenue: number;
   sessionId: string | null;
   userId: string | null;
+  boardSeqRef?: React.MutableRefObject<number>;
 }
 
 const REVENUE_GOAL = 100000;
 
-export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, userId }: SimulationHomeProps) {
+export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, userId, boardSeqRef }: SimulationHomeProps) {
   const progressPercent = Math.min((currentRevenue / REVENUE_GOAL) * 100, 100);
   const { startTutorial } = useTutorial();
   const tutorialClickedRef = useRef(false);
+  const scenarioReadFiredRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleTutorialClick = useCallback(() => {
     tutorialClickedRef.current = true;
@@ -51,6 +54,56 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
       }
     };
   }, [sessionId, userId]);
+
+  // Fire scenario_read_complete once when student scrolls to bottom (or content fits on screen)
+  const fireScenarioRead = useCallback(() => {
+    if (scenarioReadFiredRef.current || !sessionId || !userId) return;
+    scenarioReadFiredRef.current = true;
+    const seq = boardSeqRef ? ++boardSeqRef.current : 1;
+    supabase.from('board_events').insert({
+      session_id: sessionId,
+      user_id: userId,
+      event_type: 'scenario_read_complete',
+      sequence_number: seq,
+    }).then(() => {});
+  }, [sessionId, userId, boardSeqRef]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || scenarioReadFiredRef.current) return;
+
+    // Find the scrollable ancestor (the element that actually scrolls)
+    const findScrollParent = (node: HTMLElement): HTMLElement | Window => {
+      let parent = node.parentElement;
+      while (parent) {
+        const style = getComputedStyle(parent);
+        if (/(auto|scroll)/.test(style.overflow + style.overflowY)) return parent;
+        parent = parent.parentElement;
+      }
+      return window;
+    };
+
+    const scrollParent = findScrollParent(el);
+
+    const checkScroll = () => {
+      if (scenarioReadFiredRef.current) return;
+      const elRect = el.getBoundingClientRect();
+      const viewportH = scrollParent === window
+        ? window.innerHeight
+        : (scrollParent as HTMLElement).getBoundingClientRect().bottom;
+      // Bottom of container is within 50px of the viewport bottom
+      if (elRect.bottom <= viewportH + 50) {
+        fireScenarioRead();
+      }
+    };
+
+    // Check immediately (content might fit on screen)
+    requestAnimationFrame(checkScroll);
+
+    const target = scrollParent === window ? window : scrollParent;
+    target.addEventListener('scroll', checkScroll, { passive: true });
+    return () => target.removeEventListener('scroll', checkScroll);
+  }, [fireScenarioRead]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
