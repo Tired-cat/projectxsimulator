@@ -283,6 +283,9 @@ function ChipCard({
   });
 
 
+  // Generate default description line
+  const defaultText = `${chip.label.split(':')[0]} ${chip.chipKind === 'delta-increase' || chip.chipKind === 'delta-decrease' ? 'changed by' : 'is'} ${chip.value}`;
+
   return (
     <div
       ref={setNodeRef}
@@ -293,24 +296,32 @@ function ChipCard({
         isDragging && 'opacity-30'
       )}
     >
-      <div className="flex items-start gap-2 p-2.5">
+      <div className="flex items-start gap-2 p-3">
         {/* Drag handle */}
         <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground mt-0.5 flex-shrink-0" />
 
         {/* Chip content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {isDelta && (
               <span className={`text-xs ${isIncrease ? 'text-emerald-600' : 'text-destructive'}`}>
                 {isIncrease ? '▲' : '▼'}
               </span>
             )}
-            <span className="text-xs font-semibold text-foreground truncate">{chip.label}:</span>
-            <span className="text-xs font-bold flex-shrink-0" style={{ color: blockColor }}>
+            <span className="text-xs font-semibold text-foreground">{chip.label}:</span>
+            <span className="text-xs font-bold" style={{ color: blockColor }}>
               {chip.value}
             </span>
           </div>
           <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{chip.context}</div>
+
+          {/* Default description line */}
+          {!chip.annotation && !showAnnotation && (
+            <div className="mt-1.5 px-2 py-1 rounded bg-muted/50 border border-border/40 text-[10px] text-muted-foreground leading-snug">
+              {defaultText}
+            </div>
+          )}
+
           {/* Smart insight */}
           {insight && (
             <div className={`mt-1.5 px-2 py-1 rounded text-[10px] font-medium ${
@@ -323,20 +334,21 @@ function ChipCard({
           )}
         </div>
 
-        {/* Annotate button */}
+        {/* Annotate button — styled as "Add note" */}
         {canAnnotate && (
           <button
             onClick={(e) => { e.stopPropagation(); setShowAnnotation(p => !p); }}
             onPointerDown={(e) => e.stopPropagation()}
             title="Add my interpretation"
             className={cn(
-              'flex-shrink-0 p-0.5 rounded transition-colors',
+              'flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-medium transition-colors',
               chip.annotation
-                ? 'text-primary'
-                : 'text-muted-foreground/40 hover:text-primary'
+                ? 'border-primary/30 text-primary bg-primary/5'
+                : 'border-border text-muted-foreground hover:text-primary hover:border-primary/30'
             )}
           >
             <Pencil className="h-3 w-3" />
+            {chip.annotation ? '' : 'Add note'}
           </button>
         )}
 
@@ -350,10 +362,10 @@ function ChipCard({
         </button>
       </div>
 
-      {/* Annotation popover */}
+      {/* Annotation editor */}
       {showAnnotation && canAnnotate && (
         <div
-          className="px-2.5 pb-2 pt-1"
+          className="px-3 pb-2.5 pt-1"
           onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
@@ -392,7 +404,7 @@ function ChipCard({
       {/* Annotation preview */}
       {chip.annotation && !showAnnotation && (
         <div
-          className="mx-2.5 mb-1.5 px-2 py-1 rounded bg-primary/5 border border-primary/20 text-[10px] text-foreground/70 italic leading-snug cursor-pointer hover:bg-primary/10 transition-colors"
+          className="mx-3 mb-2 px-2 py-1.5 rounded bg-primary/5 border border-primary/20 text-[10px] text-foreground/70 italic leading-snug cursor-pointer hover:bg-primary/10 transition-colors"
           onClick={(e) => { e.stopPropagation(); setShowAnnotation(true); }}
           onPointerDown={(e) => e.stopPropagation()}
           title="Click to edit"
@@ -400,7 +412,6 @@ function ChipCard({
           "{chip.annotation.length > 60 ? chip.annotation.slice(0, 60) + '…' : chip.annotation}"
         </div>
       )}
-
     </div>
   );
 }
