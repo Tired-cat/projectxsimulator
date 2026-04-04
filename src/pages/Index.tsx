@@ -379,7 +379,7 @@ function SimulationContent() {
       console.error('Submit error:', err);
       toast({ title: 'Submit failed', description: 'Something went wrong. Please try again.', variant: 'destructive' });
     }
-  }, [submit, feedbackEventId, board, channelSpend, showFeedback]);
+  }, [submit, feedbackEventId, board, channelSpend, showFeedback, reflectionNavigate]);
 
   // Check on mount if feedback already exists for this session
   useEffect(() => {
