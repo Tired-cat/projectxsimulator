@@ -198,15 +198,22 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
   const handleSubmit = useCallback(async () => {
     if (!allValid || submitting) return;
     setSubmitting(true);
+    setSubmitError('');
     try {
-      await supabase.from('post_simulation_reflections').insert({
+      const { error } = await supabase.from('post_simulation_reflections').insert({
         session_id: sessionId,
         user_id: userId,
-        ...answers,
+        q1_reasoning_genuine: answers.q1_reasoning_genuine.trim(),
+        q2_framework_clarity: answers.q2_framework_clarity.trim(),
+        q3_story_vs_thinking: answers.q3_story_vs_thinking.trim(),
+        q4_feedback_impact: answers.q4_feedback_impact.trim(),
+        q5_comparison: answers.q5_comparison.trim(),
       });
+      if (error) throw error;
       onComplete();
     } catch {
       setSubmitting(false);
+      setSubmitError('Could not save your responses. Please try again.');
     }
   }, [allValid, submitting, sessionId, userId, answers, onComplete]);
 
