@@ -624,6 +624,7 @@ function SimulationContent() {
             currentRevenue={totals.totalRevenue}
             sessionId={sessionId}
             userId={user?.id ?? null}
+            boardSeqRef={boardSeqRef}
           />
         }
         decisionsContent={
