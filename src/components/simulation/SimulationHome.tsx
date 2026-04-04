@@ -171,41 +171,25 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
       </Card>
 
       {/* Your Objective */}
-      <Card className="border-2 border-green-500/30 bg-green-500/5">
-        <CardContent className="p-6">
+      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-accent/5 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+        <CardContent className="p-6 relative">
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-green-500/20 rounded-xl">
-              <Target className="w-6 h-6 text-green-600" />
+            <div className="p-3 bg-primary/15 rounded-xl ring-1 ring-primary/20">
+              <Target className="w-6 h-6 text-primary" />
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg text-foreground mb-2">Your Objective</h3>
-              <p className="text-muted-foreground mb-4">
-                Reallocate the ${GLOBAL_BUDGET.toLocaleString()} budget to reach 
-                <strong className="text-green-600"> $100,000 in revenue</strong>. 
-                Drag the bars to adjust spend per channel and watch the results update in real-time.
+            <div className="flex-1 space-y-4">
+              <h3 className="font-bold text-lg text-foreground">Your Objective</h3>
+              <p className="text-[13.5px] leading-relaxed text-muted-foreground">
+                Something in this budget doesn't add up. Dig into the data, find what's actually happening, and <strong className="text-foreground">explain it in your own words</strong>.
               </p>
-              
-              {/* Progress indicator */}
-              <div className="p-4 bg-background rounded-lg border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Current Progress</span>
-                  <span className="text-sm font-bold">
-                    ${currentRevenue.toLocaleString()} / ${REVENUE_GOAL.toLocaleString()}
-                  </span>
-                </div>
-                <div className="h-3 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      currentRevenue >= REVENUE_GOAL 
-                        ? 'bg-green-500' 
-                        : 'bg-gradient-to-r from-primary to-primary/70'
-                    }`}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <div className="text-xs text-muted-foreground text-right mt-1">
-                  {progressPercent.toFixed(1)}% of goal
-                </div>
+              <p className="text-[13.5px] leading-relaxed text-muted-foreground">
+                Place your evidence on the <strong className="text-primary">Reasoning Board</strong>, add your interpretation to each piece, and build your argument across all four steps. Get <strong className="text-primary">AI feedback</strong> when you're ready — then use it.
+              </p>
+              <div className="p-3.5 bg-primary/[0.07] rounded-lg border border-primary/15">
+                <p className="text-[13px] leading-relaxed text-foreground/90 italic">
+                  The strongest submissions aren't the ones with the highest revenue. They're the ones with the <strong className="text-primary font-semibold not-italic">clearest reasoning</strong>.
+                </p>
               </div>
             </div>
           </div>
