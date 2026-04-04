@@ -48,7 +48,7 @@ export function ReasoningBoard() {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-foreground">Reasoning Board</h2>
             <p className="text-[10px] text-muted-foreground truncate">
-              Drag evidence into any block to build your reasoning
+              Keep evidence tidy across the four blocks; your narrative updates live below.
             </p>
           </div>
           {totalChips > 0 && (
@@ -81,8 +81,19 @@ export function ReasoningBoard() {
           )}
         </div>
 
+        {/* Reasoning sequence breadcrumb */}
+        <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">1 Observe</span>
+          <span>→</span>
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">2 Diagnose</span>
+          <span>→</span>
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">3 Decide</span>
+          <span>→</span>
+          <span className="px-2 py-0.5 rounded border border-border bg-background font-medium">4 Predict</span>
+        </div>
+
         {totalChips === 0 && (
-          <div className="mt-4 p-3 bg-muted/50 border border-dashed border-border rounded-lg text-center space-y-1">
+          <div className="mt-3 p-3 bg-muted/50 border border-dashed border-border rounded-lg text-center space-y-1">
             <p className="text-xs text-muted-foreground">
               Click <strong>Reason</strong> on <strong>Channel Performance</strong> or <strong>Product Mix</strong>, then drag evidence here.
             </p>
@@ -91,7 +102,6 @@ export function ReasoningBoard() {
             </p>
           </div>
         )}
-
       </div>
 
       <div className="flex-1 overflow-y-auto">
