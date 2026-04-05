@@ -239,6 +239,14 @@ function describeRelationship(chip: EvidenceChip, ctx: EvidenceChip, seed: strin
 
 /** Build a relationship sentence between two standalone chips (no context relationship) */
 function describePairRelationship(a: EvidenceChip, b: EvidenceChip, seed: string): string {
+  // Guard: never compare same channel+metric (would produce "X's revenue differing from X's revenue")
+  if (channelOf(a) === channelOf(b) && metricOf(a) === metricOf(b)) {
+    return describeChipAlone(a);
+  }
+  // Guard: don't compare across incompatible metric groups (e.g. revenue vs budget)
+  if (Math.abs(metricRank(a) - metricRank(b)) >= 2) {
+    return describeChipAlone(a);
+  }
   const rel = analyseRelationship(a, b);
   const chA = channelOf(a);
   const chB = channelOf(b);
@@ -309,21 +317,34 @@ function generateStorySentence(
       insight = describeChipAlone(chip);
     }
   } else {
-    // Build a combined insight — avoid repeating channel already used in prior block with same metric
-    const primaryChip = ranked[0];
-    const primaryCh = channelOf(primaryChip);
-    const primaryMetricKey = `${primaryCh}|${metricOf(primaryChip)}`;
+    // Deduplicate by channel+metric — prevents self-comparisons when same chip type added twice
+    const seen = new Set<string>();
+    const unique = ranked.filter(c => {
+      const key = `${channelOf(c)}|${metricOf(c)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
-    if (priorChannels.has(primaryMetricKey) && ranked.length >= 2) {
-      // Pivot to the second chip to avoid repetition
-      const bridgeChip = ranked[1];
-      insight = `${describeChipAlone(bridgeChip)}, which connects to the earlier observation about ${primaryCh}`;
+    const primary = unique[0];
+    const primaryCh = channelOf(primary);
+    const primaryMetricKey = `${primaryCh}|${metricOf(primary)}`;
+
+    if (priorChannels.has(primaryMetricKey) && unique.length >= 2) {
+      // Primary channel+metric already used in a prior block — pivot to second chip
+      const bridge = unique[1];
+      insight = `${describeChipAlone(bridge)}, which connects back to the earlier observation about ${primaryCh}`;
+    } else if (unique.length === 1) {
+      // Only one distinct channel+metric after dedup — describe it alone (contextChip handled above)
+      insight = describeChipAlone(primary);
     } else {
-      const parts: string[] = [describeChipAlone(ranked[0])];
-      for (let i = 1; i < ranked.length; i++) {
-        parts.push(describePairRelationship(ranked[i - 1], ranked[i], ranked[i - 1].id + ranked[i].id));
-      }
-      insight = parts.join(', ');
+      // Pick secondary: prefer same metric group, different channel
+      const primaryMetric = metricOf(primary);
+      const secondary =
+        unique.slice(1).find(c => channelOf(c) !== primaryCh && metricOf(c) === primaryMetric) ??
+        unique.slice(1).find(c => channelOf(c) !== primaryCh) ??
+        unique[1];
+      insight = describePairRelationship(primary, secondary, primary.id + secondary.id);
     }
   }
 
