@@ -49,7 +49,7 @@ import {
 
 
 function SimulationContent() {
-  const { openTab, activeTabId } = useTabs();
+  const { openTab, activeTabId, split } = useTabs();
   const { user, signOut, role } = useAuth();
   const navigate = useNavigate();
   const { board, addChip, moveChip, contextualiseChip, writtenDiagnosis, loadBoard } = useReasoningBoard();
@@ -109,7 +109,7 @@ function SimulationContent() {
   const { sessionId, isCompleted, startedAt, completedAt, loading: sessionLoading, completeSession } = useSession();
 
   // Track tab navigation events
-  useNavigationTracking(activeTabId, sessionId, user?.id ?? null);
+  useNavigationTracking(activeTabId, sessionId, user?.id ?? null, split);
 
   // --- Allocation event tracking ---
   const allocationSeqRef = useRef(0);

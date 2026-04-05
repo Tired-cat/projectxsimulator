@@ -154,7 +154,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
   const [navEvents, setNavEvents] = useState<NavEvent[]>([]);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [allocCount, setAllocCount] = useState(0);
-  const [boardResets, setBoardResets] = useState(0);
+  const [boardResets] = useState(0); // kept for potential future use
   const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [boardEvents, setBoardEvents] = useState<BoardEvent[]>([]);
   const [writtenDiagnosis, setWrittenDiagnosis] = useState<string | null>(null);
@@ -212,7 +212,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         setAiFeedback(aiRes.data as AiFeedback | null);
         setHasFeedback(aiRes.data != null);
         setNavEvents((navRes.data ?? []) as NavEvent[]);
-        setBoardResets((resetRes.data ?? []).length);
+        // boardResets no longer displayed, but query kept for data availability
 
         // Parse board cards — can be object keyed by quadrant or an array
         const raw = boardRes.data?.cards;
@@ -279,6 +279,14 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
     ? [sub.descriptive_card_count, sub.diagnostic_card_count, sub.prescriptive_card_count, sub.predictive_card_count].filter(c => c > 0).length
     : 0;
 
+  // Annotation count — count chips with non-empty annotation strings
+  const annotationCount = boardCards.filter(c => c.annotation && c.annotation.trim().length > 0).length;
+
+  // Submitted at display
+  const submittedTimeDisplay = sub?.submitted_at
+    ? new Date(sub.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '—';
+
   // Date display
   const dateDisplay = session?.started_at
     ? new Date(session.started_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -314,9 +322,9 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
       <div className="grid grid-cols-5 gap-3">
         <StatCard label="Duration" value={durationDisplay} sub={startedTimeDisplay} />
         <StatCard label="Cards placed" value={String(totalCards)} sub={`across ${filledQuadrants}/4 quadrants`} />
-        <StatCard label="Contextualise pairs" value={String(sub?.contextualise_pairs_count ?? 0)} />
+        <StatCard label="Annotations" value={String(annotationCount)} sub={annotationCount > 0 ? 'notes added' : undefined} />
         <StatCard label="Allocation changes" value={String(allocCount)} />
-        <StatCard label="Board resets" value={String(boardResets)} />
+        <StatCard label="Submitted at" value={submittedTimeDisplay} />
       </div>
 
       {/* ── TAB BAR ────────────────────────────────── */}
@@ -997,7 +1005,8 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
   }
 
   const TAB_LABELS: Record<string, string> = {
-    home: 'Home', my_decisions: 'My Decisions', reasoning_board: 'Reasoning Board',
+    home: 'Home', decisions: 'Decisions', reasoning: 'Reasoning',
+    my_decisions: 'My Decisions', reasoning_board: 'Reasoning Board',
   };
 
   const formatDuration = (secs: number | null) => {
@@ -1017,10 +1026,10 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
     const visit = e.visit_number ?? 1;
     const secs = e.time_spent_seconds;
     if (tab === 'home' && visit === 1) return 'Session started';
-    if (tab === 'reasoning_board' && visit === 1) return 'First visit to board';
-    if (tab === 'my_decisions' && visit > 1) return 'Returned to check data';
+    if ((tab === 'reasoning' || tab === 'reasoning_board') && visit === 1) return 'First visit to board';
+    if ((tab === 'decisions' || tab === 'my_decisions') && visit > 1) return 'Returned to check data';
     if (secs != null && secs > 600) return 'Long time here — may have been stuck or very engaged';
-    if (secs != null && secs < 60 && tab === 'reasoning_board') return 'Very brief board visit';
+    if (secs != null && secs < 60 && (tab === 'reasoning' || tab === 'reasoning_board')) return 'Very brief board visit';
     return '';
   }
 
@@ -1028,18 +1037,30 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
 
   // Pattern observations
   const observations: { text: string; amber?: boolean }[] = [];
-  const decisionVisits = events.filter(e => e.tab.toLowerCase() === 'my_decisions').length;
-  const hasBoard = events.some(e => e.tab.toLowerCase() === 'reasoning_board');
+  const decisionVisits = events.filter(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'decisions' || t === 'my_decisions';
+  }).length;
+  const hasBoard = events.some(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'reasoning' || t === 'reasoning_board';
+  });
   if (decisionVisits > 1) {
-    observations.push({ text: `This student returned to My Decisions ${decisionVisits} times — they cross-referenced data while building their reasoning board.` });
+    observations.push({ text: `This student returned to Decisions ${decisionVisits} times — they cross-referenced data while building their reasoning board.` });
   }
   if (!hasBoard) {
-    observations.push({ text: 'This student never reached the Reasoning Board tab.', amber: true });
+    observations.push({ text: 'This student never navigated to the Reasoning Board tab directly (they may have used split-screen mode instead).', amber: true });
   }
-  const firstBoardIdx = events.findIndex(e => e.tab.toLowerCase() === 'reasoning_board');
-  const firstDecisionsIdx = events.findIndex(e => e.tab.toLowerCase() === 'my_decisions');
+  const firstBoardIdx = events.findIndex(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'reasoning' || t === 'reasoning_board';
+  });
+  const firstDecisionsIdx = events.findIndex(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'decisions' || t === 'my_decisions';
+  });
   if (firstBoardIdx !== -1 && (firstDecisionsIdx === -1 || firstBoardIdx < firstDecisionsIdx)) {
-    observations.push({ text: 'This student went to the Reasoning Board before exploring My Decisions — they may have missed important data.', amber: true });
+    observations.push({ text: 'This student went to the Reasoning Board before exploring Decisions — they may have missed important data.', amber: true });
   }
 
   return (
