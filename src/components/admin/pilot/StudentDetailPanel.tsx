@@ -1005,7 +1005,8 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
   }
 
   const TAB_LABELS: Record<string, string> = {
-    home: 'Home', my_decisions: 'My Decisions', reasoning_board: 'Reasoning Board',
+    home: 'Home', decisions: 'Decisions', reasoning: 'Reasoning',
+    my_decisions: 'My Decisions', reasoning_board: 'Reasoning Board',
   };
 
   const formatDuration = (secs: number | null) => {
