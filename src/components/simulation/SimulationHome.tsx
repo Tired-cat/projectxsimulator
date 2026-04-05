@@ -165,7 +165,7 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
       {/* Three Tools Section */}
       <div className="space-y-5">
         <div className="text-center space-y-1">
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/70">Three Tools, One Reasoning Exercise</h3>
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/70">FIVE TOOLS, ONE REASONING EXERCISE</h3>
         </div>
         <div className="grid sm:grid-cols-3 gap-4">
           <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
