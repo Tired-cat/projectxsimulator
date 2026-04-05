@@ -162,21 +162,24 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Snapshot captured once — the moment AI feedback text arrives
-  const boardSnapshot = useRef<string | null>(null);
-  const spendSnapshot = useRef<string | null>(null);
+  // Snapshot taken when feedback is first displayed — not on mount
+  const initialBoardRef = useRef<string | null>(null);
+  const initialSpendRef = useRef<string | null>(null);
+  const [snapshotReady, setSnapshotReady] = useState(false);
 
+  // Capture baseline the moment feedback becomes visible
   useEffect(() => {
-    if (feedback && boardSnapshot.current === null) {
-      boardSnapshot.current = JSON.stringify(context.board);
-      spendSnapshot.current = JSON.stringify(context.channelSpend);
+    if (feedback && !snapshotReady) {
+      initialBoardRef.current = snapshotBoard(context.board);
+      initialSpendRef.current = snapshotSpend(context.channelSpend);
+      setSnapshotReady(true);
     }
-  }, [feedback]);
+  }, [feedback, snapshotReady, context.board, context.channelSpend]);
 
-  const hasChanges =
-    boardSnapshot.current !== null &&
-    (JSON.stringify(context.board) !== boardSnapshot.current ||
-     JSON.stringify(context.channelSpend) !== spendSnapshot.current);
+  const hasChanges = useMemo(() => {
+    if (!snapshotReady || !initialBoardRef.current || !initialSpendRef.current) return false;
+    return detectChanges(initialBoardRef.current, initialSpendRef.current, context.board, context.channelSpend);
+  }, [context.board, context.channelSpend, snapshotReady]);
 
   useEffect(() => {
     let cancelled = false;
