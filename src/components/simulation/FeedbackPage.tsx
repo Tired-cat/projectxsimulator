@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Loader2, Bot, DollarSign, Brain, FileText, Sparkles } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { ArrowLeft, Send, Loader2, Bot, DollarSign, Brain, FileText, Sparkles, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import type { ReasoningBoardState } from '@/types/evidenceChip';
 import type { ChannelSpend } from '@/hooks/useMarketingSimulation';
@@ -32,11 +33,143 @@ interface FeedbackPageProps {
 
 const FEEDBACK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
+/* ─── helpers ─── */
+
+function snapshotBoard(board: ReasoningBoardState) {
+  return JSON.stringify(board);
+}
+
+function snapshotSpend(spend: ChannelSpend) {
+  return JSON.stringify(spend);
+}
+
+function detectChanges(
+  initialBoard: string,
+  initialSpend: string,
+  currentBoard: ReasoningBoardState,
+  currentSpend: ChannelSpend,
+): boolean {
+  return snapshotBoard(currentBoard) !== initialBoard || snapshotSpend(currentSpend) !== initialSpend;
+}
+
+function countAnnotations(board: ReasoningBoardState): number {
+  return Object.values(board).flat().filter(c => c.annotation && c.annotation.trim().length > 0).length;
+}
+
+function emptyQuadrants(board: ReasoningBoardState): string[] {
+  const quadrants: (keyof ReasoningBoardState)[] = ['descriptive', 'diagnostic', 'predictive', 'prescriptive'];
+  return quadrants.filter(q => (board[q] || []).length === 0);
+}
+
+/* ─── sub-components ─── */
+
+function BoardGapCards({ board }: { board: ReasoningBoardState }) {
+  const empty = emptyQuadrants(board);
+  const annotationCount = countAnnotations(board);
+  const cards: JSX.Element[] = [];
+
+  // Quadrant gap — highlight predictive specifically, then others
+  if (empty.includes('predictive')) {
+    cards.push(
+      <div key="pred-gap" className="flex items-start gap-2.5 rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-900">
+        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+        <span>Your <strong>Predictive</strong> quadrant is empty — this is where you predict what will happen after your decision. Consider adding one card before submitting.</span>
+      </div>
+    );
+  }
+
+  const otherEmpty = empty.filter(q => q !== 'predictive');
+  if (otherEmpty.length > 0) {
+    const labels = otherEmpty.map(q => q.charAt(0).toUpperCase() + q.slice(1));
+    cards.push(
+      <div key="other-gap" className="flex items-start gap-2.5 rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-900">
+        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+        <span>Your <strong>{labels.join(', ')}</strong> {labels.length === 1 ? 'quadrant is' : 'quadrants are'} empty. Placing evidence in every quadrant strengthens your reasoning.</span>
+      </div>
+    );
+  }
+
+  // Annotation nudge
+  if (annotationCount === 0) {
+    cards.push(
+      <div key="ann-0" className="flex items-start gap-2.5 rounded-lg border border-purple-300/60 bg-purple-50 p-3 text-sm text-purple-900">
+        <FileText className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+        <span>You have not added any interpretation notes yet. Click the pencil icon on any evidence card to explain why that data point matters — this feeds directly into your AI feedback and helps the Reasoning Story reflect your actual thinking.</span>
+      </div>
+    );
+  } else if (annotationCount === 1) {
+    cards.push(
+      <div key="ann-1" className="flex items-start gap-2.5 rounded-lg border border-purple-300/60 bg-purple-50 p-3 text-sm text-purple-900">
+        <FileText className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+        <span>You have added one interpretation note. Adding notes to your other evidence cards helps the AI give more specific feedback — and helps the Reasoning Story reflect what you actually meant.</span>
+      </div>
+    );
+  }
+
+  if (cards.length === 0) return null;
+  return <div className="space-y-3">{cards}</div>;
+}
+
+function SoftInlineMessage({ hasChanges }: { hasChanges: boolean }) {
+  if (hasChanges) return null;
+  return (
+    <p className="text-center text-xs text-muted-foreground italic">
+      You haven't made any adjustments since viewing this feedback. You're welcome to submit as-is — or return to strengthen your reasoning first.
+    </p>
+  );
+}
+
+function ConfirmNoChangesModal({
+  open,
+  onClose,
+  onConfirm,
+  submitting,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  submitting: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Submit without changes?</DialogTitle>
+          <DialogDescription>
+            You haven't adjusted your budget, reasoning board, or annotations since reviewing the AI feedback. Your submission will reflect your original work as-is.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Go back and adjust
+          </Button>
+          <Button onClick={onConfirm} disabled={submitting} className="gap-2">
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Yes, submit as-is
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ─── main component ─── */
+
 export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onReturnAndAdjust, onSubmitFinal, onFeedbackReady }: FeedbackPageProps) {
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Snapshot at first render to detect changes
+  const initialBoardRef = useRef(snapshotBoard(context.board));
+  const initialSpendRef = useRef(snapshotSpend(context.channelSpend));
+
+  const hasChanges = useMemo(
+    () => detectChanges(initialBoardRef.current, initialSpendRef.current, context.board, context.channelSpend),
+    [context.board, context.channelSpend],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +178,6 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
       setLoading(true);
       setError(null);
 
-      // 1. Try loading saved feedback from ai_feedback_events
       if (feedbackEventId) {
         try {
           const { data } = await supabase
@@ -58,23 +190,14 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
             try {
               const saved = JSON.parse(data.ai_feedback_text) as AiFeedback;
               if (saved.budgetFeedback) {
-                if (!cancelled) {
-                  setFeedback(saved);
-                  setLoading(false);
-                  onFeedbackReady?.();
-                }
+                if (!cancelled) { setFeedback(saved); setLoading(false); onFeedbackReady?.(); }
                 return;
               }
-            } catch {
-              // Not valid JSON, fall through
-            }
+            } catch { /* fall through */ }
           }
-        } catch {
-          // Fall through to fetch from AI
-        }
+        } catch { /* fall through */ }
       }
 
-      // 2. Fetch fresh feedback from AI (only if no stored text found)
       try {
         const resp = await fetch(FEEDBACK_URL, {
           method: 'POST',
@@ -94,7 +217,6 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
         if (!cancelled) {
           setFeedback(data.feedback);
           onFeedbackReady?.();
-          // 3. Save AI response text to ai_feedback_events row
           if (feedbackEventId && data.feedback) {
             supabase
               .from('ai_feedback_events')
@@ -114,7 +236,7 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
     return () => { cancelled = true; };
   }, [feedbackEventId]);
 
-  const handleSubmitFinal = useCallback(async () => {
+  const doSubmit = useCallback(async () => {
     setSubmitting(true);
     try {
       await onSubmitFinal();
@@ -124,12 +246,22 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
     }
   }, [onSubmitFinal]);
 
+  const handleSubmitClick = useCallback(() => {
+    if (!hasChanges) {
+      setConfirmOpen(true);
+    } else {
+      doSubmit();
+    }
+  }, [hasChanges, doSubmit]);
+
   const boardBlocks = [
     { key: 'descriptive' as const, label: 'Descriptive', desc: 'What happened?' },
     { key: 'diagnostic' as const, label: 'Diagnostic', desc: 'Why did it happen?' },
     { key: 'predictive' as const, label: 'Predictive', desc: 'What will happen?' },
     { key: 'prescriptive' as const, label: 'Prescriptive', desc: 'What should we do?' },
   ];
+
+  const submitLabel = hasChanges ? 'Submit Final' : 'Submit without changes';
 
   return (
     <div className="min-h-screen bg-background">
@@ -165,8 +297,6 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
             <div className="text-sm text-muted-foreground text-right">
               Total Revenue: <span className="font-semibold text-foreground">${context.totals.totalRevenue.toLocaleString()}</span>
             </div>
-
-            {/* AI feedback */}
             <FeedbackBubble loading={loading} error={error} text={feedback?.budgetFeedback} />
           </CardContent>
         </Card>
@@ -201,7 +331,6 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
                 );
               })}
             </div>
-
             <FeedbackBubble loading={loading} error={error} text={feedback?.reasoningFeedback} />
           </CardContent>
         </Card>
@@ -222,7 +351,6 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
                 <p className="text-sm text-muted-foreground italic">No diagnosis written yet.</p>
               )}
             </div>
-
             <FeedbackBubble loading={loading} error={error} text={feedback?.diagnosisFeedback} />
           </CardContent>
         </Card>
@@ -239,6 +367,12 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
           </Card>
         )}
 
+        {/* Board gap cards */}
+        <BoardGapCards board={context.board} />
+
+        {/* Soft inline message */}
+        <SoftInlineMessage hasChanges={hasChanges} />
+
         {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 pb-8">
           <Button
@@ -253,7 +387,7 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
           </Button>
           <Button
             size="lg"
-            onClick={handleSubmitFinal}
+            onClick={handleSubmitClick}
             disabled={submitting || loading}
             className="gap-2"
           >
@@ -262,10 +396,18 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
             ) : (
               <Send className="h-4 w-4" />
             )}
-            Submit Final
+            {submitLabel}
           </Button>
         </div>
       </div>
+
+      {/* Confirmation modal for no-changes submission */}
+      <ConfirmNoChangesModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); doSubmit(); }}
+        submitting={submitting}
+      />
     </div>
   );
 }
@@ -279,13 +421,10 @@ function FeedbackBubble({ loading, error, text }: { loading: boolean; error: str
       </div>
     );
   }
-
   if (error) {
     return <p className="text-destructive text-xs">{error}</p>;
   }
-
   if (!text) return null;
-
   return (
     <div className="flex gap-2.5 items-start bg-primary/5 border border-primary/20 rounded-lg p-3">
       <Bot className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
