@@ -314,9 +314,9 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
       <div className="grid grid-cols-5 gap-3">
         <StatCard label="Duration" value={durationDisplay} sub={startedTimeDisplay} />
         <StatCard label="Cards placed" value={String(totalCards)} sub={`across ${filledQuadrants}/4 quadrants`} />
-        <StatCard label="Contextualise pairs" value={String(sub?.contextualise_pairs_count ?? 0)} />
+        <StatCard label="Annotations" value={String(annotationCount)} sub={annotationCount > 0 ? 'notes added' : undefined} />
         <StatCard label="Allocation changes" value={String(allocCount)} />
-        <StatCard label="Board resets" value={String(boardResets)} />
+        <StatCard label="Submitted at" value={submittedTimeDisplay} />
       </div>
 
       {/* ── TAB BAR ────────────────────────────────── */}
