@@ -73,7 +73,7 @@ export function ReasoningBoard() {
           </div>
           <div className="min-w-0">
             <h2 className="text-base font-bold text-foreground">Reasoning Board</h2>
-            <p className="text-[10px] text-muted-foreground truncate transition-all duration-300">
+            <p className="truncate transition-all duration-300 text-sm text-accent">
               {headerSubtitle}
             </p>
           </div>
