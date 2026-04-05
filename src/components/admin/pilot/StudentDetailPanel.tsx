@@ -279,6 +279,14 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
     ? [sub.descriptive_card_count, sub.diagnostic_card_count, sub.prescriptive_card_count, sub.predictive_card_count].filter(c => c > 0).length
     : 0;
 
+  // Annotation count — count chips with non-empty annotation strings
+  const annotationCount = boardCards.filter(c => c.annotation && c.annotation.trim().length > 0).length;
+
+  // Submitted at display
+  const submittedTimeDisplay = sub?.submitted_at
+    ? new Date(sub.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '—';
+
   // Date display
   const dateDisplay = session?.started_at
     ? new Date(session.started_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
