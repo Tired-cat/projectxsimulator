@@ -109,7 +109,7 @@ function SimulationContent() {
   const { sessionId, isCompleted, startedAt, completedAt, loading: sessionLoading, completeSession } = useSession();
 
   // Track tab navigation events
-  useNavigationTracking(activeTabId, sessionId, user?.id ?? null);
+  useNavigationTracking(activeTabId, sessionId, user?.id ?? null, split);
 
   // --- Allocation event tracking ---
   const allocationSeqRef = useRef(0);
