@@ -162,14 +162,24 @@ export function FeedbackPage({ context, sessionId, userId, feedbackEventId, onRe
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Snapshot at first render to detect changes
-  const initialBoardRef = useRef(snapshotBoard(context.board));
-  const initialSpendRef = useRef(snapshotSpend(context.channelSpend));
+  // Snapshot taken when feedback is first displayed — not on mount
+  const initialBoardRef = useRef<string | null>(null);
+  const initialSpendRef = useRef<string | null>(null);
+  const [snapshotReady, setSnapshotReady] = useState(false);
 
-  const hasChanges = useMemo(
-    () => detectChanges(initialBoardRef.current, initialSpendRef.current, context.board, context.channelSpend),
-    [context.board, context.channelSpend],
-  );
+  // Capture baseline the moment feedback becomes visible
+  useEffect(() => {
+    if (feedback && !snapshotReady) {
+      initialBoardRef.current = snapshotBoard(context.board);
+      initialSpendRef.current = snapshotSpend(context.channelSpend);
+      setSnapshotReady(true);
+    }
+  }, [feedback, snapshotReady, context.board, context.channelSpend]);
+
+  const hasChanges = useMemo(() => {
+    if (!snapshotReady || !initialBoardRef.current || !initialSpendRef.current) return false;
+    return detectChanges(initialBoardRef.current, initialSpendRef.current, context.board, context.channelSpend);
+  }, [context.board, context.channelSpend, snapshotReady]);
 
   useEffect(() => {
     let cancelled = false;
