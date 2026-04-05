@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap, BarChart3, Layout, MessageSquare } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, Lightbulb, ArrowRight, GraduationCap, BarChart3, Layout, MessageSquare, Pencil, BookOpen } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GLOBAL_BUDGET, PRODUCTS, CHANNELS } from '@/lib/marketingConstants';
@@ -162,41 +162,78 @@ export function SimulationHome({ onStartDecisions, currentRevenue, sessionId, us
         </CardContent>
       </Card>
 
-      {/* Three Tools Section */}
+      {/* Five Tools Section */}
       <div className="space-y-5">
         <div className="text-center space-y-1">
           <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/70">FIVE TOOLS, ONE REASONING EXERCISE</h3>
         </div>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
-            <CardContent className="p-5 text-center space-y-3">
-              <div className="mx-auto w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-primary" />
+            <CardContent className="p-4 text-center space-y-2.5">
+              <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="w-4.5 h-4.5 text-primary" />
               </div>
-              <h4 className="font-bold text-foreground text-[15px]">Explore the data</h4>
-              <p className="text-[13px] leading-relaxed text-muted-foreground">
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-[10px] font-bold text-primary/50 uppercase tracking-wide">1</span>
+                <h4 className="font-bold text-foreground text-[13.5px]">Explore the data</h4>
+              </div>
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
                 Drag the budget sliders and watch how spend, clicks, and revenue shift across channels.
               </p>
             </CardContent>
           </Card>
           <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
-            <CardContent className="p-5 text-center space-y-3">
-              <div className="mx-auto w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Layout className="w-5 h-5 text-primary" />
+            <CardContent className="p-4 text-center space-y-2.5">
+              <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Layout className="w-4.5 h-4.5 text-primary" />
               </div>
-              <h4 className="font-bold text-foreground text-[15px]">Place evidence on the board</h4>
-              <p className="text-[13px] leading-relaxed text-muted-foreground">
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-[10px] font-bold text-primary/50 uppercase tracking-wide">2</span>
+                <h4 className="font-bold text-foreground text-[13.5px]">Place evidence</h4>
+              </div>
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
                 Drag data from the charts onto the four quadrants — what happened, why, what to do, and what will happen next.
               </p>
             </CardContent>
           </Card>
-          <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
-            <CardContent className="p-5 text-center space-y-3">
-              <div className="mx-auto w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-primary" />
+          <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors col-span-2 sm:col-span-1">
+            <CardContent className="p-4 text-center space-y-2.5">
+              <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Pencil className="w-4.5 h-4.5 text-primary" />
               </div>
-              <h4 className="font-bold text-foreground text-[15px]">Get feedback & refine</h4>
-              <p className="text-[13px] leading-relaxed text-muted-foreground">
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-[10px] font-bold text-primary/50 uppercase tracking-wide">3</span>
+                <h4 className="font-bold text-foreground text-[13.5px]">Annotate</h4>
+              </div>
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
+                Click the pencil on each evidence card to write your own interpretation — flesh out why that data point matters.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
+            <CardContent className="p-4 text-center space-y-2.5">
+              <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <BookOpen className="w-4.5 h-4.5 text-primary" />
+              </div>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-[10px] font-bold text-primary/50 uppercase tracking-wide">4</span>
+                <h4 className="font-bold text-foreground text-[13.5px]">Narrative check</h4>
+              </div>
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
+                Read how your evidence translates into a reasoning story — scroll down the board to see if your argument holds together.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border border-border bg-gradient-to-b from-background to-muted/30 hover:border-primary/30 transition-colors">
+            <CardContent className="p-4 text-center space-y-2.5">
+              <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <MessageSquare className="w-4.5 h-4.5 text-primary" />
+              </div>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-[10px] font-bold text-primary/50 uppercase tracking-wide">5</span>
+                <h4 className="font-bold text-foreground text-[13.5px]">Get feedback</h4>
+              </div>
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
                 Request AI feedback on your reasoning, then adjust your board and budget before submitting.
               </p>
             </CardContent>

@@ -30,8 +30,34 @@ import { ReasoningNarrative } from './ReasoningNarrative';
 export function ReasoningBoard() {
   const { board, removeChip, clearBoard } = useReasoningBoard();
   const [activeDrag, setActiveDrag] = useState<EvidenceDragData | null>(null);
+  const [hasScrolledToNarrative, setHasScrolledToNarrative] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const totalChips = Object.values(board).reduce((s, arr) => s + arr.length, 0);
+  const hasAnnotations = useMemo(
+    () => Object.values(board).some(chips => chips.some(c => c.annotation && c.annotation.trim().length > 0)),
+    [board]
+  );
+
+  // Track when learner has scrolled far enough to see the narrative section
+  useEffect(() => {
+    if (hasScrolledToNarrative) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (el.scrollTop > 320) setHasScrolledToNarrative(true);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [hasScrolledToNarrative]);
+
+  // Dynamic header subtitle based on learner progress
+  const headerSubtitle = useMemo(() => {
+    if (totalChips === 0) return 'Drag evidence from the charts onto the four quadrants to begin.';
+    if (!hasAnnotations) return 'Evidence placed! Click the pencil ✏ on any card to add your interpretation.';
+    if (!hasScrolledToNarrative) return 'Annotations saved — scroll down ↓ to see your reasoning story build.';
+    return 'Your reasoning story is taking shape — keep refining your evidence.';
+  }, [totalChips, hasAnnotations, hasScrolledToNarrative]);
 
   // activeDrag is no longer driven by useDndMonitor —
   // the DndContext onDragEnd in Index.tsx handles all dispatch.
@@ -47,8 +73,8 @@ export function ReasoningBoard() {
           </div>
           <div className="min-w-0">
             <h2 className="text-base font-bold text-foreground">Reasoning Board</h2>
-            <p className="text-[10px] text-muted-foreground truncate">
-              Keep evidence tidy across the four blocks; your narrative updates live below.
+            <p className="text-[10px] text-muted-foreground truncate transition-all duration-300">
+              {headerSubtitle}
             </p>
           </div>
           {totalChips > 0 && (
@@ -104,7 +130,7 @@ export function ReasoningBoard() {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-4">
           {/* Section title */}
           <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground/70">Reasoning Blocks</h3>
