@@ -49,7 +49,7 @@ import {
 
 
 function SimulationContent() {
-  const { openTab, activeTabId } = useTabs();
+  const { openTab, activeTabId, split } = useTabs();
   const { user, signOut, role } = useAuth();
   const navigate = useNavigate();
   const { board, addChip, moveChip, contextualiseChip, writtenDiagnosis, loadBoard } = useReasoningBoard();
