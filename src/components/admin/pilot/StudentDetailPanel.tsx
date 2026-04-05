@@ -1026,10 +1026,10 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
     const visit = e.visit_number ?? 1;
     const secs = e.time_spent_seconds;
     if (tab === 'home' && visit === 1) return 'Session started';
-    if (tab === 'reasoning_board' && visit === 1) return 'First visit to board';
-    if (tab === 'my_decisions' && visit > 1) return 'Returned to check data';
+    if ((tab === 'reasoning' || tab === 'reasoning_board') && visit === 1) return 'First visit to board';
+    if ((tab === 'decisions' || tab === 'my_decisions') && visit > 1) return 'Returned to check data';
     if (secs != null && secs > 600) return 'Long time here — may have been stuck or very engaged';
-    if (secs != null && secs < 60 && tab === 'reasoning_board') return 'Very brief board visit';
+    if (secs != null && secs < 60 && (tab === 'reasoning' || tab === 'reasoning_board')) return 'Very brief board visit';
     return '';
   }
 
