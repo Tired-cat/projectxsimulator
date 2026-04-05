@@ -154,7 +154,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
   const [navEvents, setNavEvents] = useState<NavEvent[]>([]);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [allocCount, setAllocCount] = useState(0);
-  const [boardResets, setBoardResets] = useState(0);
+  const [boardResets] = useState(0); // kept for potential future use
   const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [boardEvents, setBoardEvents] = useState<BoardEvent[]>([]);
   const [writtenDiagnosis, setWrittenDiagnosis] = useState<string | null>(null);
