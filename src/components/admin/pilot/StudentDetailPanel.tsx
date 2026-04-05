@@ -1037,18 +1037,30 @@ function NavigationTab({ events }: { events: NavEvent[] }) {
 
   // Pattern observations
   const observations: { text: string; amber?: boolean }[] = [];
-  const decisionVisits = events.filter(e => e.tab.toLowerCase() === 'my_decisions').length;
-  const hasBoard = events.some(e => e.tab.toLowerCase() === 'reasoning_board');
+  const decisionVisits = events.filter(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'decisions' || t === 'my_decisions';
+  }).length;
+  const hasBoard = events.some(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'reasoning' || t === 'reasoning_board';
+  });
   if (decisionVisits > 1) {
-    observations.push({ text: `This student returned to My Decisions ${decisionVisits} times — they cross-referenced data while building their reasoning board.` });
+    observations.push({ text: `This student returned to Decisions ${decisionVisits} times — they cross-referenced data while building their reasoning board.` });
   }
   if (!hasBoard) {
-    observations.push({ text: 'This student never reached the Reasoning Board tab.', amber: true });
+    observations.push({ text: 'This student never navigated to the Reasoning Board tab directly (they may have used split-screen mode instead).', amber: true });
   }
-  const firstBoardIdx = events.findIndex(e => e.tab.toLowerCase() === 'reasoning_board');
-  const firstDecisionsIdx = events.findIndex(e => e.tab.toLowerCase() === 'my_decisions');
+  const firstBoardIdx = events.findIndex(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'reasoning' || t === 'reasoning_board';
+  });
+  const firstDecisionsIdx = events.findIndex(e => {
+    const t = e.tab.toLowerCase();
+    return t === 'decisions' || t === 'my_decisions';
+  });
   if (firstBoardIdx !== -1 && (firstDecisionsIdx === -1 || firstBoardIdx < firstDecisionsIdx)) {
-    observations.push({ text: 'This student went to the Reasoning Board before exploring My Decisions — they may have missed important data.', amber: true });
+    observations.push({ text: 'This student went to the Reasoning Board before exploring Decisions — they may have missed important data.', amber: true });
   }
 
   return (
