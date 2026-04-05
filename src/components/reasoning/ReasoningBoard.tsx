@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { X, GripVertical, FlaskConical, Trash2, Pencil } from 'lucide-react';
 import { useReasoningBoard } from '@/contexts/ReasoningBoardContext';
