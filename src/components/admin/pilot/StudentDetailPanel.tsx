@@ -212,7 +212,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         setAiFeedback(aiRes.data as AiFeedback | null);
         setHasFeedback(aiRes.data != null);
         setNavEvents((navRes.data ?? []) as NavEvent[]);
-        setBoardResets((resetRes.data ?? []).length);
+        // boardResets no longer displayed, but query kept for data availability
 
         // Parse board cards — can be object keyed by quadrant or an array
         const raw = boardRes.data?.cards;
