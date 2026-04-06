@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Send } from 'lucide-react';
 import { buildFullReasoningStory } from '@/components/reasoning/ReasoningNarrative';
@@ -138,6 +139,8 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
     q4_feedback_impact: '',
     q5_comparison: '',
   });
+  const [usedAi, setUsedAi] = useState<'yes' | 'no' | ''>('');
+  const [aiChatLink, setAiChatLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -190,10 +193,11 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
     setAnswers(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  const allValid = QUESTIONS.every(q => {
-    const wc = countWords(answers[q.key]);
-    return wc >= 3 && wc <= q.limit;
-  });
+  const allValid =
+    QUESTIONS.every(q => {
+      const wc = countWords(answers[q.key]);
+      return wc >= 3 && wc <= q.limit;
+    }) && usedAi !== '';
 
   const handleSubmit = useCallback(async () => {
     if (!allValid || submitting) return;
@@ -208,6 +212,8 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
         q3_story_vs_thinking: answers.q3_story_vs_thinking.trim(),
         q4_feedback_impact: answers.q4_feedback_impact.trim(),
         q5_comparison: answers.q5_comparison.trim(),
+        used_ai: usedAi === 'yes',
+        ai_chat_link: usedAi === 'yes' ? aiChatLink.trim() || null : null,
       });
       if (error) throw error;
       onComplete();
@@ -302,6 +308,38 @@ export function ReflectionScreen({ sessionId, userId, onComplete }: ReflectionSc
                 </div>
               );
             })}
+
+            {/* AI usage question */}
+            <div className="space-y-3 rounded-lg border border-border p-4">
+              <p className="text-[13px] font-medium">Did you use AI to help you analyse?</p>
+              <div className="flex gap-4">
+                {(['yes', 'no'] as const).map(val => (
+                  <label key={val} className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="used_ai"
+                      value={val}
+                      checked={usedAi === val}
+                      onChange={() => { setUsedAi(val); if (val === 'no') setAiChatLink(''); }}
+                      className="accent-primary w-4 h-4"
+                    />
+                    <span className="text-sm capitalize">{val}</span>
+                  </label>
+                ))}
+              </div>
+              {usedAi === 'yes' && (
+                <div className="space-y-1">
+                  <p className="text-[12px] text-muted-foreground">Please add the link to your chat</p>
+                  <Input
+                    type="url"
+                    placeholder="https://..."
+                    value={aiChatLink}
+                    onChange={e => setAiChatLink(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2 pb-8">
               <Button
