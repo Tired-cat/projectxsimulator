@@ -318,6 +318,7 @@ export type Database = {
       }
       post_simulation_reflections: {
         Row: {
+          ai_chat_link: string | null
           id: string
           q1_reasoning_genuine: string | null
           q2_framework_clarity: string | null
@@ -326,9 +327,11 @@ export type Database = {
           q5_comparison: string | null
           session_id: string
           submitted_at: string | null
+          used_ai: boolean | null
           user_id: string
         }
         Insert: {
+          ai_chat_link?: string | null
           id?: string
           q1_reasoning_genuine?: string | null
           q2_framework_clarity?: string | null
@@ -337,9 +340,11 @@ export type Database = {
           q5_comparison?: string | null
           session_id: string
           submitted_at?: string | null
+          used_ai?: boolean | null
           user_id: string
         }
         Update: {
+          ai_chat_link?: string | null
           id?: string
           q1_reasoning_genuine?: string | null
           q2_framework_clarity?: string | null
@@ -348,6 +353,7 @@ export type Database = {
           q5_comparison?: string | null
           session_id?: string
           submitted_at?: string | null
+          used_ai?: boolean | null
           user_id?: string
         }
         Relationships: [
