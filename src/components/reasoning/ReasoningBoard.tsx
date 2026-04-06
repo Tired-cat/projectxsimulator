@@ -289,10 +289,28 @@ function ChipCard({
 
   const [showAnnotation, setShowAnnotation] = useState(false);
   const [draft, setDraft] = useState(chip.annotation ?? '');
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setDraft(chip.annotation ?? '');
   }, [chip.annotation]);
+
+  // Auto-save 600ms after the user stops typing
+  const handleDraftChange = useCallback((value: string) => {
+    const clamped = value.slice(0, 150);
+    setDraft(clamped);
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(() => {
+      updateChipAnnotation(blockId, chip.id, clamped.trim());
+    }, 600);
+  }, [blockId, chip.id, updateChipAnnotation]);
+
+  // Save immediately when textarea loses focus
+  const handleBlur = useCallback(() => {
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    updateChipAnnotation(blockId, chip.id, draft.trim());
+    setShowAnnotation(false);
+  }, [blockId, chip.id, draft, updateChipAnnotation]);
 
   const {
     attributes,
@@ -402,27 +420,18 @@ function ChipCard({
           <textarea
             className="w-full text-[10px] rounded border border-border/60 bg-background px-2 py-1.5 resize-none focus:outline-none focus:border-primary/50 leading-relaxed"
             rows={2}
-            maxLength={160}
+            maxLength={150}
             placeholder="My interpretation..."
             value={draft}
-            onChange={(e) => setDraft(e.target.value.slice(0, 150))}
+            onChange={(e) => handleDraftChange(e.target.value)}
+            onBlur={handleBlur}
             onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
             autoFocus
           />
           <div className="flex justify-between items-center mt-1">
             <span className="text-[9px] text-muted-foreground/50">{150 - draft.length} chars left</span>
-            <button
-              className="text-[9px] text-primary hover:underline"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                updateChipAnnotation(blockId, chip.id, draft.trim());
-                setShowAnnotation(false);
-              }}
-            >
-              Save
-            </button>
+            <span className="text-[9px] text-muted-foreground/40 italic">auto-saved</span>
           </div>
         </div>
       )}
