@@ -83,6 +83,27 @@ export function DraggableBarChart({
   const chartRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  // Refs to latest drag state — safe to read in unmount cleanup without stale closures
+  const draggingChannelRef = useRef<string | null>(null);
+  const draftSpendRef = useRef<ChannelSpend | null>(null);
+  const onSpendChangeRef = useRef(onSpendChange);
+
+  // Keep refs in sync so unmount cleanup always has the latest values
+  useEffect(() => { draggingChannelRef.current = draggingChannel; }, [draggingChannel]);
+  useEffect(() => { draftSpendRef.current = draftSpend; }, [draftSpend]);
+  useEffect(() => { onSpendChangeRef.current = onSpendChange; }, [onSpendChange]);
+
+  // Commit any in-flight draft to parent when component unmounts (e.g. compare mode toggle
+  // causes AnimatePresence to swap key="single" ↔ key="split" which fully remounts the chart)
+  useEffect(() => {
+    return () => {
+      const ch = draggingChannelRef.current;
+      const draft = draftSpendRef.current;
+      if (ch && draft) {
+        onSpendChangeRef.current(ch as keyof ChannelSpend, draft[ch as keyof ChannelSpend]);
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentional empty deps (unmount only)
 
   // Use draft spend during drag, otherwise use real spend
   const displaySpend = draftSpend ?? channelSpend;

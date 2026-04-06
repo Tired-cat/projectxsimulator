@@ -57,11 +57,14 @@ export const SimulationDecisions = memo(function SimulationDecisions({
   const [baselineSpend, setBaselineSpend] = useState<ChannelSpend>({ ...INITIAL_SPEND } as ChannelSpend);
 
   const handleActivateCompare = useCallback(() => {
-    setSnapshotSpend({ ...channelSpend });
-    setBaselineSpend({ ...channelSpend });
+    // Always snapshot the initial allocation as the "Before" pane so the user
+    // can compare their adjustments against the starting point, not against
+    // themselves (which made both panes look identical / "reset").
+    setSnapshotSpend({ ...INITIAL_SPEND } as ChannelSpend);
+    setBaselineSpend({ ...INITIAL_SPEND } as ChannelSpend);
     setCompareActive(true);
     window.dispatchEvent(new Event('tutorial:compare-activated'));
-  }, [channelSpend]);
+  }, []);
 
   const handleCloseCompare = useCallback(() => {
     setCompareActive(false);
