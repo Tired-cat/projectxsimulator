@@ -1216,6 +1216,8 @@ interface ReflectionRow {
   q3_story_vs_thinking: string | null;
   q4_feedback_impact: string | null;
   q5_comparison: string | null;
+  used_ai: boolean | null;
+  ai_chat_link: string | null;
   submitted_at: string | null;
 }
 
@@ -1229,7 +1231,7 @@ function ReflectionTab({ sessionId }: { sessionId: string }) {
       setLoading(true);
       const { data: row } = await supabase
         .from('post_simulation_reflections')
-        .select('q1_reasoning_genuine, q2_framework_clarity, q3_story_vs_thinking, q4_feedback_impact, q5_comparison, submitted_at')
+        .select('q1_reasoning_genuine, q2_framework_clarity, q3_story_vs_thinking, q4_feedback_impact, q5_comparison, used_ai, ai_chat_link, submitted_at')
         .eq('session_id', sessionId)
         .maybeSingle();
       setData(row as ReflectionRow | null);
@@ -1263,6 +1265,34 @@ function ReflectionTab({ sessionId }: { sessionId: string }) {
           </div>
         );
       })}
+      {/* AI usage */}
+      <div>
+        <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">Did you use AI to help you analyse?</p>
+        <div className="rounded-md bg-muted/40 border border-border py-2.5 px-3 space-y-1.5">
+          {data.used_ai === null ? (
+            <p className="text-[13px] italic text-muted-foreground">No answer</p>
+          ) : (
+            <>
+              <p className="text-[13px] font-medium">{data.used_ai ? 'Yes' : 'No'}</p>
+              {data.used_ai && (
+                data.ai_chat_link ? (
+                  <a
+                    href={data.ai_chat_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[12px] text-primary underline break-all"
+                  >
+                    {data.ai_chat_link}
+                  </a>
+                ) : (
+                  <p className="text-[12px] italic text-muted-foreground">No link provided</p>
+                )
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
       {data.submitted_at && (
         <p className="text-[10px] text-muted-foreground">
           Reflection submitted {new Date(data.submitted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} at {new Date(data.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
