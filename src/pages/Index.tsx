@@ -313,9 +313,32 @@ function SimulationContent() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitted, setSubmitted] = useState(isCompleted);
 
+  // If session is completed, check if reflection was submitted — if not, redirect
+  const [reflectionChecked, setReflectionChecked] = useState(false);
   useEffect(() => {
-    setSubmitted(isCompleted);
-  }, [isCompleted]);
+    if (!isCompleted || !sessionId || !user) {
+      setSubmitted(isCompleted);
+      setReflectionChecked(true);
+      return;
+    }
+    // Check if a reflection exists for this session
+    (async () => {
+      const { data: reflection } = await supabase
+        .from('post_simulation_reflections')
+        .select('id')
+        .eq('session_id', sessionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!reflection) {
+        // No reflection yet — redirect to complete it
+        navigate('/reflection', { replace: true });
+      } else {
+        setSubmitted(true);
+      }
+      setReflectionChecked(true);
+    })();
+  }, [isCompleted, sessionId, user, navigate]);
 
   // Compute generated story text — use the same rich narrative shown in "My Full Reasoning Story"
   const generatedStory = useMemo(() => {
