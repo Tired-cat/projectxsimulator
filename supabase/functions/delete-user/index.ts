@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const callerId = claimsData.claims.sub as string;
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: isAdmin } = await adminClient.rpc('is_admin', { _user_id: caller.id });
+    const { data: isAdmin } = await adminClient.rpc('is_admin', { _user_id: callerId });
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: 'Forbidden: admin only' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
