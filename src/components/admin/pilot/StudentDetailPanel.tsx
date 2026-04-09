@@ -59,6 +59,10 @@ interface AiFeedback {
   post_feedback_action: string | null;
   time_adjusting_seconds: number | null;
   requested_at: string;
+  action_taken_at: string | null;
+  feedback_round: number;
+  board_state_before: any;
+  board_state_after: any | null;
   descriptive_cards_before: number;
   diagnostic_cards_before: number;
   prescriptive_cards_before: number;
@@ -67,6 +71,14 @@ interface AiFeedback {
   diagnostic_cards_after: number | null;
   prescriptive_cards_after: number | null;
   predictive_cards_after: number | null;
+  tiktok_spend_before: number | null;
+  instagram_spend_before: number | null;
+  facebook_spend_before: number | null;
+  newspaper_spend_before: number | null;
+  tiktok_spend_after: number | null;
+  instagram_spend_after: number | null;
+  facebook_spend_after: number | null;
+  newspaper_spend_after: number | null;
 }
 
 interface NavEvent {
@@ -150,7 +162,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [sub, setSub] = useState<SubData | null>(null);
   const [allocEvents, setAllocEvents] = useState<AllocEvent[]>([]);
-  const [aiFeedback, setAiFeedback] = useState<AiFeedback | null>(null);
+  const [aiFeedbackEvents, setAiFeedbackEvents] = useState<AiFeedback[]>([]);
   const [navEvents, setNavEvents] = useState<NavEvent[]>([]);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [allocCount, setAllocCount] = useState(0);
@@ -181,8 +193,9 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .eq('session_id', sessionId)
           .order('sequence_number', { ascending: true }),
         supabase.from('ai_feedback_events')
-          .select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, requested_at, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after')
-          .eq('session_id', sessionId).maybeSingle(),
+          .select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, requested_at, action_taken_at, feedback_round, board_state_before, board_state_after, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after, tiktok_spend_before, instagram_spend_before, facebook_spend_before, newspaper_spend_before, tiktok_spend_after, instagram_spend_after, facebook_spend_after, newspaper_spend_after')
+          .eq('session_id', sessionId)
+          .order('feedback_round', { ascending: true }),
         supabase.from('navigation_events')
           .select('tab, entered_at, exited_at, time_spent_seconds, visit_number')
           .eq('session_id', sessionId)
@@ -209,8 +222,9 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         const alloc = (allocRes.data ?? []) as AllocEvent[];
         setAllocEvents(alloc);
         setAllocCount(alloc.length);
-        setAiFeedback(aiRes.data as AiFeedback | null);
-        setHasFeedback(aiRes.data != null);
+        const aiEvents = (aiRes.data ?? []) as AiFeedback[];
+        setAiFeedbackEvents(aiEvents);
+        setHasFeedback(aiEvents.length > 0);
         setNavEvents((navRes.data ?? []) as NavEvent[]);
         // boardResets no longer displayed, but query kept for data availability
 
@@ -351,7 +365,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
       <div className="pt-1">
         {activeTab === 'reasoning' && <ReasoningBoardTab cards={boardCards} generatedStory={sub?.generated_story ?? null} writtenDiagnosis={writtenDiagnosis} />}
         {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} sub={sub} sessionId={sessionId} />}
-        {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
+        {activeTab === 'ai' && <AiFeedbackTab events={aiFeedbackEvents} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
         {activeTab === 'sequence' && <BoardSequenceTab events={boardEvents} />}
         {activeTab === 'reflection' && <ReflectionTab sessionId={sessionId} />}
@@ -887,116 +901,253 @@ function AllocationPathTab({ events, sub, sessionId }: { events: AllocEvent[]; s
   );
 }
 
-/* ── Tab 3: AI Feedback ─────────────────────────── */
-function AiFeedbackTab({ data }: { data: AiFeedback | null }) {
-  if (!data) {
-    return <p className="text-xs text-muted-foreground py-6 text-center italic">This student did not request AI feedback during their session.</p>;
+/* ── Tab 3: AI Feedback Timeline ─────────────────── */
+
+const CHANNELS = ['tiktok', 'instagram', 'facebook', 'newspaper'] as const;
+const CHANNEL_LABELS: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', newspaper: 'Newspaper' };
+const CHANNEL_DEFAULTS: Record<string, number> = { tiktok: 9000, instagram: 4000, facebook: 4000, newspaper: 3000 };
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m === 0) return `${s}s`;
+  return `${m}m ${s}s`;
+}
+
+function countAnnotations(boardState: any): { annotated: number; total: number } {
+  let total = 0;
+  let annotated = 0;
+  if (!boardState) return { annotated: 0, total: 0 };
+  try {
+    const processCards = (cards: any[]) => {
+      for (const c of cards) {
+        total++;
+        if (c.annotation && String(c.annotation).trim().length > 0) annotated++;
+      }
+    };
+    if (Array.isArray(boardState)) {
+      processCards(boardState);
+    } else if (typeof boardState === 'object') {
+      for (const cards of Object.values(boardState)) {
+        if (Array.isArray(cards)) processCards(cards as any[]);
+      }
+    }
+  } catch { /* ignore */ }
+  return { annotated, total };
+}
+
+function AiFeedbackTab({ events }: { events: AiFeedback[] }) {
+  if (!events.length) {
+    return <p className="text-xs text-muted-foreground py-6 text-center italic">This student did not request AI feedback.</p>;
   }
 
-  const quads = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
-  const submittedImmediately = data.post_feedback_action === 'submitted_immediately' || data.post_feedback_action !== 'adjusted';
-  const hasAfter = !submittedImmediately && data.descriptive_cards_after != null;
-
-  const requestedTime = new Date(data.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  const timingLabel = submittedImmediately
-    ? 'Submitted immediately'
-    : data.time_adjusting_seconds != null
-      ? `${Math.floor(data.time_adjusting_seconds / 60)} min ${data.time_adjusting_seconds % 60} sec adjusting time`
-      : '—';
+  const adjustedCount = events.filter(e => e.post_feedback_action === 'adjusted').length;
 
   return (
-    <div className="space-y-5">
-      {/* SECTION 1 — Timing */}
-      <p className="text-[10px] text-muted-foreground">
-        Feedback requested {requestedTime} · {timingLabel}
-      </p>
+    <div className="space-y-4">
+      {events.length > 1 && (
+        <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+          <p className="text-xs text-foreground font-medium">
+            {events.length} feedback round{events.length !== 1 ? 's' : ''} — student adjusted {adjustedCount} time{adjustedCount !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
 
-      {/* SECTION 2 — Before / After comparison */}
-      <div className="flex items-stretch gap-4">
-        {/* Before */}
-        <div className="flex-1">
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Before feedback</p>
-          <div className="space-y-1.5">
-            {quads.map(q => {
-              const count = data[`${q}_cards_before` as keyof AiFeedback] as number;
-              return (
-                <div key={q} className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: QUAD_COLORS[q] }} />
-                  <span className="text-[11px]" style={{ color: QUAD_COLORS[q] }}>{QUAD_LABELS[q]}:</span>
-                  <span className="text-[11px] font-medium" style={{ color: count === 0 ? '#C4622D' : 'inherit' }}>
-                    {count} card{count !== 1 ? 's' : ''}
+      {events.map((ev, idx) => (
+        <FeedbackRoundSection key={idx} event={ev} index={idx} isLast={idx === events.length - 1} />
+      ))}
+    </div>
+  );
+}
+
+function FeedbackRoundSection({ event: ev, index, isLast }: { event: AiFeedback; index: number; isLast: boolean }) {
+  const quads = ['descriptive', 'diagnostic', 'prescriptive', 'predictive'] as const;
+  const adjusted = ev.post_feedback_action === 'adjusted';
+  const requestedTime = new Date(ev.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let parsedFeedback: Record<string, string> | null = null;
+  if (ev.ai_feedback_text) {
+    try {
+      const obj = JSON.parse(ev.ai_feedback_text);
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) parsedFeedback = obj;
+    } catch { /* not JSON */ }
+  }
+
+  const { annotated, total } = countAnnotations(ev.board_state_before);
+
+  return (
+    <>
+      <div className="rounded-xl border border-border bg-background">
+        {/* HEADER */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20 rounded-t-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">Feedback round {ev.feedback_round || index + 1}</span>
+            <span className="text-[10px] text-muted-foreground">— {requestedTime}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {adjusted ? (
+              <>
+                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: '#4A7C59' }}>
+                  Adjusted
+                </span>
+                {ev.time_adjusting_seconds != null && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Spent {formatDuration(ev.time_adjusting_seconds)} adjusting
                   </span>
-                </div>
-              );
-            })}
+                )}
+              </>
+            ) : (
+              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground">
+                Submitted immediately
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Arrow */}
-        <div className="flex items-center justify-center px-2">
-          <span className="text-lg text-muted-foreground">→</span>
-        </div>
+        <div className="p-4 space-y-5">
+          {/* BOARD STATE COMPARISON */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Board state</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1.5">Before feedback</p>
+                <div className="space-y-1">
+                  {quads.map(q => {
+                    const count = ev[`${q}_cards_before` as keyof AiFeedback] as number;
+                    return (
+                      <div key={q} className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: QUAD_COLORS[q] }} />
+                        <span className="text-[11px]" style={{ color: QUAD_COLORS[q] }}>{QUAD_LABELS[q]}</span>
+                        <span className="text-[11px] font-medium" style={{ color: count === 0 ? '#C4622D' : 'inherit' }}>
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-        {/* After */}
-        <div className="flex-1">
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">After feedback</p>
-          {!hasAfter ? (
-            <p className="text-[11px] text-muted-foreground italic">Student submitted immediately — no changes made.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {quads.map(q => {
-                const before = data[`${q}_cards_before` as keyof AiFeedback] as number;
-                const after = data[`${q}_cards_after` as keyof AiFeedback] as number | null;
-                const val = after ?? before;
-                const increased = after != null && after > before;
-                const decreased = after != null && after < before;
+              <div>
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1.5">After feedback</p>
+                {!adjusted ? (
+                  <p className="text-[11px] text-muted-foreground italic">No changes made</p>
+                ) : (
+                  <div className="space-y-1">
+                    {quads.map(q => {
+                      const before = ev[`${q}_cards_before` as keyof AiFeedback] as number;
+                      const after = ev[`${q}_cards_after` as keyof AiFeedback] as number | null;
+                      const val = after ?? before;
+                      const increased = after != null && after > before;
+                      return (
+                        <div key={q} className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: QUAD_COLORS[q] }} />
+                          <span className="text-[11px]" style={{ color: QUAD_COLORS[q] }}>{QUAD_LABELS[q]}</span>
+                          <span className="text-[11px] font-medium" style={{ color: increased ? '#4A7C59' : 'inherit' }}>
+                            {val}{increased ? ' ↑' : ''}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ALLOCATION COMPARISON */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Allocation</p>
+            <div className="grid grid-cols-4 gap-2">
+              {CHANNELS.map(ch => {
+                const def = CHANNEL_DEFAULTS[ch];
+                const before = ev[`${ch}_spend_before` as keyof AiFeedback] as number | null;
+                const after = ev[`${ch}_spend_after` as keyof AiFeedback] as number | null;
+                const beforeVal = before ?? def;
+                const afterVal = adjusted ? after : null;
+                const changed = afterVal != null && afterVal !== beforeVal;
+                const increase = changed && afterVal! > beforeVal;
+                const decrease = changed && afterVal! < beforeVal;
+
                 return (
-                  <div key={q} className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: QUAD_COLORS[q] }} />
-                    <span className="text-[11px]" style={{ color: QUAD_COLORS[q] }}>{QUAD_LABELS[q]}:</span>
-                    <span
-                      className="text-[11px]"
-                      style={{
-                        color: increased ? '#0F6E56' : decreased ? '#D4A017' : 'inherit',
-                        fontWeight: increased || decreased ? 500 : 400,
-                      }}
-                    >
-                      {val} card{val !== 1 ? 's' : ''}{increased ? ' ↑' : decreased ? ' ↓' : ''}
-                    </span>
+                  <div key={ch} className="rounded-lg border border-border bg-muted/10 p-2">
+                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{CHANNEL_LABELS[ch]}</p>
+                    <div className="flex items-center gap-1 text-[11px] flex-wrap">
+                      <span className="text-muted-foreground">${def.toLocaleString()}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="font-medium">${beforeVal.toLocaleString()}</span>
+                      {adjusted && (
+                        <>
+                          <span className="text-muted-foreground">→</span>
+                          {changed ? (
+                            <span className="font-medium" style={{ color: increase ? '#4A7C59' : decrease ? '#C4622D' : 'inherit' }}>
+                              ${afterVal!.toLocaleString()}{increase ? ' ↑' : decrease ? ' ↓' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
+          </div>
+
+          {/* AI FEEDBACK TEXT */}
+          {ev.ai_feedback_text && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">AI feedback</p>
+              {parsedFeedback ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {FEEDBACK_FIELDS.map(f => {
+                    const content = parsedFeedback![f.key] || parsedFeedback![f.key.charAt(0).toUpperCase() + f.key.slice(1)];
+                    if (f.key === 'diagnosisFeedback' && (!content || !content.trim())) {
+                      return (
+                        <div key={f.key} className="rounded-lg border border-border bg-muted/10 p-2.5">
+                          <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{f.label}</p>
+                          <p className="text-[10px] text-amber-600 italic">No diagnosis feedback — student had no annotations when this feedback was requested.</p>
+                        </div>
+                      );
+                    }
+                    if (!content || !content.trim()) return null;
+                    return (
+                      <div key={f.key} className="rounded-lg border-l-[3px] p-2.5" style={{ backgroundColor: '#EEEDFE', borderLeftColor: '#6B4F8A' }}>
+                        <p className="text-[9px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#6B4F8A' }}>{f.label}</p>
+                        <p className="text-[10px] leading-relaxed" style={{ color: '#3C3489' }}>{content}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-muted/10 p-3">
+                  <p className="text-[11px] text-foreground/80 whitespace-pre-wrap">{ev.ai_feedback_text}</p>
+                  <p className="text-[9px] text-muted-foreground mt-1 italic">Could not be parsed as structured feedback.</p>
+                </div>
+              )}
+            </div>
           )}
+
+          {/* ANNOTATION STATE */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Annotation state at time of feedback</p>
+            {total === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic">No chips on board when feedback was requested.</p>
+            ) : (
+              <p className="text-[11px]" style={{ color: annotated === 0 ? '#D4A017' : annotated === total ? '#4A7C59' : 'inherit' }}>
+                {annotated} of {total} chip{total !== 1 ? 's' : ''} had interpretation notes when feedback was requested.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* SECTION 3 — AI feedback text (parsed) */}
-      {data.ai_feedback_text && (
-        <div>
-          <p className="text-xs font-medium text-foreground mb-2">Feedback shown to student</p>
-          <ParsedAiFeedback rawText={data.ai_feedback_text} />
+      {!isLast && (
+        <div className="flex items-center justify-center py-1">
+          <div className="w-px h-6 bg-border" />
         </div>
       )}
-
-      {/* SECTION 4 — Post-feedback action summary */}
-      <div className="text-[11px] text-muted-foreground">
-        <p>
-          Student chose to: <span className="font-medium text-foreground">
-            {submittedImmediately ? 'Submit immediately' : 'Adjust and continue their work'}
-          </span>
-        </p>
-        <p className="mt-1">
-          {submittedImmediately
-            ? 'They read the feedback and submitted without making any further changes.'
-            : data.time_adjusting_seconds != null
-              ? `They spent ${(data.time_adjusting_seconds / 60).toFixed(1)} minutes adjusting before submitting.`
-              : 'They returned to adjust before submitting.'
-          }
-        </p>
-      </div>
-    </div>
+    </>
   );
 }
 function NavigationTab({ events }: { events: NavEvent[] }) {

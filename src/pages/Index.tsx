@@ -347,7 +347,7 @@ function SimulationContent() {
           (sum, chips) => sum + chips.filter((c: any) => c.contextChips?.length > 0 || c.contextChip).length,
           0,
         );
-        const updatePayload: Record<string, any> = {
+        const updatePayload = {
           board_state_after: board as any,
           descriptive_cards_after: board.descriptive?.length ?? 0,
           diagnostic_cards_after: board.diagnostic?.length ?? 0,
@@ -358,6 +358,20 @@ function SimulationContent() {
           instagram_spend_after: channelSpend.instagram,
           facebook_spend_after: channelSpend.facebook,
           newspaper_spend_after: channelSpend.newspaper,
+        } as {
+          board_state_after: any;
+          descriptive_cards_after: number;
+          diagnostic_cards_after: number;
+          prescriptive_cards_after: number;
+          predictive_cards_after: number;
+          contextualise_pairs_after: number;
+          tiktok_spend_after: number;
+          instagram_spend_after: number;
+          facebook_spend_after: number;
+          newspaper_spend_after: number;
+          post_feedback_action?: string;
+          action_taken_at?: string;
+          time_adjusting_seconds?: number;
         };
         // If submitting directly from feedback page (not after adjusting)
         if (showFeedback && feedbackShownAtRef.current) {
