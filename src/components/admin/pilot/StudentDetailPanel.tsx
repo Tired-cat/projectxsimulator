@@ -59,6 +59,10 @@ interface AiFeedback {
   post_feedback_action: string | null;
   time_adjusting_seconds: number | null;
   requested_at: string;
+  action_taken_at: string | null;
+  feedback_round: number;
+  board_state_before: any;
+  board_state_after: any | null;
   descriptive_cards_before: number;
   diagnostic_cards_before: number;
   prescriptive_cards_before: number;
@@ -67,6 +71,14 @@ interface AiFeedback {
   diagnostic_cards_after: number | null;
   prescriptive_cards_after: number | null;
   predictive_cards_after: number | null;
+  tiktok_spend_before: number | null;
+  instagram_spend_before: number | null;
+  facebook_spend_before: number | null;
+  newspaper_spend_before: number | null;
+  tiktok_spend_after: number | null;
+  instagram_spend_after: number | null;
+  facebook_spend_after: number | null;
+  newspaper_spend_after: number | null;
 }
 
 interface NavEvent {
@@ -150,7 +162,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [sub, setSub] = useState<SubData | null>(null);
   const [allocEvents, setAllocEvents] = useState<AllocEvent[]>([]);
-  const [aiFeedback, setAiFeedback] = useState<AiFeedback | null>(null);
+  const [aiFeedbackEvents, setAiFeedbackEvents] = useState<AiFeedback[]>([]);
   const [navEvents, setNavEvents] = useState<NavEvent[]>([]);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [allocCount, setAllocCount] = useState(0);
@@ -181,8 +193,9 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
           .eq('session_id', sessionId)
           .order('sequence_number', { ascending: true }),
         supabase.from('ai_feedback_events')
-          .select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, requested_at, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after')
-          .eq('session_id', sessionId).maybeSingle(),
+          .select('ai_feedback_text, post_feedback_action, time_adjusting_seconds, requested_at, action_taken_at, feedback_round, board_state_before, board_state_after, descriptive_cards_before, diagnostic_cards_before, prescriptive_cards_before, predictive_cards_before, descriptive_cards_after, diagnostic_cards_after, prescriptive_cards_after, predictive_cards_after, tiktok_spend_before, instagram_spend_before, facebook_spend_before, newspaper_spend_before, tiktok_spend_after, instagram_spend_after, facebook_spend_after, newspaper_spend_after')
+          .eq('session_id', sessionId)
+          .order('feedback_round', { ascending: true }),
         supabase.from('navigation_events')
           .select('tab, entered_at, exited_at, time_spent_seconds, visit_number')
           .eq('session_id', sessionId)
@@ -209,8 +222,9 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
         const alloc = (allocRes.data ?? []) as AllocEvent[];
         setAllocEvents(alloc);
         setAllocCount(alloc.length);
-        setAiFeedback(aiRes.data as AiFeedback | null);
-        setHasFeedback(aiRes.data != null);
+        const aiEvents = (aiRes.data ?? []) as AiFeedback[];
+        setAiFeedbackEvents(aiEvents);
+        setHasFeedback(aiEvents.length > 0);
         setNavEvents((navRes.data ?? []) as NavEvent[]);
         // boardResets no longer displayed, but query kept for data availability
 
@@ -351,7 +365,7 @@ export default function StudentDetailPanel({ sessionId, userId, onClose }: Props
       <div className="pt-1">
         {activeTab === 'reasoning' && <ReasoningBoardTab cards={boardCards} generatedStory={sub?.generated_story ?? null} writtenDiagnosis={writtenDiagnosis} />}
         {activeTab === 'allocation' && <AllocationPathTab events={allocEvents} sub={sub} sessionId={sessionId} />}
-        {activeTab === 'ai' && <AiFeedbackTab data={aiFeedback} />}
+        {activeTab === 'ai' && <AiFeedbackTab events={aiFeedbackEvents} />}
         {activeTab === 'navigation' && <NavigationTab events={navEvents} />}
         {activeTab === 'sequence' && <BoardSequenceTab events={boardEvents} />}
         {activeTab === 'reflection' && <ReflectionTab sessionId={sessionId} />}
