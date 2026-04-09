@@ -313,9 +313,32 @@ function SimulationContent() {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [submitted, setSubmitted] = useState(isCompleted);
 
+  // If session is completed, check if reflection was submitted — if not, redirect
+  const [reflectionChecked, setReflectionChecked] = useState(false);
   useEffect(() => {
-    setSubmitted(isCompleted);
-  }, [isCompleted]);
+    if (!isCompleted || !sessionId || !user) {
+      setSubmitted(isCompleted);
+      setReflectionChecked(true);
+      return;
+    }
+    // Check if a reflection exists for this session
+    (async () => {
+      const { data: reflection } = await supabase
+        .from('post_simulation_reflections')
+        .select('id')
+        .eq('session_id', sessionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!reflection) {
+        // No reflection yet — redirect to complete it
+        navigate('/reflection', { replace: true });
+      } else {
+        setSubmitted(true);
+      }
+      setReflectionChecked(true);
+    })();
+  }, [isCompleted, sessionId, user, navigate]);
 
   // Compute generated story text — use the same rich narrative shown in "My Full Reasoning Story"
   const generatedStory = useMemo(() => {
@@ -347,7 +370,7 @@ function SimulationContent() {
           (sum, chips) => sum + chips.filter((c: any) => c.contextChips?.length > 0 || c.contextChip).length,
           0,
         );
-        const updatePayload: Record<string, any> = {
+        const updatePayload = {
           board_state_after: board as any,
           descriptive_cards_after: board.descriptive?.length ?? 0,
           diagnostic_cards_after: board.diagnostic?.length ?? 0,
@@ -358,6 +381,9 @@ function SimulationContent() {
           instagram_spend_after: channelSpend.instagram,
           facebook_spend_after: channelSpend.facebook,
           newspaper_spend_after: channelSpend.newspaper,
+          post_feedback_action: undefined as string | undefined,
+          action_taken_at: undefined as string | undefined,
+          time_adjusting_seconds: undefined as number | undefined,
         };
         // If submitting directly from feedback page (not after adjusting)
         if (showFeedback && feedbackShownAtRef.current) {
