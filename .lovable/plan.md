@@ -1,66 +1,37 @@
+# Add a "Download dashboard view" button to the Pilot page
 
+## What you get
+Two buttons at the top of the Pilot page:
+- **Download raw data** (the current button, renamed). It stays the same.
+- **Download dashboard view** (new). This is one Excel file that holds the numbers exactly as the dashboard shows them, so you can check them against the raw data.
 
-## Fix: Runtime crashes + full @dnd-kit cleanup
+Both buttons follow the class picker: one class, or all classes.
 
-### Problem
+## Sheets in the "dashboard view" file
+1. **Pilot health**: every stat card, with its value, label and status (ok / warning), plus the numbers behind each chart.
+2. **Reasoning board**: cards per quadrant, how many students filled each quadrant, block completion and chart data.
+3. **Annotation quality**: annotation counts, quality tiers and the per-quadrant breakdowns.
+4. **Allocation decisions**: final spend per channel, averages, how the decisions are spread out, and the outcome categories.
+5. **Feature usage**: how many students used each feature, and what percentage.
+6. **AI feedback**: rounds requested, what students did after feedback, and the before/after changes.
+7. **Struggle signals**: each issue with its priority, status, percentage and threshold, plus tab time, first-evidence and reset stats.
+8. **Per-student table**: every column exactly as shown, one row per student.
+9. **Student details**: one row per student with everything from the detail panel you open by clicking a student:
+   - the overview stats and final decision
+   - the reasoning board cards with their notes
+   - the reasoning story and written diagnosis
+   - allocation path, AI feedback rounds, navigation, tutorial status and resets
+   - the reflection answers, including AI use and the chat link
+10. **Student timeline**: a long list with one row per event for each student (budget moves, board moves, feedback). This lets you trace the detail-panel charts step by step.
 
-Two runtime errors are causing a blank screen:
+Each sheet starts with a header row showing the class filter and when the file was made.
 
-1. **`useDndMonitor must be used within a children of <DndContext>`** — `ReasoningBoard` calls `useDndMonitor` but no `<DndContext>` exists anywhere in the component tree. All `useDraggable` / `useDroppable` hooks also silently fail without it.
-
-2. **`Function components cannot be given refs` (DialogContent warning)** — Minor React warning from Radix Dialog, not a crash blocker but worth fixing.
-
-Additionally, `ProductMixChart` and `DraggableBarChart` still use native HTML5 drag (`draggable`, `onDragStart`, `e.dataTransfer`) instead of @dnd-kit, creating an inconsistent system where drops never reach the @dnd-kit `onDragEnd` handler.
-
-### Plan
-
-#### 1. Add `<DndContext>` provider wrapper
-
-Wrap the simulation content tree in a `<DndContext>` from `@dnd-kit/core`. The best place is in `src/pages/Index.tsx`, wrapping `<SimulationContent />` inside `<ReasoningBoardProvider>`. This single provider will serve all draggable sources and droppable targets across the app.
-
-The `onDragEnd` handler will be a thin dispatcher that delegates to the existing `addChip`, `moveChip`, and `contextualiseChip` functions — effectively moving the logic currently in `ReasoningBoard`'s `useDndMonitor` up to the provider level.
-
-**File**: `src/pages/Index.tsx`
-- Import `DndContext` and `DragOverlay` from `@dnd-kit/core`
-- Wrap the content in `<DndContext onDragEnd={handleDragEnd}>` inside the existing provider tree
-- Move the drag-end logic (currently in `ReasoningBoard.tsx`'s `useDndMonitor`) here
-
-#### 2. Remove `useDndMonitor` from ReasoningBoard
-
-Since the `DndContext` with `onDragEnd` is now at the top level, remove the `useDndMonitor` call from `ReasoningBoard.tsx`. Keep all `useDroppable` and `useDraggable` hooks in place — they'll work correctly now that they're inside a `DndContext`.
-
-**File**: `src/components/reasoning/ReasoningBoard.tsx`
-- Remove the `useDndMonitor` import and call (lines 2, 56-98)
-- Keep `activeDrag` state but drive it from the parent `DndContext` via context or keep it local with `useDndMonitor` replaced by a simpler approach
-
-#### 3. Convert ProductMixChart to @dnd-kit
-
-Replace native `draggable` / `onDragStart` / `onDragEnd` with `useDraggable` hooks for each legend row and pie segment.
-
-**File**: `src/components/simulation/ProductMixChart.tsx`
-- Remove `handleSegmentDragStart` / `handleSegmentDragEnd` and native drag attributes
-- Create a small `DraggableLegendRow` sub-component using `useDraggable` with `ExternalEvidencePayload` data
-- Remove direct `setDraggingChip` calls (the DndContext handler manages state)
-
-#### 4. Convert DraggableBarChart main bar drag to @dnd-kit
-
-The main bar in `DraggableBarChart` still uses native HTML5 drag for reason mode. Convert it to use `useDraggable`.
-
-**File**: `src/components/simulation/DraggableBarChart.tsx`
-- Remove `handleBarDragStart` / `handleBarDragEnd` native drag handlers (lines 704-715)
-- The `GhostDeltaBar` component already uses `useDraggable` correctly — just remove the native drag fallback path from the parent
-
-#### 5. Fix DialogContent ref warning (minor)
-
-The warning about `DialogContent` giving refs to function components is a known shadcn/Radix issue. It's cosmetic but can be silenced.
-
-**File**: `src/components/ui/dialog.tsx`  
-- This is a shadcn component — the warning is harmless and won't cause crashes. Skip unless specifically requested.
-
-### Technical details
-
-- `DndContext` needs to be inside `ReasoningBoardProvider` so the `onDragEnd` handler can access `addChip`, `moveChip`, `contextualiseChip` via the context hook
-- All existing `useDraggable` calls in `EvidenceHandle`, `GhostDeltaBar`, and `ReasoningBoard` (ChipCard) will automatically work once wrapped in `DndContext`
-- The `activeDrag` state for visual highlighting of drop zones can be driven by `DndContext`'s `onDragStart` / `onDragCancel` callbacks passed as props
-- No backend, session, or auto-save code is touched
-
+## Technical details
+- Keeping the export in step with the screen: the calculation code in each Pilot component (PilotHealth, PilotReasoningBoard, PilotAnnotationQuality, PilotAllocationDecisions, PilotFeatureUsage, PilotAiFeedback, PilotStruggleSignals, PilotPerStudentTable, StudentDetailPanel) moves into pure functions in `src/lib/pilotMetrics/*.ts`. Both the components and the export call these same functions, so the numbers always match. The UI and the queries stay the same.
+- New `src/lib/pilotPresentedExport.ts`:
+  - fetches the data once, with the same class filter and the same chunked `.in('session_id')` loading used today
+  - runs each metrics function
+  - writes the sheets with `xlsx`, cutting any cell longer than 32k characters
+- Detail-panel data for every student is built from the bulk-fetched tables. There are no per-student queries.
+- AdminPilot: rename the current button, add a second button with its own loading state and toasts.
+- Verification: open the Pilot page, download both files, and spot-check a few Pilot health cards and per-student rows against what the dashboard shows.
