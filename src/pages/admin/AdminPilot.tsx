@@ -14,6 +14,7 @@ import { RouteLoader } from '@/components/RouteLoader';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { downloadPilotData } from '@/lib/pilotExport';
+import { downloadPresentedPilotData } from '@/lib/pilotPresentedExport';
 
 const PilotHealth = lazy(() => import('@/components/admin/pilot/PilotHealth'));
 const PilotReasoningBoard = lazy(() => import('@/components/admin/pilot/PilotReasoningBoard'));
@@ -52,6 +53,7 @@ export default function AdminPilot() {
   const [activeTab, setActiveTab] = useState<PilotTab>('Pilot health');
   const [studentCount, setStudentCount] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingView, setDownloadingView] = useState(false);
 
   useEffect(() => {
     async function fetchCount() {
@@ -117,7 +119,27 @@ export default function AdminPilot() {
             }}
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            {downloading ? 'Preparing…' : 'Download all data'}
+            {downloading ? 'Preparing…' : 'Download raw data'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={downloadingView}
+            onClick={async () => {
+              setDownloadingView(true);
+              try {
+                await downloadPresentedPilotData(classId, selectedLabel);
+                toast({ title: 'Download ready', description: 'Dashboard view saved as an Excel file.' });
+              } catch (e: any) {
+                toast({ title: 'Download failed', description: e?.message ?? 'Please try again.', variant: 'destructive' });
+              } finally {
+                setDownloadingView(false);
+              }
+            }}
+          >
+            {downloadingView ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {downloadingView ? 'Preparing…' : 'Download dashboard view'}
           </Button>
           {studentCount !== null && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md">
