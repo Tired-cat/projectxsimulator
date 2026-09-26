@@ -54,7 +54,9 @@ export async function downloadPilotData(classId: string | null, label: string) {
   const enrollments = await fetchAll('student_enrollments', classId ? (q) => q.eq('class_id', classId) : undefined);
   const userIds = [...new Set([...enrollments.map((e) => e.user_id), ...sessions.map((s) => s.user_id)])];
   const profilesAll = await fetchAll('profiles');
-  const profiles = profilesAll.filter((p) => userIds.includes(p.id));
+  const profiles = profilesAll
+    .filter((p) => userIds.includes(p.id))
+    .map(({ email, display_name, ...rest }) => ({ student_code: `S-${String(rest.id).slice(0, 8)}`, ...rest }));
   const classes = await fetchAll('classes', classId ? (q) => q.eq('id', classId) : undefined);
 
   const ids = sessions.map((s) => s.id);
