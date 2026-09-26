@@ -66,6 +66,8 @@ const TAB_LABEL: Record<string, string> = {
   home: 'Home', my_decisions: 'My Decisions', decisions: 'My Decisions', reasoning_board: 'Reasoning Board', reasoning: 'Reasoning Board',
 };
 
+export const studentCode = (id: string) => `S-${String(id).slice(0, 8)}`;
+
 function cell(v: any) {
   if (v === null || v === undefined) return '';
   const s = typeof v === 'object' ? JSON.stringify(v) : v;
@@ -78,7 +80,7 @@ export async function downloadPresentedPilotData(classId: string | null, label: 
   const sessions = await fetchAll('sessions', classId ? (q) => q.eq('class_id', classId) : undefined);
   const enrollments = await fetchAll('student_enrollments', classId ? (q) => q.eq('class_id', classId) : undefined);
   const profiles = await fetchAll('profiles');
-  const emailOf = new Map(profiles.map((p) => [p.id, p.email ?? '']));
+  const emailOf = new Map(profiles.map((p) => [p.id, studentCode(p.id)]));
   const ids = sessions.map((s) => s.id);
   const [subs, refl, boards, ai, alloc, bevents, nav, tut, resets] = ids.length
     ? await Promise.all(['submissions', 'post_simulation_reflections', 'reasoning_board_state', 'ai_feedback_events', 'allocation_events', 'board_events', 'navigation_events', 'tutorial_events', 'resets'].map((t) => bySessions(t, ids)))
@@ -291,16 +293,16 @@ export async function downloadPresentedPilotData(classId: string | null, label: 
     const quads = sub ? QUADS.filter((q) => (sub[`${q}_card_count`] ?? 0) > 0).length : null;
     const aiRows = s ? (aiBy.get(s.id) ?? []).sort((a, b) => a.feedback_round - b.feedback_round) : [];
     table.push({
-      Email: email, 'Duration (min)': dur ?? '—', Tutorial: tutorial, Cards: cards ?? '—', Quadrants: quads ?? '—',
+      Student: email, 'Duration (min)': dur ?? '—', Tutorial: tutorial, Cards: cards ?? '—', Quadrants: quads ?? '—',
       Annotations: s ? chips.filter(hasAnno).length : '—', Diagnosis: s ? (board?.written_diagnosis?.trim() ? 'Yes' : 'No') : '—',
       'Alloc changes': s ? allocBy.get(s.id)?.length ?? 0 : 0, Feedback: aiRows.length ? 'Yes' : 'No', Decision: tableDecision(sub) ?? '—',
     });
-    if (!s) { details.push({ Email: email, Session: 'No session' }); continue; }
+    if (!s) { details.push({ Student: email, Session: 'No session' }); continue; }
     const r = reflBy.get(s.id);
     const navRows = navBy.get(s.id) ?? [];
     const tabSecs = groupBy(navRows, (n: any) => TAB_LABEL[n.tab] ?? n.tab);
     details.push({
-      Email: email, 'Session ID': s.id, Started: s.started_at, Completed: s.completed_at ?? '', 'Duration (min)': dur ?? '—',
+      Student: email, 'Session ID': s.id, Started: s.started_at, Completed: s.completed_at ?? '', 'Duration (min)': dur ?? '—',
       'Submitted at': sub?.submitted_at ?? '—', Tutorial: tutorial, 'Decision (detail badge)': !sub ? 'Not submitted' : tableDecision(sub) === 'No change' ? 'Correct' : tableDecision(sub),
       'Cards placed': cards ?? 0, 'Quadrants filled': quads ?? 0, Annotations: chips.filter(hasAnno).length,
       'Final TikTok': sub?.final_tiktok_spend ?? '', 'Final Instagram': sub?.final_instagram_spend ?? '', 'Final Facebook': sub?.final_facebook_spend ?? '', 'Final Newspaper': sub?.final_newspaper_spend ?? '',
@@ -314,13 +316,13 @@ export async function downloadPresentedPilotData(classId: string | null, label: 
       'Reflection Q4': r?.q4_feedback_impact ?? '', 'Reflection Q5': r?.q5_comparison ?? '', 'Used AI': r ? (r.used_ai ? 'Yes' : 'No') : '', 'AI chat link': r?.ai_chat_link ?? '',
       'Reflection submitted': r?.submitted_at ?? 'Not completed',
     });
-    (allocBy.get(s.id) ?? []).forEach((a) => timeline.push({ Email: email, Time: a.created_at, Type: 'Budget move', Detail: `${a.channel}: ${a.previous_value} → ${a.new_value}`, Seq: a.sequence_number }));
-    (bevBy.get(s.id) ?? []).forEach((b) => timeline.push({ Email: email, Time: b.created_at, Type: `Board: ${b.event_type}`, Detail: `${b.evidence_id ?? ''}${b.quadrant ? ` → ${b.quadrant}` : ''}`, Seq: b.sequence_number }));
-    aiRows.forEach((a) => timeline.push({ Email: email, Time: a.requested_at, Type: 'AI feedback', Detail: `Round ${a.feedback_round} — ${a.post_feedback_action ?? ''}`, Seq: '' }));
-    navRows.forEach((n) => timeline.push({ Email: email, Time: n.entered_at, Type: 'Tab visit', Detail: `${TAB_LABEL[n.tab] ?? n.tab} (${n.time_spent_seconds ?? 0}s)`, Seq: n.visit_number }));
+    (allocBy.get(s.id) ?? []).forEach((a) => timeline.push({ Student: email, Time: a.created_at, Type: 'Budget move', Detail: `${a.channel}: ${a.previous_value} → ${a.new_value}`, Seq: a.sequence_number }));
+    (bevBy.get(s.id) ?? []).forEach((b) => timeline.push({ Student: email, Time: b.created_at, Type: `Board: ${b.event_type}`, Detail: `${b.evidence_id ?? ''}${b.quadrant ? ` → ${b.quadrant}` : ''}`, Seq: b.sequence_number }));
+    aiRows.forEach((a) => timeline.push({ Student: email, Time: a.requested_at, Type: 'AI feedback', Detail: `Round ${a.feedback_round} — ${a.post_feedback_action ?? ''}`, Seq: '' }));
+    navRows.forEach((n) => timeline.push({ Student: email, Time: n.entered_at, Type: 'Tab visit', Detail: `${TAB_LABEL[n.tab] ?? n.tab} (${n.time_spent_seconds ?? 0}s)`, Seq: n.visit_number }));
   }
-  timeline.sort((a, b) => (a.Email === b.Email ? (a.Time < b.Time ? -1 : 1) : a.Email < b.Email ? -1 : 1));
-  add('Per-student table', ['Students', table.sort((a, b) => a.Email.localeCompare(b.Email))]);
+  timeline.sort((a, b) => (a.Student === b.Student ? (a.Time < b.Time ? -1 : 1) : a.Student < b.Student ? -1 : 1));
+  add('Per-student table', ['Students', table.sort((a, b) => a.Student.localeCompare(b.Student))]);
   add('Student details', ['One row per student', details]);
   add('Student timeline', ['Events in order', timeline]);
 
