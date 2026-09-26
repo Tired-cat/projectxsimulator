@@ -9,8 +9,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Users } from 'lucide-react';
+import { Users, Download, Loader2 } from 'lucide-react';
 import { RouteLoader } from '@/components/RouteLoader';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import { downloadPilotData } from '@/lib/pilotExport';
 
 const PilotHealth = lazy(() => import('@/components/admin/pilot/PilotHealth'));
 const PilotReasoningBoard = lazy(() => import('@/components/admin/pilot/PilotReasoningBoard'));
@@ -48,6 +51,7 @@ export default function AdminPilot() {
   const { classId, setClassId, classes } = useAdminClassFilter();
   const [activeTab, setActiveTab] = useState<PilotTab>('Pilot health');
   const [studentCount, setStudentCount] = useState<number | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     async function fetchCount() {
@@ -95,6 +99,26 @@ export default function AdminPilot() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={downloading}
+            onClick={async () => {
+              setDownloading(true);
+              try {
+                await downloadPilotData(classId, selectedLabel);
+                toast({ title: 'Download ready', description: 'Pilot data saved as an Excel file.' });
+              } catch (e: any) {
+                toast({ title: 'Download failed', description: e?.message ?? 'Please try again.', variant: 'destructive' });
+              } finally {
+                setDownloading(false);
+              }
+            }}
+          >
+            {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {downloading ? 'Preparing…' : 'Download all data'}
+          </Button>
           {studentCount !== null && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md">
               <Users className="h-3.5 w-3.5" />
